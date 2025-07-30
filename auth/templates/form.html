@@ -1,0 +1,120 @@
+{{ define "title" }}
+    {{ .Title }}
+{{ end }}
+
+{{ define "content" }}
+<script defer src="/js-form/bundle.js"></script>
+<div class="auth-form-bgr">
+    <div class="auth-form-wrapper">
+        <div class="_form auth-box-dark auth-form lxps-grid-v" style="grid-template-rows:auto 1fr auto;">
+            <div class="auth-form-top lxps-grid-h" style="position:relative;min-height:40px;grid-template-columns:1fr 1fr;">
+                <div class="_loginMark auth-mark-wrapper auth-mark-l" style="position:relative;min-width:40px;">
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">Log in</div>
+                    </div>
+                </div>
+                <div class="_signupMark auth-mark-wrapper auth-mark-r auth-mark-inactive-dark" style="position:relative;min-width:40px;">
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">Sign up</div>
+                    </div>
+                </div>
+            </div>
+            <div style="position:relative;min-height:40px;">
+                <div class="_loginForm">
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">login</div>
+                    </div>
+                    <div class="auth-input-wrapper"><input class="_inp_login_login lx-Input-dark auth-input">
+                        <div class="_login_need_login auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Enter login</div>
+                        </div>
+                    </div>
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">password</div>
+                    </div>
+                    <div class="auth-input-wrapper"><input type="password" class="_inp_login_pwd lx-Input-dark auth-input auth-pwd">
+                        <div class="auth-eye-wrapper">
+                            <div class="auth-eye auth-eye-closed"></div>
+                        </div>
+                        <div class="_login_need_pwd auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Enter password</div>
+                        </div>
+                        <div class="_login_not_found auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Wrong login or password</div>
+                        </div>
+                        <div class="_login_bad_request auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Incorrect login or password</div>
+                        </div>
+                    </div>
+                </div>
+                <div  class="_signupForm" style="display: none;">
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">login</div>
+                    </div>
+                    <div class="auth-input-wrapper"><input class="_inp_signup_login lx-Input-dark auth-input">
+                        <div class="_signup_need_login auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Enter login</div>
+                        </div>
+                        <div class="_signup_illegal_login auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Use for login only English letters, numbers and underscore symbol</div>
+                        </div>
+                        <div class="_signup_login_exists auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">This login already exists</div>
+                        </div>
+                        <div class="_signup_bad_request auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Incorrect login or password</div>
+                        </div>
+                    </div>
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">password</div>
+                    </div>
+                    <div class="auth-pwd-tip auth-aligned">
+                        <div class="lx-TextBox">minimum 8 symbols, use both registers, use special symbols</div>
+                    </div>
+                    <div class="auth-input-wrapper"><input type="password" class="_inp_signup_pwd lx-Input-dark auth-input auth-pwd">
+                        <div class="auth-eye-wrapper">
+                            <div class="auth-eye auth-eye-closed"></div>
+                        </div>
+                        <div class="_signup_need_pwd auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Enter password</div>
+                        </div>
+                        <div class="_signup_weak_pwd auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Your password is not strong enough
+                            </div>
+                        </div>
+                    </div>
+                    <div class="auth-aligned">
+                        <div class="lx-TextBox">confirm password</div>
+                    </div>
+                    <div class="auth-input-wrapper"><input type="password" class="_inp_signup_pwd_confirm lx-Input-dark auth-input auth-pwd">
+                        <div class="auth-eye-wrapper">
+                            <div class="auth-eye auth-eye-closed"></div>
+                        </div>
+                        <div class="_signup_need_pwd_confirm auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Confirm your password</div>
+                        </div>
+                        <div class="_signup_pwd_mismatch auth-input-warning auth-input-warning-hidden">
+                            <div class="lx-TextBox">Mismatch</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="auth-input-wrapper" style="position:relative;min-height:40px;">
+                <div class="_okButton lx-Button-dark auth-but auth-aligned">
+                    <div class="lx-TextBox">Ok</div>
+                </div>
+            </div>
+        </div>
+        <div class="_msg_success auth-msg auth-box-dark auth-mode-hidden">
+            <div class="auth-aligned">
+                <div class="lx-TextBox">Authentication is successful. Returning...</div>
+            </div>
+        </div>
+        <div class="_msg_fail auth-msg auth-box-dark auth-mode-hidden">
+            <div class="auth-aligned">
+                <div class="lx-TextBox">Server internal error occured. Try again later.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

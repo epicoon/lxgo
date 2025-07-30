@@ -1,0 +1,23 @@
+{{ define "layout" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ block "title" . }}{{ end }}</title>
+    <link href="/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <div class="lx-abspos lxps-grid-v" style="inset: 0%; grid-template-rows: auto 1fr auto;">
+        <header class="auth-header" style="position:relative;min-height:40px">
+            <div>Authentication service</div>
+        </header>
+        <main style="position:relative;min-height:40px">
+            {{ block "content" . }}{{ end }}
+        </main>
+        <footer class="auth-footer" style="position:relative;min-height:40px">
+            <p>© 2024 Authentication service</p>
+        </footer>
+    </div>
+</body>
+</html>
+{{ end }}

@@ -1,0 +1,134 @@
+name: create_tables
+type: query
+
+up:
+  - CREATE TABLE
+    roles (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL
+    )
+  - CREATE INDEX roles_name_idx ON roles (name);
+
+  - CREATE TABLE
+    rights (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      role_id INT NOT NULL,
+      CONSTRAINT fk_rights_role_id
+        FOREIGN KEY(role_id)
+        REFERENCES roles(id)
+        ON DELETE CASCADE
+    );
+  - CREATE INDEX rights_name_idx ON rights (name);
+
+  - CREATE TABLE
+    clients (
+      id SERIAL PRIMARY KEY,
+      secret VARCHAR(255),
+      role_id INT NOT NULL,
+      access_token_lifetime INT NOT NULL DEFAULT 900,
+      refresh_token_lifetime INT NOT NULL DEFAULT 604800,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP,
+      CONSTRAINT fk_clients_role_id
+        FOREIGN KEY(role_id)
+        REFERENCES roles(id)
+        ON DELETE RESTRICT
+    )
+  - CREATE INDEX clients_secret_idx ON clients (secret);
+
+  - CREATE TABLE
+    users (
+      id SERIAL PRIMARY KEY,
+      login VARCHAR(255) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      name VARCHAR(255),
+      phone VARCHAR(50),
+      email VARCHAR(255),
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP
+     );
+  - CREATE INDEX users_login_idx ON users (login);
+  - CREATE INDEX users_password_idx ON users (password);
+
+  - CREATE TABLE
+    user_data (
+      id SERIAL PRIMARY KEY,
+      client_id INT NOT NULL,
+      user_id INT NOT NULL,
+      data JSONB,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP,
+      CONSTRAINT fk_user_data_client_id
+        FOREIGN KEY(client_id)
+        REFERENCES clients(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_user_data_user_id
+        FOREIGN KEY(user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+    );
+
+  - CREATE TABLE
+    codes (
+      id SERIAL PRIMARY KEY,
+      value VARCHAR(255) NOT NULL,
+      client_id INT NOT NULL,
+      user_id INT NOT NULL,
+      CONSTRAINT fk_codes_client_id
+        FOREIGN KEY(client_id)
+        REFERENCES clients(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_codes_user_id
+        FOREIGN KEY(user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+    );
+  - CREATE INDEX codes_value_idx ON codes (value);
+
+  - CREATE TABLE 
+    tokens (
+      id SERIAL PRIMARY KEY,
+      client_id INT NOT NULL,
+      user_id INT NOT NULL,
+      value VARCHAR(255) NOT NULL,
+      is_refresh BOOLEAN NOT NULL,
+      expired_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_tokens_client_id
+        FOREIGN KEY(client_id)
+        REFERENCES clients(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_tokens_user_id
+        FOREIGN KEY(user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+    );
+  - CREATE INDEX tokens_value_idx ON tokens (value);
+
+down:
+  - DROP INDEX IF EXISTS tokens_value_idx;
+  - ALTER TABLE tokens DROP CONSTRAINT IF EXISTS fk_tokens_client_id;
+  - ALTER TABLE tokens DROP CONSTRAINT IF EXISTS fk_tokens_user_id;
+  - DROP TABLE IF EXISTS tokens;
+  - DROP INDEX IF EXISTS codes_value_idx;
+  - ALTER TABLE codes DROP CONSTRAINT IF EXISTS fk_codes_client_id;
+  - ALTER TABLE codes DROP CONSTRAINT IF EXISTS fk_codes_user_id;
+  - DROP TABLE IF EXISTS codes;
+  - ALTER TABLE user_data DROP CONSTRAINT IF EXISTS fk_user_data_client_id;
+  - ALTER TABLE user_data DROP CONSTRAINT IF EXISTS fk_user_data_user_id;
+  - DROP TABLE IF EXISTS user_data;
+  - DROP INDEX IF EXISTS users_password_idx;
+  - DROP INDEX IF EXISTS users_login_idx;
+  - DROP TABLE IF EXISTS users;
+  - ALTER TABLE clients DROP CONSTRAINT IF EXISTS fk_clients_role_id;
+  - DROP INDEX IF EXISTS clients_secret_idx;
+  - DROP TABLE IF EXISTS clients;
+  - ALTER TABLE rights DROP CONSTRAINT IF EXISTS fk_rights_role_id;
+  - DROP INDEX IF EXISTS rights_name_idx;
+  - DROP TABLE IF EXISTS rights;
+  - DROP INDEX IF EXISTS roles_name_idx;
+  - DROP TABLE IF EXISTS roles;

@@ -1,0 +1,21 @@
+Port: 8080
+
+Settings:
+  AdminPanel: "enable"
+
+Database:
+  Host: "localhost"
+  Port: 5432
+  User: "lx"
+  Password: "123456"
+  DBName: "lxgo"
+  SSLMode: "disable"
+
+Templates:
+  - Dir: templates
+    Layout: layout
+
+Components:
+  SessionStorage:
+    CookieName: lxgoauthsessionid
+    MaxLifeTime: 36000

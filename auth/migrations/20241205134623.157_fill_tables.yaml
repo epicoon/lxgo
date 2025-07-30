@@ -1,0 +1,33 @@
+name: fill_tables
+type: query
+
+up:
+  - INSERT INTO roles (id, name)
+    VALUES
+      (1, 'superadmin'),
+      (2, 'admin'),
+      (3, 'viewer'),
+      (4, 'client');
+  - SELECT SETVAL(pg_get_serial_sequence('roles', 'id'), MAX(id)) FROM roles;
+
+  - INSERT INTO rights (role_id, name)
+    VALUES
+      (1, 'superadmin_r'),
+      (1, 'superadmin_w'),
+      (2, 'admin_r'),
+      (2, 'admin_w'),
+      (3, 'viewer_r'),
+      (3, 'viewer_w'),
+      (4, 'client_r'),
+      (4, 'client_w');
+  - SELECT SETVAL(pg_get_serial_sequence('rights', 'id'), MAX(id)) FROM rights;
+
+  - INSERT INTO clients (id, secret, role_id, created_at, updated_at)
+    VALUES
+      (1, '$2a$10$F8j8tF5sio0af6Es6nFaEO7wJ4oaE8tX60zKLYf063yk0mmXcnT8K', 1, NOW(), NOW())
+  - SELECT SETVAL(pg_get_serial_sequence('clients', 'id'), MAX(id)) FROM clients;
+
+down:
+  - DELETE FROM clients;
+  - DELETE FROM rights;
+  - DELETE FROM roles;
