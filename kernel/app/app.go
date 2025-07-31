@@ -161,8 +161,6 @@ func (app *App) LogError(msg string, category string) {
 }
 
 func (app *App) Run() {
-	app.Events().Trigger(kernel.EVENT_APP_BEFORE_RUN)
-
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("Panic: %s\n", r)

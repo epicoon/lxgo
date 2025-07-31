@@ -16,11 +16,14 @@ import (
 
 /** @interface kernel.ITemplateBulder */
 type renderer struct {
-	holder    *holder
-	namespace string
-	useNmsp   bool
-	name      string
+	holder *holder
 
+	namespace string
+
+	// template file name
+	name string
+
+	// code by text
 	layout  string
 	content string
 
@@ -34,18 +37,23 @@ var _ kernel.ITemplateRenderer = (*renderer)(nil)
 func newTemplateRenderer(holder *holder) kernel.ITemplateRenderer {
 	return &renderer{
 		holder:    holder,
-		useNmsp:   false,
 		paramsMap: make(map[string]any),
 	}
 }
 
 func (r *renderer) SetNamespace(nmsp string) kernel.ITemplateRenderer {
 	r.namespace = nmsp
-	r.useNmsp = true
 	return r
 }
 
-func (r *renderer) SetName(name string) kernel.ITemplateRenderer {
+func (r *renderer) SetTemplateName(name string) kernel.ITemplateRenderer {
+	route := strings.Split(name, ":")
+	if len(route) == 2 {
+		r.namespace = route[0]
+		r.name = route[1]
+		return r
+	}
+
 	r.name = name
 	return r
 }
@@ -55,7 +63,7 @@ func (r *renderer) SetLayout(code string) kernel.ITemplateRenderer {
 	return r
 }
 
-func (r *renderer) SetContent(code string) kernel.ITemplateRenderer {
+func (r *renderer) SetTemplate(code string) kernel.ITemplateRenderer {
 	r.content = code
 	return r
 }
@@ -70,6 +78,22 @@ func (r *renderer) AddParam(name string, val any) kernel.ITemplateRenderer {
 	return r
 }
 
+func (r *renderer) Namespace() string {
+	return r.namespace
+}
+
+func (r *renderer) TemplateName() string {
+	return r.name
+}
+
+func (r *renderer) Layout() string {
+	return r.layout
+}
+
+func (r *renderer) Template() string {
+	return r.content
+}
+
 func (r *renderer) Render() (string, error) {
 	if r.name != "" {
 		return r.renderByName()
@@ -78,6 +102,24 @@ func (r *renderer) Render() (string, error) {
 	if r.layout == "" && r.content == "" {
 		return "", errors.New("nothing to render")
 	}
+
+	var tplWrapper string
+	if r.namespace != "" {
+		if r.holder.confParseError {
+			return "", errors.New("can not parse 'Templates' config option")
+		}
+		scope, exists := r.holder.conf[r.namespace]
+		if !exists {
+			return "", fmt.Errorf("template scope namespaced by '%s' does not exist", r.namespace)
+		}
+		tplWrapper = scope.Layout
+	} else {
+		tplWrapper = "layout"
+	}
+
+	r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.NewData(map[string]any{
+		"renderer": r,
+	}))
 
 	templates := template.New("layout")
 	templates, err := templates.Parse(r.layout)
@@ -90,26 +132,7 @@ func (r *renderer) Render() (string, error) {
 		return "", fmt.Errorf("content parse error:%v", err)
 	}
 
-	var tpl string
-	if r.useNmsp {
-		if r.holder.confParseError {
-			return "", errors.New("can not parse 'Templates' config option")
-		}
-		scope, exists := r.holder.conf[r.namespace]
-		if !exists {
-			return "", fmt.Errorf("template scope namespaced by '%s' does not exist", r.namespace)
-		}
-		tpl = scope.Layout
-		r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.NewData(map[string]any{
-			"Namespace": r.namespace,
-			"Layout":    scope.Layout,
-			"Renderer":  r,
-		}))
-	} else {
-		tpl = "layout"
-	}
-
-	return r.renderTpl(templates, tpl)
+	return r.renderTpl(templates, tplWrapper)
 }
 
 func (r *renderer) renderByName() (string, error) {
@@ -117,31 +140,13 @@ func (r *renderer) renderByName() (string, error) {
 		return "", errors.New("can not parse 'Templates' config option")
 	}
 
-	var nmsp, tpl string
-	if r.useNmsp {
-		nmsp = r.namespace
-		tpl = r.name
-	} else {
-		route := strings.Split(r.name, ".")
-		if len(route) > 2 {
-			return "", fmt.Errorf("wrong template key: '%s', only one dot available", r.name)
-		}
-		if len(route) == 1 {
-			nmsp = ""
-			tpl = route[0]
-		} else {
-			nmsp = route[0]
-			tpl = route[1]
-		}
-	}
-
-	scope, exists := r.holder.conf[nmsp]
+	scope, exists := r.holder.conf[r.namespace]
 	if !exists {
-		return "", fmt.Errorf("template scope namespaced by '%s' does not exist", nmsp)
+		return "", fmt.Errorf("template scope namespaced by '%s' does not exist", r.namespace)
 	}
 
 	dir := r.holder.app.Pathfinder().GetAbsPath(scope.Dir)
-	tplPath := filepath.Join(dir, tpl)
+	tplPath := filepath.Join(dir, r.name)
 	ext := filepath.Ext(tplPath)
 	if ext == "" {
 		tplPath += ".html"
@@ -153,11 +158,10 @@ func (r *renderer) renderByName() (string, error) {
 	}
 
 	r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.NewData(map[string]any{
-		"Namespace": nmsp,
-		"Layout":    scope.Layout,
-		"Renderer":  r,
+		"renderer": r,
 	}))
 
+	tpl := r.name
 	var templates *template.Template
 	if scope.Layout == "" {
 		templates = template.Must(template.ParseFiles(tplPath))

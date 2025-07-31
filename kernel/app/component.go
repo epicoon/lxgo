@@ -69,6 +69,19 @@ func NewAppComponent() *AppComponent {
 	return &AppComponent{}
 }
 
+func RegisterComponent(app kernel.IApp, c kernel.IAppComponent, componentKey, configKey string) error {
+	if app.HasComponent(componentKey) {
+		return fmt.Errorf("the application already has component: %s", componentKey)
+	}
+
+	if err := InitComponent(c, app, configKey); err != nil {
+		return fmt.Errorf("can not init '%s': %s", componentKey, err)
+	}
+
+	app.SetComponent(componentKey, c)
+	return nil
+}
+
 func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) error {
 	c.SetApp(app)
 

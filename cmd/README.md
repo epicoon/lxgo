@@ -23,9 +23,9 @@ func NewMainCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 }
 
 func (c *MainCommand) Exec() error {
-    // Init and run your app - code from "main.go"
+	// Init and run your app - code from "main.go"
 
-    return nil
+	return nil
 }
 ```
 
@@ -39,7 +39,7 @@ import (
 
 func main() {
 	cmd.Init(cmd.CommandsList{
-        // Empty command key corresponds to `go run .` call
+		// Empty command key corresponds to `go run .` call
 		"": NewMainCommand,
 	})
 	cmd.Run()
@@ -58,7 +58,7 @@ package main
 import (
 	"fmt"
 
-    "github.com/epicoon/lxgo/cmd"
+	"github.com/epicoon/lxgo/cmd"
 )
 
 type MyCommand struct {
@@ -67,31 +67,31 @@ type MyCommand struct {
 
 func NewMyCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	c := &MyCommand{Command: cmd.NewCommand()}
-    c.RegisterActions(cmd.ActionsList{
+	c.RegisterActions(cmd.ActionsList{
 		"hi": actionHi,
 		"by": actionBy,
 	})
-    return c
+	return c
 }
 
 // Corresponds to `go run . {command_key}:hi --name="Al"` call
 func actionHi(c cmd.ICommand) error {
-    name := "anonimus"
+	name := "anonimus"
 	if c.HasParam("name") {
 		param, ok := c.Param("name").(string)
 		if !ok {
 			return errors.New("parameter 'name' must be string")
 		}
-        name = param
+		name = param
 	}
-    fmt.Println("Hi, "+name+"!")
-    return nil
+	fmt.Println("Hi, "+name+"!")
+	return nil
 }
 
 // Corresponds to `go run . {command_key}:by` call
 func actionBy(c cmd.ICommand) error {
-    fmt.Println("By")
-    return nil
+	fmt.Println("By")
+	return nil
 }
 ```
 
@@ -106,7 +106,7 @@ import (
 func main() {
 	cmd.Init(cmd.CommandsList{
 		"": NewMainCommand,
-        "my-command": NewMyCommand,
+		"my-command": NewMyCommand,
 	})
 	cmd.Run()
 }

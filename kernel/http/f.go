@@ -20,7 +20,7 @@ func HtmlResponse(app kernel.IApp, conf kernel.HtmlResponseConfig) (kernel.IHttp
 		html = conf.Html
 	} else if conf.Template != "" {
 		rendered, err := app.TemplateRenderer().
-			SetName(conf.Template).
+			SetTemplateName(conf.Template).
 			SetParams(conf.Params).Render()
 		if err != nil {
 			return nil, err

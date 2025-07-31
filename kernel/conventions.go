@@ -89,11 +89,15 @@ type ITemplateHolder interface {
 
 type ITemplateRenderer interface {
 	SetNamespace(nmsp string) ITemplateRenderer
-	SetName(name string) ITemplateRenderer
+	SetTemplateName(name string) ITemplateRenderer
 	SetLayout(code string) ITemplateRenderer
-	SetContent(code string) ITemplateRenderer
+	SetTemplate(code string) ITemplateRenderer
 	SetParams(params any) ITemplateRenderer
 	AddParam(name string, val any) ITemplateRenderer
+	Namespace() string
+	TemplateName() string
+	Layout() string
+	Template() string
 	Render() (string, error)
 }
 
@@ -241,7 +245,6 @@ type IErrorsCollector interface {
  * EVENTS
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-const EVENT_APP_BEFORE_RUN = "appBeforeRun"
 const EVENT_APP_BEFORE_HANDLE_REQUEST = "appBeforeHandleRequest"
 const EVENT_APP_BEFORE_SEND_RESPONSE = "appBeforeSendResponse"
 const EVENT_APP_BEFORE_SEND_ASSET = "appBeforeSendAsset"

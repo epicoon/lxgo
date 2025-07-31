@@ -144,7 +144,7 @@ func (r *renderer) fillCustom(layoutPath string, f *filler) string {
 	res, err := plugin.App().TemplateRenderer().
 		SetNamespace(plugin.Config().Page().Template().Namespace).
 		SetLayout(layout).
-		SetContent(block).
+		SetTemplate(block).
 		Render()
 	if err != nil {
 		r.manager.pp.LogError("can not render plugin '%s' with layout: %v", plugin.Name(), err)

@@ -122,7 +122,7 @@ func (router *Router) Handle(res kernel.IHttpResource, route string, w http.Resp
 
 	if router.app != nil {
 		router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_HANDLE_REQUEST, kernel.NewData(map[string]any{
-			"resource": res,
+			"context": ctx,
 		}))
 	}
 

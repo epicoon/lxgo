@@ -198,7 +198,7 @@ Templates:
 ```go
 package main
 
-require (
+import (
 	"github.com/epicoon/lxgo/kernel"
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
 )
@@ -258,7 +258,8 @@ func InitRoutes(router kernel.IRouter) {
         <p>Hello, from Template 2!</p>
     {{ end }}
     ```
-- restart your application. Now you can get the `home` page by `http://localhost:8081/tpl` URL. And `tpl1.htlm` and `tpl2.htlm` by `http://localhost:8081/tpl?name=tpl1` and `http://localhost:8081/tpl?name=tpl2` respectively.
+- restart your application. Now you can get the `home` page by `http://localhost:8081/tpl` URL.  
+    And `tpl1.html` and `tpl2.html` by `http://localhost:8081/tpl?name=tpl1` and `http://localhost:8081/tpl?name=tpl2` respectively.
 
 
 ### <a name="link8">8. What if we want to make parameter `name` obligate? We can use forms:</a>
@@ -266,7 +267,7 @@ func InitRoutes(router kernel.IRouter) {
 ```go
 package main
 
-require (
+import (
 	"fmt"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -422,7 +423,7 @@ An example of `home.html` file:
 And you can use namespaced template:
 ```go
 html, _ := handler.App().TemplateRenderer().
-	SetName("alt.home").
+	SetTemplateName("alt:home").
 	SetParams(struct {
 		Title string
 	}{
@@ -470,29 +471,17 @@ type MyComponent struct {
 
 var _ kernel.IAppComponent = (*MyComponent)(nil)
 
-// According to interface kernel.IAppComponent
-// Method for the component initialization
+// Component initializator
 func SetAppComponent(app kernel.IApp, configKey string) error {
-	if app.HasComponent(MY_COMPONENT_KEY) {
-		return fmt.Errorf("the application already has component: %s", MY_COMPONENT_KEY)
-	}
-
-	comp := NewMyComponent()
-	err := lxApp.InitComponent(comp, app, configKey)
-	if err != nil {
-		return fmt.Errorf("can not init '%s': %s", MY_COMPONENT_KEY, err)
-	}
-
-	app.SetComponent(MY_COMPONENT_KEY, comp)
-	return nil
+	comp := &MyComponent{AppComponent: lxApp.NewAppComponent()}
+	return lxApp.RegisterComponent(app, comp, MY_COMPONENT_KEY, configKey)
 }
 
-// According to interface kernel.IAppComponent
 // Method to get the component
 func AppComponent(app kernel.IApp) (*MyComponent, error) {
 	c := app.Component(MY_COMPONENT_KEY)
 	if c == nil {
-		return nil, fmt.Errorf("application component '%s' not found", MY_COMPONENT_KEY)
+		return nil, fmt.Errorf("application component '%s' does not exist", MY_COMPONENT_KEY)
 	}
 
 	comp, ok := c.(*MyComponent)
@@ -503,16 +492,12 @@ func AppComponent(app kernel.IApp) (*MyComponent, error) {
 	return comp, nil
 }
 
-// Component constructor
-func NewMyComponent() *MyComponent {
-	return &MyComponent{AppComponent: lxApp.NewAppComponent()}
-}
-
 // According to interface kernel.IAppComponent
 func (comp *MyComponent) Name() string {
 	return "MyComponent"
 }
 
+// According to interface kernel.IAppComponent
 // Config constructor
 func (comp *MyComponent) CConfig() kernel.CAppComponentConfig {
 	return NewMyComponentConfig
@@ -529,7 +514,7 @@ func (comp *MyComponent) DoSomething() {
 }
 ```
 
-3. Prepare component configuration in application `config.yaml` file:
+3. Prepare component configuration in file `config.yaml`:
 ```yaml
 Components:
   MyComponent:
@@ -555,7 +540,7 @@ app.Run()
 
 comp, err := subpkg.AppComponent(app)
 if err != nil {
-	fmt.Printf("component 'MyComponent' not found: %v\n", err)
+	fmt.Printf("can not get 'MyComponent': %v\n", err)
 	return
 }
 
@@ -565,32 +550,38 @@ comp.DoSomething()
 
 ### <a name="events">Events</a>
 
-There are several event of application lifecycle:
+There are several events of application lifecycle:
 
 * `kernel.EVENT_APP_BEFORE_SEND_ASSET`
-    - trigger: before send asset like css, js files etc.
-    - payload:
+    - **trigger**: before send asset like css, js files etc.
+    - **payload**:
         | key     | type          |
         | ------- | ------------- |
         | request | *http.Request |
         | file    | string        |
 
 * `kernel.EVENT_APP_BEFORE_HANDLE_REQUEST`
-    - trigger: before call method `kernel.IHttpResource.Run()`
-    - payload:
-        | key      | type                 |
-        | -------- | -------------------- |
-        | resource | kernel.IHttpResource |
+    - **trigger**: before call method `kernel.IHttpResource.Run()`
+    - **payload**:
+        | key     | type                  |
+        | ------- | --------------------- |
+        | context | kernel.IHandleContext |
 
 * `kernel.EVENT_APP_BEFORE_SEND_RESPONSE`
-    - trigger: before sending responce after the method `kernel.IHttpResource.Run()`
-    - payload:
+    - **trigger**: before sending responce after the method `kernel.IHttpResource.Run()`
+    - **payload**:
         | key      | type                  |
         | -------- | --------------------- |
         | context  | kernel.IHandleContext |
         | response | kernel.IHttpResponse  |
+* `kernel.EVENT_RENDERER_BEFORE_RENDER`
+    - **trigger**: before `app.TemplateRenderer()` render a template
+    - **payload**:
+        | key       | type                     |
+        | --------- | ------------------------ |
+        | renderer  | kernel.ITemplateRenderer |
 
-Example of using events:
+Example of events using:
 ```go
 app.Events().Subscribe(kernel.EVENT_APP_BEFORE_SEND_ASSET, func(e kernel.IEvent) {
 	filePath := e.Payload().Get("file").(string)
