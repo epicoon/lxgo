@@ -212,12 +212,6 @@ func processResource(router *Router, resource kernel.IHttpResource) kernel.IHttp
 		}
 	}
 
-	//TODO fmt
-	r := ctx.Request()
-	fmt.Println("================================")
-	fmt.Printf("--- Router HANDLING %s %s %s %s\n", r.Method, r.URL.Path, r.Method, ctx.Route())
-	fmt.Printf("--- Resource: %T\n", resource)
-
 	var resp kernel.IHttpResponse
 	cReq := resource.CRequestForm()
 	if cReq != nil {

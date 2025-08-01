@@ -17,7 +17,7 @@ You can create your own web-server - an application with components, routing and
 
 ## Useful features:
 
-* [Templates] (#tpl)
+* [Templates](#tpl)
 * [Components](#components)
 * [Events](#events)
 
@@ -218,7 +218,7 @@ func (handler *TplHandler) Run() kernel.IHttpResponse {
 	val, exists := queryParams["name"]
 	var tpl string
 	if exists {
-		tpl = queryParams["name"][0]
+		tpl = val[0]
 	} else {
 		tpl = "home"
 	}

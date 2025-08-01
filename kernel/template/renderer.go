@@ -183,8 +183,13 @@ func (r *renderer) renderByName() (string, error) {
 }
 
 func (r *renderer) renderTpl(templates *template.Template, tplName string) (string, error) {
-	params := conv.ToMap(r.params)
-	maps.Copy(params, r.paramsMap)
+	var params map[string]any
+	if r.params == nil {
+		params = r.paramsMap
+	} else {
+		params = conv.ToMap(r.params)
+		maps.Copy(params, r.paramsMap)
+	}
 
 	var buf bytes.Buffer
 	err := templates.ExecuteTemplate(&buf, tplName, params)
