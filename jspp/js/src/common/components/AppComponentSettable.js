@@ -13,7 +13,7 @@ class AppComponentSettable extends lx.AppComponent {
      */
     addSettings(list) {
         let key = this.defaultSettingKey();
-        if (!(key in list)) {
+        if (!lx.isArray(list) || !(key in list)) {
             let temp = {};
             temp[key] = list;
             list = temp;

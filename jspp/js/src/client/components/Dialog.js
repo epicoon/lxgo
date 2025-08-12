@@ -111,8 +111,6 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 	function successHandlerWrapper(request, handler) {
 		var response = request.response;
 
-		lx.app.user.setGuestFlag(request.getResponseHeader('lx-user-status') !== null);
-
 		// Pass control to the custom handler
 		var contentType = request.getResponseHeader('Content-Type') || '';
 
@@ -152,13 +150,13 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 
 		switch (result.error_code) {
 			case 401:
-				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_UNAUTHORIZED)) lx.app.lifeCycle.trigger(
+				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_UNAUTHORIZED)) lx.app.events.trigger(
 					lx.EVENT_AJAX_REQUEST_UNAUTHORIZED,
 					[result, request, {method, url, data, headers, success, waiting, error}]
 				);
 				break;
 			case 403:
-				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_FORBIDDEN)) lx.app.lifeCycle.trigger(
+				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_FORBIDDEN)) lx.app.events.trigger(
 					lx.EVENT_AJAX_REQUEST_FORBIDDEN,
 					[result, request, {method, url, data, headers, success, waiting, error}]
 				);
@@ -186,7 +184,7 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 	// Initialize connection
 	request.open(method, calculatedUrl, true);
 	if (!ignoreEvents.includes(lx.EVENT_BEFORE_AJAX_REQUEST))
-		lx.app.lifeCycle.trigger(lx.EVENT_BEFORE_AJAX_REQUEST, [request]);
+		lx.app.events.trigger(lx.EVENT_BEFORE_AJAX_REQUEST, [request]);
 	for (var name in headers) {
 		request.setRequestHeader(name, headers[name]);
 	}

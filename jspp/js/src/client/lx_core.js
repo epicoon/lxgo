@@ -1,11 +1,11 @@
 lx.entryElement = null;
 
 lx.on = function(eventName, func) {
-    lx.app.domEvent.add( document, eventName, func );
+    lx.app.domEvents.add( document, eventName, func );
 };
 
 lx.off = function(eventName, func) {
-    lx.app.domEvent.remove( document, eventName, func );
+    lx.app.domEvents.remove( document, eventName, func );
 };
 
 lx.preventDefault = function(event) {

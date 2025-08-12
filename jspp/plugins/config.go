@@ -46,7 +46,8 @@ type pageConfig struct {
 
 	//TODO lasy load
 
-	tpl *jspp.PluginTemplate
+	noTpl bool
+	tpl   *jspp.PluginTemplate
 }
 
 var _ jspp.IPluginClientConfig = (*clientConfig)(nil)
@@ -282,16 +283,23 @@ func (c *pageConfig) Icon() string {
 	return get[string](&c.absConfig, "icon", "data:,", "page")
 }
 
-func (c *pageConfig) Template() jspp.PluginTemplate {
-	if c.tpl == nil {
-		c.tpl = &jspp.PluginTemplate{}
-		raw := get[kernel.Config](&c.absConfig, "template", nil, "page")
-		if raw != nil {
-			dict := kernel.Dict(raw)
-			conv.DictToStruct(&dict, c.tpl)
-		}
+func (c *pageConfig) Template() *jspp.PluginTemplate {
+	if c.noTpl {
+		return nil
 	}
-	return *c.tpl
+
+	if c.tpl == nil {
+		raw := get[kernel.Config](&c.absConfig, "template", nil, "page")
+		if raw == nil {
+			c.noTpl = true
+			return nil
+		}
+
+		c.tpl = &jspp.PluginTemplate{}
+		dict := kernel.Dict(raw)
+		conv.DictToStruct(&dict, c.tpl)
+	}
+	return c.tpl
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

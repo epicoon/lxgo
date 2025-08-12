@@ -2,7 +2,7 @@ let guid = 0;
 let appointEvent = Function("var a=arguments;a[0].handle=function(e){return a[1].call(a[0],e);}");
 
 // @lx:namespace lx;
-class DomEvent extends lx.AppComponent {
+class DomEvents extends lx.AppComponent {
     appoint(el, events = {}) {
         if (el.events === undefined) {
             el.events = events;
@@ -39,7 +39,7 @@ class DomEvent extends lx.AppComponent {
 
     remove(el, type, handler) {
         if (type == undefined && el.events) {
-            for (var i in el.events) lx.app.domEvent.remove( el, i );
+            for (var i in el.events) lx.app.domEvents.remove( el, i );
             return;
         }
 

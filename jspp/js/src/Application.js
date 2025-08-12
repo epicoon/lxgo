@@ -23,18 +23,17 @@ function _componentsMap() {
         queues: lx.Queues,
         dialog: lx.Dialog,
         domSelector: lx.DomSelector,
-        domEvent: lx.DomEvent,
+        domEvents: lx.DomEvents,
+        events: lx.Events,
         cookie: lx.Cookie,
         storage: lx.Storage,
-        lifeCycle: lx.LifeCycle,
         binder: lx.Binder,
         alert: lx.Alert,
         tost: lx.Tost,
         mouse: lx.Mouse,
         keyboard: lx.Keyboard,
-        dragAndDrop: lx.DragAndDrop,
+        dragNDrop: lx.DragNDrop,
         animation: lx.Animation,
-        user: lx.User,
         // @lx:context>
     };
 }
@@ -134,9 +133,9 @@ class Application {
         if (config.settings)
             _settings = config.settings;
 
-        this.domEvent.add(window, 'resize', e=>lx.app.root.checkResize(e));
+        this.domEvents.add(window, 'resize', e=>lx.app.root.checkResize(e));
         this.keyboard.setWatchForKeypress(true);
-        this.dragAndDrop.useElementMoving();
+        this.dragNDrop.useElementMoving();
         this.animation.useTimers(true);
         this.animation.useAnimation();
 

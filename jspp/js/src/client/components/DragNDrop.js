@@ -3,7 +3,7 @@ let __moved = false,
 	__movedElement = null;
 
 // @lx:namespace lx;
-class DragAndDrop extends lx.AppComponent {
+class DragNDrop extends lx.AppComponent {
 	move(event) {
 		event = event || window.event;
 		lx.preventDefault(event);

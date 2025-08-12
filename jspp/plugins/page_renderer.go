@@ -45,7 +45,12 @@ func (r *renderer) render() (string, error) {
 
 	plugin := r.plugin
 	var layoutPath string
-	nmsp := plugin.Config().Page().Template().Namespace
+	tpl := plugin.Config().Page().Template()
+	if tpl == nil {
+		return r.fillDefault(f), nil
+	}
+
+	nmsp := tpl.Namespace
 	layoutPath = plugin.App().TemplateHolder().LayoutPath(nmsp)
 
 	if layoutPath == "" {

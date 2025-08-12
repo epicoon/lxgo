@@ -158,7 +158,7 @@ class DomElementDefinition {
 	}
 
 	addEvent(eventName, func) {
-		if (this.elem) lx.app.domEvent.add(this.elem, eventName, func);
+		if (this.elem) lx.app.domEvents.add(this.elem, eventName, func);
 		else {
 			if (!(eventName in this.events)) this.events[eventName] = [];
 			this.events[eventName].push(func);
@@ -166,7 +166,7 @@ class DomElementDefinition {
 	}
 
 	delEvent(eventName, func) {
-		if (this.elem) lx.app.domEvent.remove(this.elem, eventName, func);
+		if (this.elem) lx.app.domEvents.remove(this.elem, eventName, func);
 		else {
 			if (func === undefined) delete this.events[eventName];
 			else if (eventName in this.events) this.events[eventName].lxRemove(func);
@@ -174,7 +174,7 @@ class DomElementDefinition {
 	}
 
 	hasEvent(eventName, func) {
-		if (this.elem) return lx.app.domEvent.has(this.elem, eventName, func);
+		if (this.elem) return lx.app.domEvents.has(this.elem, eventName, func);
 		if (func === undefined) return (eventName in this.events);
 		return ((eventName in this.events) && this.events[eventName].includes(func));
 	}
@@ -274,8 +274,8 @@ class DomElementDefinition {
 			delete this.elem.__lx;
 			if (this.elem.events) {
 				let events = this.elem.events;
-				lx.app.domEvent.disappoint(this.elem);
-				lx.app.domEvent.appoint(domElem, events);
+				lx.app.domEvents.disappoint(this.elem);
+				lx.app.domEvents.appoint(domElem, events);
 				delete this.events;
 			}
 		}
@@ -300,7 +300,7 @@ class DomElementDefinition {
 
 		if (this.events) for (var eventName in this.events) {
 			for (var i = 0, l = this.events[eventName].len; i < l; i++) {
-				lx.app.domEvent.add(this.elem, eventName, this.events[eventName][i]);
+				lx.app.domEvents.add(this.elem, eventName, this.events[eventName][i]);
 			}
 		}
 

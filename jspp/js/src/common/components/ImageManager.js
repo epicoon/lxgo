@@ -7,6 +7,14 @@ class ImageManager extends lx.AppComponentSettable {
         return 'imagePaths';
     }
 
+    processSettings() {
+        if (!lx.isArray(this.settings.imagePaths)) {
+            this.settings.imagePaths = {
+                default: this.settings.imagePaths
+            };
+        }
+    }
+
     /**
      * @param {lx.Rect} ctx
      * @param {string} name

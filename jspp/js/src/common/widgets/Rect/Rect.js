@@ -1470,7 +1470,7 @@ class Rect extends lx.Element {
 
     move(config={}) {
         // @lx:<context CLIENT:
-        this.off('mousedown', lx.app.dragAndDrop.move);
+        this.off('mousedown', lx.app.dragNDrop.move);
         // @lx:context>
         this.moveParams = {};
 
@@ -1490,11 +1490,11 @@ class Rect extends lx.Element {
             locked       : false
         };
         // @lx:<context CLIENT:
-        if (!this.hasTrigger('mousedown', lx.app.dragAndDrop.move))
-            this.on('mousedown', lx.app.dragAndDrop.move);
+        if (!this.hasTrigger('mousedown', lx.app.dragNDrop.move))
+            this.on('mousedown', lx.app.dragNDrop.move);
         // @lx:context>
         // @lx:<context SERVER:
-        this.onLoad('()=>this.on(\'mousedown\', lx.app.dragAndDrop.move);');
+        this.onLoad('()=>this.on(\'mousedown\', lx.app.dragNDrop.move);');
         // @lx:context>
         return this;
     }

@@ -2,16 +2,13 @@ lx.EVENT_BEFORE_AJAX_REQUEST = 'beforeAjax';
 lx.EVENT_AJAX_REQUEST_UNAUTHORIZED = 'ajaxUnauthorized';
 lx.EVENT_AJAX_REQUEST_FORBIDDEN = 'ajaxForbidden';
 
-let callbacks = {
-    beforeAjax: [],
-    ajaxUnauthorized: [],
-    ajaxForbidden: []
-};
+let callbacks = {};
 
 // @lx:namespace lx;
-class LifeCycle extends lx.AppComponent {
+class Events extends lx.AppComponent {
     subscribe(eventName, callback) {
-        if (!(eventName in callbacks)) return;
+        if (!(eventName in callbacks))
+            callbacks[eventName] = [];
         callbacks[eventName].push(callback);
     }
 

@@ -217,7 +217,7 @@ type IPluginClientConfig interface {
 type IPluginPageConfig interface {
 	Title() string
 	Icon() string
-	Template() PluginTemplate
+	Template() *PluginTemplate
 }
 
 type PluginTemplate struct {
