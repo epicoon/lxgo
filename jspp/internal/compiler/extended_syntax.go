@@ -10,9 +10,23 @@ import (
 )
 
 func applyExtendedSyntax(c *Compiler, code, path string) (string, error) {
-	// lx(STATIC). => this.constructor.
-	re := regexp.MustCompile(`lx\(STATIC\)\.`)
-	code = re.ReplaceAllString(code, "this.constructor.")
+	// lx.self(KEY). => this.constructor.KEY
+	re := regexp.MustCompile(`lx\.self\(`)
+	do := true
+	for do {
+		inxs := re.FindStringIndex(code)
+		if len(inxs) == 0 {
+			do = false
+			continue
+		}
+
+		start, finish := inxs[0], inxs[1]
+		end := utils.FindMatchingBrace(code, finish-1, '(')
+
+		key := code[finish:end]
+		orig := code[start : end+1]
+		code = strings.Replace(code, orig, "this.constructor."+key, 1)
+	}
 
 	// lx(elem)>>child>child => element.find('child').get('child')
 	re = regexp.MustCompile(`lx\((.+?)\)(?:(?:>>|>)\b[\w\d_]+\b)+`)
@@ -64,9 +78,6 @@ func applyExtendedSyntax(c *Compiler, code, path string) (string, error) {
 
 	// #lx:modelSchema <Car>  =>  {/* schema */}
 	//TODO ??????????????????
-
-	// #lx:i18n(key)  =>  '#lx:i18nSOME_TEXTi18n:lx#'
-	//TODO
 
 	return applyExtendedSyntaxForClasses(c, code, path)
 }

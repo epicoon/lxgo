@@ -72,7 +72,7 @@ class Marks extends lx.Box {
 	 */
 	render(config) {
 		super.render(config);
-		this.mode = config.mode || lx(STATIC).MODE_UNI_SHEET;
+		this.mode = config.mode || lx.self(MODE_UNI_SHEET);
 		this.animation = lx.getFirstDefined(config.animation, false);
 		this.appendAllowed = lx.getFirstDefined(config.appendAllowed, false);
 		this.dropAllowed = lx.getFirstDefined(config.dropAllowed, false);
@@ -91,7 +91,7 @@ class Marks extends lx.Box {
 		this.sheets = null;
 		if (config.sheets) this.setSheets(config.sheets);
 
-		if (this.mode == lx(STATIC).MODE_UNI_SHEET)
+		if (this.mode == lx.self(MODE_UNI_SHEET))
 			this.open(0);
 	}
 
@@ -266,7 +266,7 @@ class Marks extends lx.Box {
 			sheet = this.sheet(num);
 		if (!mark || mark.checked) return;
 
-		if (this.mode == lx(STATIC).MODE_UNI_SHEET)
+		if (this.mode == lx.self(MODE_UNI_SHEET))
 			this.unselect();
 
 		mark.checked = true;

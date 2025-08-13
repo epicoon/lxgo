@@ -1,6 +1,6 @@
 # Package for console commands creating in lxgo/kernel applications
 
-> Actual version: `v0.1.0-alpha.2`. Details [here](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.3`. Details [here](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 

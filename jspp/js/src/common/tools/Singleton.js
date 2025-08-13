@@ -5,11 +5,11 @@
 // @lx:namespace lx;
 class Singleton {
 	constructor(...args) {
-		if (lx(STATIC).getInstance === undefined || lx(STATIC).getInstance().constructor !== this.constructor) {
+		if (lx.self(getInstance) === undefined || lx.self(getInstance().constructor) !== this.constructor) {
 			initInstance(this.constructor);
-			lx(STATIC).setInstance(this);
+			lx.self(setInstance(this));
 			this.init.apply(this, args);
-		} else return lx(STATIC).getInstance();
+		} else return lx.self(getInstance());
 	}
 
 	/** @abstract */

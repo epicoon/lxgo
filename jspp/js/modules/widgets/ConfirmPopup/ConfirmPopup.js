@@ -165,8 +165,8 @@ function _renderContent(self) {
 		buttons.grid({step:'10px', cols:2});
 
 		if (!self.customButtons) {
-			new lx.Button({parent:buttons, key:'confirm', width:1, text:lx(i18n).Yes});
-			new lx.Button({parent:buttons, key:'reject', width:1, text:lx(i18n).No});
+			new lx.Button({parent:buttons, key:'confirm', width:1, text:lx.i18n('Yes')});
+			new lx.Button({parent:buttons, key:'reject', width:1, text:lx.i18n('No')});
 			lx(confirmPopupStream)>>confirm.click(_onConfirm);
 			lx(confirmPopupStream)>>reject.click(_onReject);
 		}

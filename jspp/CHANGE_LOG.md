@@ -1,4 +1,18 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: ?
+Version: v0.1.0-alpha.4
+Changes:
+- fix plugin config with map for images
+- changed syntax:
+    - lx(i18n).key  ->  lx.i18n(key)
+    - lx(STATIC).CONST  ->  lx.self(CONST)
+- added feature for translations with params, example:
+    in tr.yaml:
+        key: text with ${param}
+    in code:
+        lx.i18n(key, {param: value})
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2025.08.13
 Version: v0.1.0-alpha.3
 Changes:

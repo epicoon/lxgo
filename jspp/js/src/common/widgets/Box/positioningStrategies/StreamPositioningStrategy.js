@@ -31,7 +31,7 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 	 * }}
 	 */
 	applyConfig(config={}) {
-		this.type = config.type || lx(STATIC).TYPE_SIMPLE;
+		this.type = config.type || lx.self(TYPE_SIMPLE);
 		this.sequense = Sequense.create(this);
 
 		if (config.direction === undefined)
@@ -63,7 +63,7 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 		this._baseGeom = this.owner.getGeomMask();
 		this.owner.addClass(this.direction == lx.VERTICAL ? 'lxps-grid-v' : 'lxps-grid-h');
 		__actualize(this);
-		if (this.type == lx(STATIC).TYPE_SIMPLE) {
+		if (this.type == lx.self(TYPE_SIMPLE)) {
 			if (this.direction == lx.VERTICAL) {
 				if (this.owner.top() !== null && this.owner.bottom() !== null) this.owner.bottom(null);
 				this.owner.height('auto');
@@ -77,14 +77,14 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 
 		if (this.direction == lx.VERTICAL) {
 			this.owner.getChildren().forEach(child=>{
-				var minHeight = (this.minHeight !== null) ? this.minHeight : lx(STATIC).ROW_MIN_HEIGHT;
+				var minHeight = (this.minHeight !== null) ? this.minHeight : lx.self(ROW_MIN_HEIGHT);
 				child.style('min-height', minHeight);
 				if (this.maxHeight !== null)
 					child.style('max-height', this.maxHeight);
 			});
 		} else {
 			this.owner.getChildren().forEach(child=>{
-				var minWidth = (this.minWidth !== null) ? this.minWidth : lx(STATIC).COLUMN_MIN_WIDTH;
+				var minWidth = (this.minWidth !== null) ? this.minWidth : lx.self(COLUMN_MIN_WIDTH);
 				child.style('min-width', minWidth);
 				if (this.maxWidth !== null)
 					child.style('max-width', this.maxWidth);
@@ -93,7 +93,7 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 	}
 
 	onClearOwner() {
-		if (this.type == lx(STATIC).TYPE_PROPORTIONAL) {
+		if (this.type == lx.self(TYPE_PROPORTIONAL)) {
 			let styleParam = this.direction == lx.VERTICAL
 				? 'grid-template-rows'
 				: 'grid-template-columns';
@@ -105,7 +105,7 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 		this.owner.removeClass('lxps-grid-v');
 		this.owner.removeClass('lxps-grid-h');
 
-		if (this.type == lx(STATIC).TYPE_SIMPLE && this.direction == lx.HORIZONTAL)
+		if (this.type == lx.self(TYPE_SIMPLE) && this.direction == lx.HORIZONTAL)
 			this.owner.style('display', this._baseDisplay);
 		if (this._baseGeom)
 			this.owner.copyGeom(this._baseGeom);
@@ -155,7 +155,7 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 		this.minHeight = null;
 		this.maxWidth = null;
 		this.maxHeight = null;
-		this.type = +config.t || lx(STATIC).TYPE_SIMPLE;
+		this.type = +config.t || lx.self(TYPE_SIMPLE);
 		this.direction = +config.d;
 		if (config.rdh) this.rowDefaultHeight == 'null'
 			? this.rowDefaultHeight = null
@@ -185,14 +185,14 @@ class StreamPositioningStrategy extends lx.PositioningStrategy {
 		if (this.direction == lx.VERTICAL) {
 				var minHeight = config.minHeight !== undefined
 					? config.minHeight
-					: (this.minHeight !== null ? this.minHeight : lx(STATIC).ROW_MIN_HEIGHT);
+					: (this.minHeight !== null ? this.minHeight : lx.self(ROW_MIN_HEIGHT));
 				elem.style('min-height', minHeight);
 				if (this.maxHeight !== null)
 					elem.style('max-height', this.maxHeight);
 		} else {
 			var minWidth = config.minWidth !== undefined
 				? config.minWidth
-				: (this.minWidth !== null ? this.minWidth : lx(STATIC).COLUMN_MIN_WIDTH);
+				: (this.minWidth !== null ? this.minWidth : lx.self(COLUMN_MIN_WIDTH));
 			elem.style('min-width', minWidth);
 			if (this.maxWidth !== null)
 				elem.style('max-width', this.maxWidth);

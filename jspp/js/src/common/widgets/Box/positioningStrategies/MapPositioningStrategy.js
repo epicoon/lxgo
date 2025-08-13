@@ -25,11 +25,11 @@ class MapPositioningStrategy extends lx.PositioningStrategy {
 	applyConfig(config = {}) {
 		if (!lx.isObject(config))
 			config = {format: config};
-		if (config.format == '%') config.format = lx(STATIC).FORMAT_PERCENT;
-		else if (config.format == 'px') config.format = lx(STATIC).FORMAT_PX;
+		if (config.format == '%') config.format = lx.self(FORMAT_PERCENT);
+		else if (config.format == 'px') config.format = lx.self(FORMAT_PX);
 
-		this.format = config.format || lx(STATIC).FORMAT_FREE;
-		this.defaultFormat = config.format || lx(STATIC).FORMAT_PERCENT;
+		this.format = config.format || lx.self(FORMAT_FREE);
+		this.defaultFormat = config.format || lx.self(FORMAT_PERCENT);
 		this.formats = {};
 
 		this.owner.getChildren(c=>c.addClass('lx-abspos'));
@@ -44,8 +44,8 @@ class MapPositioningStrategy extends lx.PositioningStrategy {
 
 	// @lx:<context CLIENT:
 	unpackProcess(config) {
-		this.format = +config.cf || lx(STATIC).FORMAT_FREE;
-		this.defaultFormat = +config.df || lx(STATIC).FORMAT_PERCENT;
+		this.format = +config.cf || lx.self(FORMAT_FREE);
+		this.defaultFormat = +config.df || lx.self(FORMAT_PERCENT);
 	}
 	// @lx:context>
 
@@ -105,7 +105,7 @@ class MapPositioningStrategy extends lx.PositioningStrategy {
 		var splittedVal = __splitParam(this, val);
 
 		var finalFormat = this.getFormat(param);
-		if (finalFormat == lx(STATIC).FORMAT_FREE)
+		if (finalFormat == lx.self(FORMAT_FREE))
 			finalFormat = splittedVal[1];
 		if (finalFormat == splittedVal[1]) {
 			elem.domElem.style([lx.Geom.geomName(param)], splittedVal[0] + __getFormatText(this, splittedVal[1]));

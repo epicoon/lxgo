@@ -4,8 +4,8 @@ class BitLine {
 	// @lx:const BIT = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648];
 
 	constructor(len) {
-		this.len = len || lx(STATIC).BASIS;
-		this.innerLen = Math.floor((this.len - 1) / lx(STATIC).BASIS) + 1;
+		this.len = len || lx.self(BASIS);
+		this.innerLen = Math.floor((this.len - 1) / lx.self(BASIS)) + 1;
 		this.map = new Array(this.innerLen);
 		for (let i=0; i<this.innerLen; i++)
 			this.map[i]=0
@@ -14,8 +14,8 @@ class BitLine {
 	setLen(len) {
 		if (len == this.len) return;
 
-		this.len = len || lx(STATIC).BASIS;
-		this.innerLen = Math.floor((this.len - 1) / lx(STATIC).BASIS) + 1;
+		this.len = len || lx.self(BASIS);
+		this.innerLen = Math.floor((this.len - 1) / lx.self(BASIS)) + 1;
 		if (this.innerLen > this.map.len) {
 			var len = this.map.len;
 			for (var i=len; i<this.innerLen; i++) this.map.push(0);
@@ -24,18 +24,18 @@ class BitLine {
 		if (this.innerLen < this.map.len) {
 			this.map = this.map.slice(0, this.innerLen);
 		}
-		for (var i=this.len, l=this.innerLen*lx(STATIC).BASIS; i<l; i++)
+		for (var i=this.len, l=this.innerLen*lx.self(BASIS); i<l; i++)
 			this.unsetBit(i);
 	}
 
 	setBit(i, amt = 1) {
-		var innerIndex = Math.floor(i / lx(STATIC).BASIS);
-		var index = i % lx(STATIC).BASIS;
+		var innerIndex = Math.floor(i / lx.self(BASIS));
+		var index = i % lx.self(BASIS);
 
 		for (var k=0; k<amt; k++) {
-			this.map[innerIndex] = this.map[innerIndex] | lx(STATIC).BIT[index];
+			this.map[innerIndex] = this.map[innerIndex] | lx.self(BIT[index]);
 			index++;
-			if (index == lx(STATIC).BASIS) {
+			if (index == lx.self(BASIS)) {
 				innerIndex++;
 				if (innerIndex == this.map.len) break;
 				index = 0;
@@ -44,13 +44,13 @@ class BitLine {
 	}
 
 	unsetBit(i, amt = 1) {
-		var innerIndex = Math.floor(i / lx(STATIC).BASIS);
-		var index = i % lx(STATIC).BASIS;
+		var innerIndex = Math.floor(i / lx.self(BASIS));
+		var index = i % lx.self(BASIS);
 
 		for (var k=0; k<amt; k++) {
-			this.map[innerIndex] = this.map[innerIndex] & ~lx(STATIC).BIT[index];
+			this.map[innerIndex] = this.map[innerIndex] & ~lx.self(BIT[index]);
 			index++;
-			if (index == lx(STATIC).BASIS) {
+			if (index == lx.self(BASIS)) {
 				innerIndex++;
 				if (innerIndex == this.map.len) break;
 				index = 0;
@@ -59,9 +59,9 @@ class BitLine {
 	}
 
 	getBit(i) {
-		var innerIndex = Math.floor(i / lx(STATIC).BASIS);
-		var index = i % lx(STATIC).BASIS;
-		return +!!(this.map[innerIndex] & lx(STATIC).BIT[index]);
+		var innerIndex = Math.floor(i / lx.self(BASIS));
+		var index = i % lx.self(BASIS);
+		return +!!(this.map[innerIndex] & lx.self(BIT[index]));
 	}
 
 	clone() {

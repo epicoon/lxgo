@@ -74,10 +74,10 @@ class Paginator extends lx.Box {
         this.addClass('lx-Paginator');
 		this.firstSlotIndex = 0;
         this.elementsCount = lx.getFirstDefined(config.elementsCount, 0);
-        this.elementsPerPage = config.elementsPerPage || lx(STATIC).DEFAULT_ELEMENTS_PER_PAGE;
+        this.elementsPerPage = config.elementsPerPage || lx.self(DEFAULT_ELEMENTS_PER_PAGE);
         this.pagesCount = Math.ceil(this.elementsCount / this.elementsPerPage);
 
-		this.slotsCount = lx.getFirstDefined(config.slotsCount, lx(STATIC).DEFAULT_SLOTS_COUNT);
+		this.slotsCount = lx.getFirstDefined(config.slotsCount, lx.self(DEFAULT_SLOTS_COUNT));
         if (this.slotsCount <= 4) this.slotsCount = 1;
         this.slotsCountBase = this.slotsCount;
 		_normalizeSlotsCount(this);
@@ -89,15 +89,15 @@ class Paginator extends lx.Box {
     // @lx:<context CLIENT:
     clientRender(config) {
         super.clientRender(config);
-        lx(this)>toStart.click(lx(STATIC).toFirstPage);
-        lx(this)>toLeft.click(lx(STATIC).toPrevPage);
-        lx(this)>toRight.click(lx(STATIC).toNextPage);
-        lx(this)>toFinish.click(lx(STATIC).toLastPage);
+        lx(this)>toStart.click(lx.self(toFirstPage));
+        lx(this)>toLeft.click(lx.self(toPrevPage));
+        lx(this)>toRight.click(lx.self(toNextPage));
+        lx(this)>toFinish.click(lx.self(toLastPage));
 
         let middle = lx(this)>middle;
         if (middle.childrenCount() > 1) {
             middle.getChildren().forEach((a, i)=>{
-                if (lx(a)>text.value() !== '...') a.click(lx(STATIC).onSlotClick);
+                if (lx(a)>text.value() !== '...') a.click(lx.self(onSlotClick));
             });
         }
     }
@@ -236,9 +236,9 @@ function _fillMiddleSimple(self) {
     if (middle.childrenCount() > 1) middle.clear();
     if (middle.childrenCount() == 0) middle.align(lx.CENTER, lx.MIDDLE);
     middle.text(
-        lx(i18n).Page + ' '
+        lx.i18n('Page') + ' '
         + (self.activePage + 1) + ' '
-        + lx(i18n).of + ' '
+        + lx.i18n('of') + ' '
         + self.pagesCount
     );
 }

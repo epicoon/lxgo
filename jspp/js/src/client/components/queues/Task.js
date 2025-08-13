@@ -7,7 +7,7 @@ class Task {
     constructor(queue = null, callback = null) {
         this.callback = null;
         this._onChangeStatus = null;
-        this.status = lx(STATIC).STATUS_NEW;
+        this.status = lx.self(STATUS_NEW);
         this.setCallback(callback);
         if (queue === null) queue = '_lxstd_';
         if (queue) this.setQueue(queue);
@@ -38,15 +38,15 @@ class Task {
     }
 
     isNew() {
-        return this.isStatus(lx(STATIC).STATUS_NEW);
+        return this.isStatus(lx.self(STATUS_NEW));
     }
 
     isPending() {
-        return this.isStatus(lx(STATIC).STATUS_PENDING);
+        return this.isStatus(lx.self(STATUS_PENDING));
     }
 
     isCompleted() {
-        return this.isStatus(lx(STATIC).STATUS_COMPLETED);
+        return this.isStatus(lx.self(STATUS_COMPLETED));
     }
 
     setStatus(status) {
@@ -56,10 +56,10 @@ class Task {
     }
 
     setPending() {
-        this.setStatus(lx(STATIC).STATUS_PENDING);
+        this.setStatus(lx.self(STATUS_PENDING));
     }
 
     setCompleted() {
-        this.setStatus(lx(STATIC).STATUS_COMPLETED);
+        this.setStatus(lx.self(STATUS_COMPLETED));
     }
 }

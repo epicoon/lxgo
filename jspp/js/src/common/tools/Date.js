@@ -38,7 +38,7 @@ class Date extends lx.Object {
 	}
 
 	getMaxDate() {
-		return lx(STATIC).getMaxDate(this.getYear(), this.getMonth());
+		return lx.self(getMaxDate(this.getYear(), this.getMonth()));
 	}
 
 	static getMaxDate(y, m) {

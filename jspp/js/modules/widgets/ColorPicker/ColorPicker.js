@@ -151,7 +151,7 @@ class ColorPicker extends lx.Box {
 
         this.add(lx.Button, {
             geom: [0, 7, 6, 1],
-            text: lx(i18n).Select,
+            text: lx.i18n('Select'),
             click: ()=>this.trigger('colorSelect', this.newEvent({
                 newColor: this.color.clone(),
                 oldColor: this.colorSave.clone()
@@ -159,7 +159,7 @@ class ColorPicker extends lx.Box {
         });
         this.add(lx.Button, {
             geom: [6, 7, 6, 1],
-            text: lx(i18n).Reset,
+            text: lx.i18n('Reset'),
             click: ()=>{
                 let oldColor = this.color.clone();
                 this.color.copy(this.colorSave);
@@ -173,7 +173,7 @@ class ColorPicker extends lx.Box {
         });
         this.add(lx.Button, {
             geom: [12, 7, 6, 1],
-            text: lx(i18n).Reject,
+            text: lx.i18n('Reject'),
             click: ()=>this.trigger('colorReject', this.newEvent({
                 oldColor: this.colorSave.clone(),
                 newColor: this.color.clone()

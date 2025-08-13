@@ -105,8 +105,8 @@ class ActiveBox extends lx.Box {
 		__setHeader(this, config);
 		__setBody(this, config);
 
-		if (lx.getFirstDefined(config.resize, lx(STATIC).DEFAULT_RESIZE)) this.setResizer(config);
-		this.adhesive = lx.getFirstDefined(config.adhesive, lx(STATIC).DEFAULT_ADHESIVE);
+		if (lx.getFirstDefined(config.resize, lx.self(DEFAULT_RESIZE))) this.setResizer(config);
+		this.adhesive = lx.getFirstDefined(config.adhesive, lx.self(DEFAULT_ADHESIVE));
 
 		this.setBuildMode(false);
 
@@ -188,7 +188,7 @@ class ActiveBox extends lx.Box {
 		let resizer = new lx.Rect({
 			parent: this,
 			key: 'resizer',
-			geom: [null, null, lx(STATIC).RESIZER_SIZE, lx(STATIC).RESIZER_SIZE, 0, 0]
+			geom: [null, null, lx.self(RESIZER_SIZE), lx.self(RESIZER_SIZE), 0, 0]
 		}).move({parentResize: true});
 		resizer.addClass('lx-ActiveBox-resizer');
 

@@ -124,7 +124,7 @@ class MultiBox extends lx.Box {
 
 	setMarksPosition(config = {}) {
 		let side = lx.getFirstDefined(config.marksPosition, this.marksStyle, lx.TOP);
-		let marksStyle = lx.getFirstDefined(config.marksStyle, this.marksStyle, lx(STATIC).STYLE_JUSTIFY);
+		let marksStyle = lx.getFirstDefined(config.marksStyle, this.marksStyle, lx.self(STYLE_JUSTIFY));
 		let joint = lx.getFirstDefined(config.joint, this.joint, false);
 		_setInnerStructure(this, side, joint);
 		_setMarksPositioning(this, side, marksStyle);

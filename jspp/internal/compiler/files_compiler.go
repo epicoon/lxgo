@@ -99,13 +99,13 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 		}
 		originalCode := string(data)
 
-		// lx(i18n).  =>  lx(i18n).module-{{moduleName}}-
+		// lx.i18n(  =>  lx.i18n(module-{{moduleName}}-
 		re := regexp.MustCompile(`@lx:module +?([^;]+?) *?;`)
 		match := re.FindStringSubmatch(originalCode)
 		if match != nil {
 			moduleName := match[1]
-			re := regexp.MustCompile(`lx\(i18n\)\.`)
-			originalCode = re.ReplaceAllString(originalCode, "lx(i18n).module-"+moduleName+"-")
+			re := regexp.MustCompile(`lx\.i18n\(['"]?`)
+			originalCode = re.ReplaceAllString(originalCode, "lx.i18n(module-"+moduleName+"-")
 		}
 
 		code, err := c.compileCodeInnerDirectives(originalCode, fileName)

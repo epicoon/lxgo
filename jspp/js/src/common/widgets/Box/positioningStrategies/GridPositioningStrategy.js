@@ -31,10 +31,10 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	 */
 	applyConfig(config={}) {
 		//TODO direction?
-		this.type = config.type || lx(STATIC).TYPE_SIMPLE;
-		if (this.type !== lx(STATIC).TYPE_ADAPTIVE)
-			this.cols = config.cols || lx(STATIC).DEAULT_COLUMNS_AMOUNT;
-		if (this.type == lx(STATIC).TYPE_SIMPLE || this.type == lx(STATIC).TYPE_PROPORTIONAL)
+		this.type = config.type || lx.self(TYPE_SIMPLE);
+		if (this.type !== lx.self(TYPE_ADAPTIVE))
+			this.cols = config.cols || lx.self(DEAULT_COLUMNS_AMOUNT);
+		if (this.type == lx.self(TYPE_SIMPLE) || this.type == lx.self(TYPE_PROPORTIONAL))
 			this.map = new lx.BitMap(this.cols);
 
 		if (config.minHeight !== undefined) this.minHeight = config.minHeight;
@@ -51,23 +51,23 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 		}
 
 		this.owner.addClass('lxps-grid-v');
-		if (this.type == lx(STATIC).TYPE_ADAPTIVE)
+		if (this.type == lx.self(TYPE_ADAPTIVE))
 			this.owner.style(
 				'grid-template-columns',
 				'repeat(auto-fill,minmax('
-					+ lx.getFirstDefined(this.minWidth, lx(STATIC).COLUMN_MIN_WIDTH)
+					+ lx.getFirstDefined(this.minWidth, lx.self(COLUMN_MIN_WIDTH))
 					+ ',1fr))'
 			);
 		else
 			this.owner.style('grid-template-columns', 'repeat(' + this.cols + ',1fr)');
-		if (this.type != lx(STATIC).TYPE_PROPORTIONAL) {
+		if (this.type != lx.self(TYPE_PROPORTIONAL)) {
 			this.owner.height('auto');
 		}
 		this.setIndents(config);
 	}
 
 	setCols(cols) {
-		if (this.type == lx(STATIC).TYPE_ADAPTIVE || this.cols === cols) return;
+		if (this.type == lx.self(TYPE_ADAPTIVE) || this.cols === cols) return;
 		this.cols = cols;
 		if (this.map) this.map.setX(cols);
 		this.owner.style('grid-template-columns', 'repeat(' + this.cols + ',1fr)');
@@ -79,7 +79,7 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	}
 
 	getRows() {
-		if (this.type == lx(STATIC).TYPE_SIMPLE || this.type == lx(STATIC).TYPE_PROPORTIONAL)
+		if (this.type == lx.self(TYPE_SIMPLE) || this.type == lx.self(TYPE_PROPORTIONAL))
 			return this.map.y;
 		return null;
 	}
@@ -127,8 +127,8 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	 */
 	allocate(elem, config) {
 		elem.style('position', 'relative');
-		elem.style('min-height', lx.getFirstDefined(config.minHeight, this.minHeight, lx(STATIC).ROW_MIN_HEIGHT));
-		elem.style('min-width', lx.getFirstDefined(config.minWidth, this.minWidth, lx(STATIC).COLUMN_MIN_WIDTH));
+		elem.style('min-height', lx.getFirstDefined(config.minHeight, this.minHeight, lx.self(ROW_MIN_HEIGHT)));
+		elem.style('min-width', lx.getFirstDefined(config.minWidth, this.minWidth, lx.self(COLUMN_MIN_WIDTH)));
 		var maxHeight = lx.getFirstDefined(config.maxHeight, this.maxHeight),
 			maxWidth = lx.getFirstDefined(config.maxWidth, this.maxWidth);
 		if (maxHeight) elem.style('max-height', maxHeight);

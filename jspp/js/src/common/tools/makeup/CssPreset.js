@@ -28,7 +28,7 @@ class CssPreset {
     }
 
     get name() {
-        return lx(STATIC).getName();
+        return lx.self(getName());
     }
 
     static getName() {

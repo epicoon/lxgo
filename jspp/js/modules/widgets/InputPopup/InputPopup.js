@@ -149,8 +149,8 @@ function _renderContent(self) {
 	inputPopupStream.begin();
 		let buttons = new lx.Box({key:'buttons', height:'35px'});
 		buttons.grid({step:'10px',cols:2});
-		new lx.Button({parent:buttons, key:'confirm', width:1, text:lx(i18n).OK});
-		new lx.Button({parent:buttons, key:'reject', width:1, text:lx(i18n).Close});
+		new lx.Button({parent:buttons, key:'confirm', width:1, text:lx.i18n('OK')});
+		new lx.Button({parent:buttons, key:'reject', width:1, text:lx.i18n('Close')});
 	inputPopupStream.end();
 
 	lx(inputPopupStream)>>confirm.click(_onConfirm);

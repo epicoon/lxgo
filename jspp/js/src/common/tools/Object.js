@@ -1,7 +1,7 @@
 // @lx:namespace lx;
 class Object {
 	constructor() {
-		lx(STATIC).behaviorMap.forEach(beh=>beh.prototype.behaviorConstructor.call(this));
+		lx.self(behaviorMap.forEach(beh=>beh.prototype.behaviorConstructor.call(this)));
 	}
 
 	get behaviorMap() {
@@ -13,12 +13,12 @@ class Object {
 	}
 
 	addBehavior(behavior, config=null) {
-		if (this.behaviorMap.has(behavior) || lx(STATIC).behaviorMap.has(behavior)) return;
+		if (this.behaviorMap.has(behavior) || lx.self(behaviorMap.has(behavior))) return;
 		behavior.injectInto(this, config);
 	}
 
 	hasBehavior(behavior) {
-		return this.behaviorMap.has(behavior) || lx(STATIC).behaviorMap.has(behavior);
+		return this.behaviorMap.has(behavior) || lx.self(behaviorMap.has(behavior));
 	}
 
 	static delegateMethods(map) {

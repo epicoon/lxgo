@@ -67,7 +67,7 @@ class Checkbox extends lx.Box {
 	clientRender(config) {
 		super.clientRender(config);
 		this.on('mousedown', lx.preventDefault);
-		this.on('mouseup', lx(STATIC).click);
+		this.on('mouseup', lx.self(click));
 	}
 
 	static click(event) {

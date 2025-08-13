@@ -84,11 +84,11 @@ class Slider extends lx.Box {
 			lx(this)>track.setGeom(['17%', '0%', '66%', '100%']);
 
 		handle.move()
-			.on('moveBegin', lx(STATIC).start)
-			.on('move', lx(STATIC).move)
-			.on('moveEnd', lx(STATIC).stop);
+			.on('moveBegin', lx.self(start))
+			.on('move', lx.self(move))
+			.on('moveEnd', lx.self(stop));
 
-		lx(this)>track.click(lx(STATIC).trackClick);
+		lx(this)>track.click(lx.self(trackClick));
 	}
 	// @lx:context>
 

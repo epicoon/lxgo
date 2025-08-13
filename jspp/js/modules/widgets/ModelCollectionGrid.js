@@ -187,7 +187,7 @@ class ModelCollectionGrid extends lx.Box {
         if (modifier.widget === undefined)
             modifier.widget = _getDefaultColumnWidget(modifier.definition.type);
         if (modifier.widget.width === undefined)
-            modifier.widget.width = lx(STATIC).DEFAULT_COLUMN_WIDTH;
+            modifier.widget.width = lx.self(DEFAULT_COLUMN_WIDTH);
 
         if (modifier.render === undefined)
             modifier.render = _getDefaultColumnRender(modifier.definition.type);

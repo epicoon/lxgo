@@ -1,6 +1,7 @@
 # TODO
 
 Preprocessor features
-- i18n
+- lx.i18n(
+- lx.static.
 - require
 - ...

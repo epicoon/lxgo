@@ -177,7 +177,7 @@ class Rect extends lx.Element {
             return;
         }
 
-        config.tag = config.tag || lx(STATIC).getStaticTag();
+        config.tag = config.tag || lx.self(getStaticTag());
         this.domElem = new lx.DomElementDefinition(this, config);
 
         if (config.key) this.key = config.key;
@@ -1605,7 +1605,7 @@ class Rect extends lx.Element {
             return res;
         }
 
-        if (lx(STATIC).getCommonEventNames().includes(eventName)) {
+        if (lx.self(getCommonEventNames()).includes(eventName)) {
             let events = this.domElem.elem ? this.domElem.elem.events : this.domElem.events;
             if (!events || !(eventName in events)) return;
             return runEventHandlers(this, events[eventName], event);
@@ -1613,7 +1613,7 @@ class Rect extends lx.Element {
 
         let elem = this.getDomElem();
         if (!elem) return;
-        let disabled = (lx(STATIC).getEnabledEventNames().includes(eventName))
+        let disabled = (lx.self(getEnabledEventNames()).includes(eventName))
             ? false
             : this.disabled();
         if (disabled || !elem.events || !(eventName in elem.events)) return;

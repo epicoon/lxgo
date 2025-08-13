@@ -116,7 +116,16 @@ func (c *Config) Name() string {
 	return get[string](&c.absConfig, "name", "", "")
 }
 
-func (c *Config) Images() map[string]string {
+func (c *Config) Images() (result map[string]string) {
+	defer func() {
+		if c.images == nil {
+			c.images = map[string]string{
+				"default": "",
+			}
+		}
+		result = c.images
+	}()
+
 	if c.images != nil {
 		return c.images
 	}
@@ -127,22 +136,29 @@ func (c *Config) Images() map[string]string {
 		}
 	}
 
-	res, err := kernelConfig.GetParam[map[string]string](c.data, "images")
+	res, err := kernelConfig.GetParam[kernel.Config](c.data, "images")
 	if err != nil {
 		img, err := kernelConfig.GetParam[string](c.data, "images")
 		if err == nil {
-			res = map[string]string{
+			c.images = map[string]string{
 				"default": img,
 			}
-		} else {
-			c.logError("can not get config param 'images' for plugin '%s': %v", c.plugin.Name(), err)
-			res = map[string]string{
-				"default": "",
-			}
+			return c.images
 		}
+		c.logError("can not get config param 'images' for plugin '%s': %v", c.plugin.Name(), err)
+		return
 	}
 
-	c.images = res
+	m := res.ToMap()
+	c.images = make(map[string]string, len(m))
+	for key, val := range m {
+		s, ok := val.(string)
+		if !ok {
+			c.logError("can not get config param 'images' for plugin '%s': %v", c.plugin.Name(), err)
+			return
+		}
+		c.images[key] = s
+	}
 	return c.images
 }
 

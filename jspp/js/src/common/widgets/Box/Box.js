@@ -155,8 +155,8 @@ class Box extends lx.Rect {
         super.clientRender(config);
         let sizes = this.getScrollSize();
         this.__sizeHolder.refreshContent(sizes.width, sizes.height);
-        this.on('resize', lx(STATIC).onresize);
-        this.on('scrollBarChange', lx(STATIC).onresize);
+        this.on('resize', lx.self(onresize));
+        this.on('scrollBarChange', lx.self(onresize));
     }
 
     postUnpack(config) {

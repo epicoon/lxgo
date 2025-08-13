@@ -185,7 +185,7 @@ class PositioningStrategy {
 	}
 
 	geomFromConfig(config) {
-		return lx(STATIC).geomFromConfig(config);
+		return lx.self(geomFromConfig(config));
 	}
 
 	/**

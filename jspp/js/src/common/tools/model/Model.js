@@ -54,7 +54,7 @@ class Model extends lx.Object {
 	}
 
 	getPk() {
-		var pkName = lx(STATIC).__schema.getPkName();
+		let pkName = lx.self(__schema.getPkName());
 		if (!pkName) return undefined;
 		return this[pkName];
 	}
@@ -65,7 +65,7 @@ class Model extends lx.Object {
 	setFields(data) {
 		if (!data || !lx.isObject(data)) return;
 
-		var schema = lx(STATIC).__schema;
+		let schema = lx.self(__schema);
 		if (!schema) return;
 
 		for (let key in data)
@@ -77,10 +77,10 @@ class Model extends lx.Object {
 	 * Returns selected (or all) schema fields
 	 */
 	getFields(map = null) {
-		var schema = lx(STATIC).__schema;
+		let schema = lx.self(__schema);
 		if (map === null) map = schema.getFieldNames();
 
-		var result = {};
+		let result = {};
 
 		map.forEach(key=>{
 			if (schema.hasField(key)) result[key] = this[key];
@@ -90,7 +90,7 @@ class Model extends lx.Object {
 	}
 
 	setField(name, value) {
-		var field = lx(STATIC).__schema.getField(name);
+		let field = lx.self(__schema.getField(name));
 		if (field.ref) {
 			var code = 'this.' + field.ref + '=val;',
 				f = new Function('val', code);
@@ -101,9 +101,9 @@ class Model extends lx.Object {
 	}
 
 	getField(name) {
-		var field = lx(STATIC).__schema.getField(name);
+		let field = lx.self(__schema.getField(name));
 		if (field.ref) {
-			var code = 'return this.' + field.ref + ';',
+			let code = 'return this.' + field.ref + ';',
 				f = new Function(code);
 			return f.call(this);
 		}
@@ -115,8 +115,8 @@ class Model extends lx.Object {
 	 * Reset selected (or all) fields to default values
 	 */
 	resetFields(map = null) {
-		if (!lx(STATIC).__schema) return;
-		if (map === null) map = lx(STATIC).__schema.getFieldNames();
+		if (!lx.self(__schema)) return;
+		if (map === null) map = lx.self(__schema).getFieldNames();
 		map.forEach(name=>this.resetField(name));
 	}
 
@@ -124,22 +124,22 @@ class Model extends lx.Object {
 	 * Reset field to default value
 	 */
 	resetField(name) {
-		var definition = lx(STATIC).__schema.getField(name);
+		let definition = lx.self(__schema).getField(name);
 		if (!definition) return;
 
-		var type = lx.isObject(definition) ? definition.type : definition,
+		let type = lx.isObject(definition) ? definition.type : definition,
 			dflt = lx.isObject(definition) ? definition.default : undefined;
 
-		var val;
+		let val;
 		switch (type) {
 			case 'int':
-				val = lx.getFirstDefined(dflt, lx(STATIC).defaultIntegerFieldValue());
+				val = lx.getFirstDefined(dflt, lx.self(defaultIntegerFieldValue()));
 				break;
 			case 'string':
-				val = lx.getFirstDefined(dflt, lx(STATIC).defaultStringFieldValue());
+				val = lx.getFirstDefined(dflt, lx.self(defaultStringFieldValue()));
 				break;
 			case 'bool':
-				val = lx.getFirstDefined(dflt, lx(STATIC).defaultBooleanFieldValue());
+				val = lx.getFirstDefined(dflt, lx.self(defaultBooleanFieldValue()));
 				break;
 			case lx.ModelCollection:
 				val = lx.ModelCollection.create({
@@ -148,7 +148,7 @@ class Model extends lx.Object {
 				});
 				break;
 			default:
-				val = lx.getFirstDefined(dflt, lx(STATIC).defaultUntypedFieldValue());
+				val = lx.getFirstDefined(dflt, lx.self(defaultUntypedFieldValue()));
 		}
 		this.setField(name, val);
 	}
@@ -168,8 +168,8 @@ class Model extends lx.Object {
 	}
 
 	getSchema() {
-		if (!lx(STATIC).__schema) return null;
-		return lx(STATIC).__schema;
+		if (!lx.self(__schema)) return null;
+		return lx.self(__schema);
 	}
 
 	static getSchema() {
@@ -214,7 +214,7 @@ class Model extends lx.Object {
 	}
 
 	__init(data = {}) {
-		var schema = lx(STATIC).__schema;
+		var schema = lx.self(__schema);
 		if (!schema) return;
 		schema.eachField((field, name)=>{
 			if (field.ref) return;

@@ -71,7 +71,7 @@ class SetterListenerBehavior extends lx.Behavior {
 
 	getSetterEvents() {
 		let thisEvents = this.behaviorMap.get(behKey, 'setterEvents'),
-			selfEvents = lx(STATIC).behaviorMap.get(behKey, 'setterEvents');
+			selfEvents = lx.self(behaviorMap.get(behKey, 'setterEvents'));
 		if (!thisEvents && !selfEvents) return null;
 		if (!thisEvents) return selfEvents;
 		if (!selfEvents) return thisEvents;

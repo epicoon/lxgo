@@ -16,7 +16,7 @@ class JointMover extends lx.Rect {
                 0,
                 config.top,
                 100,
-                config.size || config.height || lx(STATIC).DEFAULT_SIZE
+                config.size || config.height || lx.self(DEFAULT_SIZE)
             ];
             config.direction = lx.VERTICAL;
             delete config.top;
@@ -25,7 +25,7 @@ class JointMover extends lx.Rect {
                 0,
                 null,
                 100,
-                config.size || config.height || lx(STATIC).DEFAULT_SIZE,
+                config.size || config.height || lx.self(DEFAULT_SIZE),
                 null,
                 config.bottom
             ];
@@ -35,7 +35,7 @@ class JointMover extends lx.Rect {
             config.geom = [
                 config.left,
                 0,
-                config.size || config.width || lx(STATIC).DEFAULT_SIZE,
+                config.size || config.width || lx.self(DEFAULT_SIZE),
                 100
             ];
             config.direction = lx.HORIZONTAL;
@@ -44,7 +44,7 @@ class JointMover extends lx.Rect {
             config.geom = [
                 null,
                 0,
-                config.size || config.width || lx(STATIC).DEFAULT_SIZE,
+                config.size || config.width || lx.self(DEFAULT_SIZE),
                 100,
                 config.right
             ];

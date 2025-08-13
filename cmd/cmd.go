@@ -79,6 +79,9 @@ func Run() {
 
 func validate(c ICommand) error {
 	conf := c.Config()
+	if conf == nil {
+		return nil
+	}
 
 	var paramsConf ParamsConfig
 	if c.Action() == "" {
@@ -154,11 +157,17 @@ func validate(c ICommand) error {
 func printInfo(c ICommand) {
 	conf := c.Config()
 
-	fmt.Printf("Description: %s\n", conf.Description)
+	if conf != nil {
+		fmt.Printf("Description: %s\n", conf.Description)
+	}
 
 	fmt.Printf("Available actions for command '%s':\n", c.Name())
 	for action := range c.Actions() {
 		fmt.Printf("  - %s\n", action)
+	}
+
+	if conf == nil {
+		return
 	}
 
 	al := conf.Actions
@@ -172,10 +181,23 @@ func printInfo(c ICommand) {
 
 func printActionInfo(c ICommand, action string) {
 	conf := c.Config()
+	if conf == nil {
+		if checkActionExists(c, action) {
+			fmt.Println("Action exists but information not found")
+		} else {
+			fmt.Println("Action does not exist")
+		}
+		return
+	}
+
 	al := conf.Actions
 	ac, exists := al[action]
 	if !exists {
-		fmt.Printf("Action '%s' does not exist\n", action)
+		if checkActionExists(c, action) {
+			fmt.Println("Action exists but information not found")
+		} else {
+			fmt.Println("Action does not exist")
+		}
 		return
 	}
 
@@ -206,4 +228,10 @@ func printActionInfo(c ICommand, action string) {
 			}
 		}
 	}
+}
+
+func checkActionExists(c ICommand, action string) bool {
+	aa := c.Actions()
+	_, exists := aa[action]
+	return exists
 }

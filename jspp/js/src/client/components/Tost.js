@@ -8,7 +8,7 @@ class Tost extends lx.AppComponent {
 
 	init() {
 		this.lifetime = 3000;
-		this.type = lx(STATIC).TYPE_MESSAGE;
+		this.type = lx.self(TYPE_MESSAGE);
 		this.widthLimit = '40%';
 
 		lx.tostMessage = msg => this.message(msg);
@@ -17,7 +17,7 @@ class Tost extends lx.AppComponent {
 	}
 
 	setType(type) {
-		if (type == lx(STATIC).TYPE_MESSAGE || type == lx(STATIC).TYPE_WARNING || type == lx(STATIC).TYPE_ERROR)
+		if (type == lx.self(TYPE_MESSAGE) || type == lx.self(TYPE_WARNING) || type == lx.self(TYPE_ERROR))
 			this.type = type;
 	}
 

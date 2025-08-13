@@ -93,7 +93,7 @@ class BindableModel extends lx.Model {
 					break;
 			}
 			if (result === false) {
-				lx(STATIC).onValidateFailed(field, value);
+				lx.self(onValidateFailed(field, value));
 				if (this.__onValidateFailed)
 					this.__onValidateFailed.call(this, field, value);
 				return this[field];

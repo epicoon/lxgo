@@ -18,14 +18,14 @@ let __oldDate = null;
 let __active = null;
 
 let _dayTitles = [
-    lx(i18n).monday, lx(i18n).tuesday, lx(i18n).wednesday,
-    lx(i18n).thursday, lx(i18n).friday, lx(i18n).saturday, lx(i18n).sunday
+    lx.i18n('monday'), lx.i18n('tuesday'), lx.i18n('wednesday'),
+    lx.i18n('thursday'), lx.i18n('friday'), lx.i18n('saturday'), lx.i18n('sunday')
 ];
 
 let _monthTitles = [
-    lx(i18n).January, lx(i18n).February, lx(i18n).March, lx(i18n).April,
-    lx(i18n).May, lx(i18n).June, lx(i18n).July, lx(i18n).August,
-    lx(i18n).September, lx(i18n).October, lx(i18n).November, lx(i18n).December
+    lx.i18n('January'), lx.i18n('February'), lx.i18n('March'), lx.i18n('April'),
+    lx.i18n('May'), lx.i18n('June'), lx.i18n('July'), lx.i18n('August'),
+    lx.i18n('September'), lx.i18n('October'), lx.i18n('November'), lx.i18n('December')
 ];
 // @lx:context>
 
@@ -230,7 +230,7 @@ function __renew() {
         firstDay.shiftDay(1);
     });
 
-    lx(list)>>currentDay.text(lx(i18n).today + ': ' + (new lx.Date).format());
+    lx(list)>>currentDay.text(lx.i18n('today') + ': ' + (new lx.Date).format());
 }
 
 function _handler_setDate(event) {

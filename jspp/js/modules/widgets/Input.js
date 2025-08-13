@@ -44,8 +44,8 @@ class Input extends lx.Rect {
 	// @lx:<context CLIENT:
 	clientRender(config) {
 		super.clientRender(config);
-		this.on('focus', lx(STATIC).setEntry );
-		this.on('blur', lx(STATIC).unsetEntry );
+		this.on('focus', lx.self(setEntry) );
+		this.on('blur', lx.self(unsetEntry) );
 	}
 
 	static setEntry(event) {

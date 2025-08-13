@@ -166,7 +166,7 @@ class Tree {
 		if (!arr.length) return '';
 		var path = arr[ arr.length - 1 ];
 		for (var i=arr.length-2; i>=0; i--) {
-			path += lx(STATIC).SEPARATOR + arr[i];
+			path += lx.self(SEPARATOR) + arr[i];
 		}
 		return path;
 	}
@@ -174,7 +174,7 @@ class Tree {
 	fullKey() {
 		var path = this.path();
 		if (path == '') return this.key;
-		return path + lx(STATIC).SEPARATOR + this.key;
+		return path + lx.self(SEPARATOR) + this.key;
 	}
 
 	deep() {
@@ -213,9 +213,9 @@ class Tree {
 		if (!arr.length) return '';
 		var path = arr[ arr.length - 1 ];
 		for (var i=arr.length-2; i>=0; i--) {
-			path += lx(STATIC).SEPARATOR + arr[i];
+			path += lx.self(SEPARATOR) + arr[i];
 		}
-		var fullKey = (path == '') ? this.key : path + lx(STATIC).SEPARATOR + this.key;
+		var fullKey = (path == '') ? this.key : path + lx.self(SEPARATOR) + this.key;
 		return {
 			deep: deep,
 			path: path,
@@ -233,7 +233,7 @@ class Tree {
 
 		for (var i=0; i<args.length; i++) {
 			var key = ''+args[i],
-				arr = key.split(lx(STATIC).SEPARATOR),
+				arr = key.split(lx.self(SEPARATOR)),
 				newId = arr.pop(),
 				b = this.get( arr );
 			if (b == undefined) return null;
@@ -258,7 +258,7 @@ class Tree {
 			return null;
 		}
 
-		var arr = (''+key).split(lx(STATIC).SEPARATOR),
+		var arr = (''+key).split(lx.self(SEPARATOR)),
 			delId = arr.pop(),
 			b = this.get( arr );
 		if (b == undefined) return this;
@@ -275,7 +275,7 @@ class Tree {
 
 		// if ( lx.isNumber(key) ) return this.nodes[ this.keys[key] ];
 
-		var arr = (lx.isArray(key)) ? key : (''+key).split(lx(STATIC).SEPARATOR);
+		var arr = (lx.isArray(key)) ? key : (''+key).split(lx.self(SEPARATOR));
 		if (!arr.length) return this;
 		if ( !(arr[0] in this.nodes) ) return false;
 		var b = this.nodes[ arr[0] ];
@@ -291,7 +291,7 @@ class Tree {
 
 		// if ( lx.isNumber(key) ) return this.nodes[ this.keys[key] ];
 
-		var arr = (lx.isArray(key)) ? key : (''+key).split(lx(STATIC).SEPARATOR);
+		var arr = (lx.isArray(key)) ? key : (''+key).split(lx.self(SEPARATOR));
 		if (!arr.length) return this;
 		if ( !(arr[0] in this.nodes) ) return null;
 		var b = this.nodes[ arr[0] ];

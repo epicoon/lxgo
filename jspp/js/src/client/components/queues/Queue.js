@@ -10,7 +10,7 @@ class Queue {
 
     constructor(name, type = null) {
         this.name = name;
-        this.type = type || lx(STATIC).TYPE_TEMPORARY;
+        this.type = type || lx.self(TYPE_TEMPORARY);
         this.list = {};
         this.keys = [];
         this.counter = 0;
@@ -40,7 +40,7 @@ class Queue {
         if (!this.keys.len) {
             lx.app.animation.removeTimer(this);
             this.active = false;
-            if (this.type == lx(STATIC).TYPE_TEMPORARY)
+            if (this.type == lx.self(TYPE_TEMPORARY))
                 lx.app.queues.remove(this);
         }
     }

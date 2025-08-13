@@ -122,7 +122,7 @@ class EggMenu extends lx.Box {
 		});
 
 		this.on('move', ()=>this.holdPultVisibility());
-		lx(this)>switcher.click(lx(STATIC).switchOpened);
+		lx(this)>switcher.click(lx.self(switchOpened));
 	}
 
 	open() {

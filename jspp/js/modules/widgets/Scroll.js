@@ -54,9 +54,9 @@ class Scroll extends lx.Box {
 
         config.type = config.type || lx.VERTICAL;
         if (config.type == lx.VERTICAL) {
-            config.geom = [null, 0, lx(STATIC).DEFAULT_SIZE, null, 0, lx(STATIC).DEFAULT_SIZE];
+            config.geom = [null, 0, lx.self(DEFAULT_SIZE), null, 0, lx.self(DEFAULT_SIZE)];
         } else {
-            config.geom = [0, null, null, lx(STATIC).DEFAULT_SIZE, lx(STATIC).DEFAULT_SIZE, 0];
+            config.geom = [0, null, null, lx.self(DEFAULT_SIZE), lx.self(DEFAULT_SIZE), 0];
         }
 
         return config;

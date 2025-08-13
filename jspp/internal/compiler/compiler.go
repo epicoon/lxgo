@@ -11,6 +11,7 @@ import (
 
 	"github.com/epicoon/lxgo/jspp"
 	"github.com/epicoon/lxgo/jspp/internal/base"
+	"github.com/epicoon/lxgo/jspp/internal/i18n"
 	"github.com/epicoon/lxgo/jspp/internal/lxml"
 	"github.com/epicoon/lxgo/kernel"
 	"gopkg.in/yaml.v3"
@@ -389,26 +390,8 @@ func (c *Compiler) applyI18n(code string) (string, error) {
 
 	if c.modulesI18n != nil {
 		algs++
-
-		modulesMap, modulesOk := c.modulesI18n[lang]
-		re := regexp.MustCompile(`lx\(i18n\)\.(module\-[^\-]+\-([\w\d_\-.]+))`)
-		code = re.ReplaceAllStringFunc(code, func(match string) string {
-			matches := re.FindStringSubmatch(match)
-			if len(matches) < 3 {
-				return match
-			}
-
-			key := matches[1]
-			var tr string
-			if modulesOk {
-				tr = modulesMap[key]
-			}
-			if tr != "" {
-				return "'" + tr + "'"
-			}
-
-			return "'" + matches[2] + "'"
-		})
+		m := i18n.NewI18nMap(c.modulesI18n)
+		code = m.Localize(code, lang)
 	}
 
 	if c.i18n != nil {
@@ -511,7 +494,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 }
 
 func clearI18n(code string) string {
-	re := regexp.MustCompile(`lx\(i18n\)\.([\w\d_\-.]+)`)
+	re := regexp.MustCompile(`lx\.i18n\(['"]?([\w\d_\-.]+)['"]?\)`)
 	code = re.ReplaceAllStringFunc(code, func(match string) string {
 		matches := re.FindStringSubmatch(match)
 		if len(matches) < 2 {

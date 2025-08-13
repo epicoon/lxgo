@@ -70,7 +70,7 @@ function __setMethodEvent(funcName, func, category, duplicate) {
 }
 
 function __wrapMethod(methodName) {
-	var info = lx(STATIC).behaviorMap.get(behKey, 'methodEvents'),
+	var info = lx.self(behaviorMap.get(behKey, 'methodEvents')),
 		thisInfo = this.behaviorMap.get(behKey, 'methodEvents');
 
 	if ((info && info[methodName]) || (thisInfo && thisInfo[methodName])) return;
@@ -80,7 +80,7 @@ function __wrapMethod(methodName) {
 	Object.defineProperty(this, methodName, {
 		enumerable: false,
 		value: function() {
-			var info = lx(STATIC).behaviorMap.get(behKey, 'methodEvents'),
+			var info = lx.self(behaviorMap.get(behKey, 'methodEvents')),
 				thisInfo = this.behaviorMap.get(behKey, 'methodEvents');
 
 			if (thisInfo && thisInfo[methodName]) {
