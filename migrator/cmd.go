@@ -14,17 +14,60 @@ type MigratorCommand struct {
 
 /** @type cmd.FConstructor */
 func NewCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
-	c := &MigratorCommand{Command: cmd.NewCommand()}
+	return cmd.Prepare(&MigratorCommand{Command: cmd.NewCommand()})
+}
 
-	c.RegisterActions(cmd.ActionsList{
-		"create": create,
-		"show":   show,
-		"check":  check,
-		"up":     up,
-		"down":   down,
-	})
-
-	return c
+func (c *MigratorCommand) Config() *cmd.Config {
+	return &cmd.Config{
+		Description: "Command to manage migrations",
+		Actions: cmd.ActionsConfig{
+			"create": cmd.ActionConfig{
+				Description: "Create new migration",
+				Executor:    create,
+				Params: cmd.ParamsConfig{
+					"name": cmd.ParamConfig{
+						Description: "New migration name",
+						Type:        cmd.ParamTypeString,
+						Required:    true,
+					},
+				},
+			},
+			"show": cmd.ActionConfig{
+				Description: "Show migrations state",
+				Executor:    show,
+				Params: cmd.ParamsConfig{
+					"count": cmd.ParamConfig{
+						Description: "Migrations count to show. If not defined all migartions will be shown",
+						Type:        cmd.ParamTypeInt,
+						Required:    false,
+						Default:     0,
+						HideDefault: true,
+					},
+				},
+			},
+			"check": cmd.ActionConfig{
+				Description: "Show unapplied migrations",
+				Executor:    check,
+			},
+			"up": cmd.ActionConfig{
+				Description: "Apply migrations",
+				Executor:    up,
+			},
+			"down": cmd.ActionConfig{
+				Description: "Cancel migrations",
+				Executor:    down,
+				Params: cmd.ParamsConfig{
+					"count": cmd.ParamConfig{
+						Description: "Migrations count to cancel. If not defined the last migartion will be cancelled",
+						Type:        cmd.ParamTypeInt,
+						Required:    false,
+						Default:     0,
+						HideDefault: true,
+					},
+				},
+			},
+		},
+	}
 }
 
 /** @type cmd.FAction */

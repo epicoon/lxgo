@@ -1,5 +1,7 @@
 # Package for manage migrations
 
+> Actual version: `v0.1.0-alpha.2`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
+
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
 1. Make sure you have a DB connection set up. An example of DB connection configuration in file `path/to/app/config.yaml`:

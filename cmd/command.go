@@ -2,13 +2,44 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 )
 
 type FConstructor func(opt ...ICommandOptions) ICommand
 type FAction func(c ICommand) error
 type ActionsList map[string]FAction
 type ICommandOptions interface{}
+
+type Config struct {
+	Description string
+	Params      ParamsConfig
+	Actions     ActionsConfig
+}
+
+type ParamType string
+
+const (
+	ParamTypeString ParamType = "string"
+	ParamTypeInt    ParamType = "int"
+	ParamTypeBool   ParamType = "bool"
+)
+
+type ParamsConfig map[string]ParamConfig
+
+type ParamConfig struct {
+	Description string
+	Type        ParamType
+	Required    bool
+	Default     any
+	HideDefault bool
+}
+
+type ActionsConfig map[string]ActionConfig
+
+type ActionConfig struct {
+	Description string
+	Executor    FAction
+	Params      ParamsConfig
+}
 
 func GetOptions[T any](opt []ICommandOptions) T {
 	if len(opt) > 0 && opt[0] != nil {
@@ -23,12 +54,15 @@ func GetOptions[T any](opt []ICommandOptions) T {
 }
 
 type ICommand interface {
+	Config() *Config
 	SetName(name string)
 	Name() string
 	SetAction(action string)
 	Action() string
+	Actions() ActionsList
 	ActiveAction() FAction
 	SetParams(params map[string]any)
+	SetParam(key string, val any)
 	Params() map[string]any
 	HasParam(key string) bool
 	Param(key string) any
@@ -36,12 +70,33 @@ type ICommand interface {
 	SetContext(key string, value any)
 	Context(key string) (any, bool)
 	RegisterActions(ActionsList)
-	PrintAvailableActions()
 	BeforeExec() error
 	Exec() error
 }
 
 var ErrNotImplementedExec = errors.New("no exec")
+
+func Prepare(c ICommand) ICommand {
+	conf := c.Config()
+	if conf == nil {
+		return c
+	}
+
+	actionsLen := len(conf.Actions)
+	if actionsLen > 0 {
+		al := make(ActionsList, actionsLen)
+		for key, val := range conf.Actions {
+			if val.Executor != nil {
+				al[key] = val.Executor
+			}
+		}
+		if len(al) > 0 {
+			c.RegisterActions(al)
+		}
+	}
+
+	return c
+}
 
 /** @interface ICommand */
 type Command struct {
@@ -54,7 +109,13 @@ type Command struct {
 
 /** @constructor */
 func NewCommand() *Command {
-	return &Command{}
+	return &Command{
+		actions: make(ActionsList, 0),
+	}
+}
+
+func (c *Command) Config() *Config {
+	return nil
 }
 
 func (c *Command) SetName(name string) {
@@ -73,6 +134,10 @@ func (c *Command) Action() string {
 	return c.action
 }
 
+func (c *Command) Actions() ActionsList {
+	return c.actions
+}
+
 func (c *Command) ActiveAction() FAction {
 	if c.action == "" {
 		return nil
@@ -86,6 +151,13 @@ func (c *Command) ActiveAction() FAction {
 
 func (c *Command) SetParams(params map[string]any) {
 	c.params = params
+}
+
+func (c *Command) SetParam(key string, val any) {
+	if c.params == nil {
+		c.params = make(map[string]any, 1)
+	}
+	c.params[key] = val
 }
 
 func (c *Command) Params() map[string]any {
@@ -122,7 +194,9 @@ func (c *Command) Context(key string) (any, bool) {
 }
 
 func (c *Command) RegisterActions(list ActionsList) {
-	c.actions = list
+	for key, val := range list {
+		c.actions[key] = val
+	}
 }
 
 /** @abstract */
@@ -135,11 +209,4 @@ func (c *Command) BeforeExec() error {
 func (c *Command) Exec() error {
 	// pass
 	return ErrNotImplementedExec
-}
-
-func (c *Command) PrintAvailableActions() {
-	fmt.Printf("Available actions for command '%s':\n", c.name)
-	for action := range c.actions {
-		fmt.Printf("  - %s\n", action)
-	}
 }

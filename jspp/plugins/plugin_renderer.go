@@ -248,6 +248,7 @@ func (r *pluginRenderer) compileMainJs() {
 	compiler := r.pp.CompilerBuilder().
 		BuildModules(false).
 		SetLang(r.lang).
+		SetI18n(r.plugin.I18n()).
 		SetClientContext().
 		SetFilePath(filepath.Join(plugin.Path(), "_.js")).
 		SetPathfinder(plugin.Pathfinder()).
