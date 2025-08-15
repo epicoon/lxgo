@@ -260,3 +260,13 @@ pp.PluginManager().SetRoutes(jspp.PluginRoutesList{
   server:
     key: namespace.MyPlugin
   ```
+
+//======================================================================================================================
+// Plugin ajax-request routing
+```go
+func (p *MyPlugin) AjaxHandlers() kernel.HttpResourcesList {
+	return kernel.HttpResourcesList{
+		"path": NewPathHandler,
+	}
+}
+```

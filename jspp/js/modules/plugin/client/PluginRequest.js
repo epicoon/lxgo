@@ -1,10 +1,10 @@
 // @lx:namespace lx;
 class PluginRequest extends lx.HttpRequest {
-	constructor(plugin, respondent, params=[]) {
+	constructor(plugin, path, params={}) {
 		super('/lx_plugin', {
 			plugin: plugin.name,
-			attributes: plugin.attributes,
-			respondent,
+			pluginParams: plugin.params || {},
+			path,
 			data: params
 		});
 	}

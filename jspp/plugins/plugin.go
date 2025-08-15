@@ -112,6 +112,10 @@ func (p *Plugin) I18n() jspp.II18nMap {
 	return p.i18n
 }
 
+func (p *Plugin) AjaxHandlers() kernel.HttpResourcesList {
+	return make(kernel.HttpResourcesList, 0)
+}
+
 /** @abstract */
 func (p *Plugin) BeforeRender() {
 	// Pass

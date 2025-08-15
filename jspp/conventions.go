@@ -168,6 +168,7 @@ type IPlugin interface {
 	Config() IPluginConfig
 	Pathfinder() kernel.IPathfinder
 	I18n() II18nMap
+	AjaxHandlers() kernel.HttpResourcesList
 	BeforeRender()
 	AfterRender(info *PluginRenderInfo)
 }

@@ -109,7 +109,7 @@ func (router *Router) GetAssetRoute(path string) string {
 	return ""
 }
 
-func (router *Router) Handle(res kernel.IHttpResource, route string, w http.ResponseWriter, r *http.Request) {
+func (router *Router) Handle(res kernel.IHttpResource, route string, w http.ResponseWriter, r *http.Request) kernel.IHttpResponse {
 	ctx := &HandleContext{
 		app:      router.app,
 		route:    route,
@@ -126,15 +126,7 @@ func (router *Router) Handle(res kernel.IHttpResource, route string, w http.Resp
 		}))
 	}
 
-	if response := processResource(router, res); response != nil {
-		if router.app != nil {
-			router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.NewData(map[string]any{
-				"context":  ctx,
-				"response": response,
-			}))
-		}
-		response.Send(ctx.ResponseWriter())
-	}
+	return processResource(router, res)
 }
 
 func (router *Router) Start() {
@@ -149,7 +141,16 @@ func (router *Router) Start() {
 
 			res := cResource()
 			res.Init()
-			router.Handle(res, route, w, r)
+			if response := router.Handle(res, route, w, r); response != nil {
+				ctx := res.Context()
+				if router.app != nil {
+					router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.NewData(map[string]any{
+						"context":  ctx,
+						"response": response,
+					}))
+				}
+				response.Send(ctx.ResponseWriter())
+			}
 		}))
 	}
 }
@@ -219,14 +220,13 @@ func processResource(router *Router, resource kernel.IHttpResource) kernel.IHttp
 		FormFiller().SetContext(ctx).SetForm(reqForm).Fill()
 		resource.SetRequestForm(reqForm)
 		if reqForm.HasErrors() {
-			resp = resource.ProcessRequestErrors()
+			if resp = resource.ProcessRequestErrors(); resp != nil {
+				return resp
+			}
 		}
 	}
 
-	if resp == nil {
-		resource.PreRun()
-		resp = resource.Run()
-	}
-
+	resource.PreRun()
+	resp = resource.Run()
 	return resp
 }

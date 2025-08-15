@@ -1,5 +1,12 @@
 ------------------------------------------------------------------------------------------------------------------------
-Date: ?
+Date: 2025.08.15
+Version: v0.1.0-alpha.5
+Changes:
+- add feature plugin ajax-requests routing
+- fix lxml html content for empty widget
+
+------------------------------------------------------------------------------------------------------------------------
+Date: 2025.08.14
 Version: v0.1.0-alpha.4
 Changes:
 - fix plugin config with map for images

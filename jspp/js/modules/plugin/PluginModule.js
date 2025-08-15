@@ -87,16 +87,16 @@ lx.Rect.prototype.getRectInPlugin = function () {
 /**
  * @param config {String|Object: {
  *     [info] {Object},
- *     [attributes] {Dict},
+ *     [params] {Dict},
  *     [cssScope] {String},
  *     [onLoad] {Function}
  * }}
  */
 lx.Box.prototype.setPlugin = function (config) {
     if (this.plugin) lx.app.pluginManager.remove(this.plugin);
-    if (config.attributes && !config.attributes.lxEmpty()) {
-        if (!config.info.attributes) config.info.attributes = {};
-        config.info.attributes.lxMerge(config.attributes, true);
+    if (config.params && !config.params.lxEmpty()) {
+        if (!config.info.params) config.info.params = {};
+        config.info.params.lxMerge(config.params, true);
     }
     lx.app.pluginManager.unpack(config.info, this, lx.app.pluginManager.getPlugin(this), config.onLoad);
 };

@@ -160,7 +160,7 @@ type IRouter interface {
 	RegisterResource(route string, method string, cResource CHttpResource)
 	RegisterFileAssets(assets map[string]string)
 	GetAssetRoute(path string) string
-	Handle(res IHttpResource, route string, w http.ResponseWriter, r *http.Request)
+	Handle(res IHttpResource, route string, w http.ResponseWriter, r *http.Request) IHttpResponse
 	Start()
 }
 

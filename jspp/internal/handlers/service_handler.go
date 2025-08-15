@@ -135,7 +135,7 @@ func getModules(h *ServiceHandler, list map[string]any) kernel.IHttpResponse {
 	})
 }
 
-func serverErrorResponse(h *ServiceHandler) kernel.IHttpResponse {
+func serverErrorResponse(h kernel.IHttpResource) kernel.IHttpResponse {
 	return h.JsonResponse(kernel.JsonResponseConfig{
 		Code: http.StatusInternalServerError,
 		Data: map[string]any{
@@ -145,7 +145,7 @@ func serverErrorResponse(h *ServiceHandler) kernel.IHttpResponse {
 	})
 }
 
-func errorResponse(h *ServiceHandler, msg string) kernel.IHttpResponse {
+func errorResponse(h kernel.IHttpResource, msg string) kernel.IHttpResponse {
 	return h.JsonResponse(kernel.JsonResponseConfig{
 		Code: http.StatusBadRequest,
 		Data: map[string]any{

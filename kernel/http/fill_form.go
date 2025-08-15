@@ -172,11 +172,13 @@ func checkMissingParams(f kernel.IForm, data kernel.Dict) {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
+	//TODO cache?
+	m := buildJSONFieldMap(v)
 
 	missingParams := []string{}
 	for _, param := range f.Required() {
-		field := v.FieldByName(param)
-		if !isZeroValue(field) {
+		field, exists := m[param]
+		if exists && !isZeroValue(field) {
 			continue
 		}
 		if _, ok := data[param]; !ok {
@@ -186,6 +188,41 @@ func checkMissingParams(f kernel.IForm, data kernel.Dict) {
 	if len(missingParams) > 0 {
 		f.CollectErrorf("missing required parameters: %s", strings.Join(missingParams, ","))
 	}
+}
+
+func buildJSONFieldMap(v reflect.Value) map[string]reflect.Value {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	fieldMap := make(map[string]reflect.Value)
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i)
+
+		if field.Anonymous {
+			for k, v2 := range buildJSONFieldMap(value) {
+				fieldMap[k] = v2
+			}
+			continue
+		}
+
+		tag := field.Tag.Get("json")
+		if tag == "-" {
+			continue
+		}
+
+		jsonName := strings.Split(tag, ",")[0]
+		if jsonName == "" {
+			jsonName = field.Name
+		}
+
+		fieldMap[jsonName] = value
+	}
+
+	return fieldMap
 }
 
 func isZeroValue(field reflect.Value) bool {

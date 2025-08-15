@@ -129,8 +129,10 @@ func (c *widgetCompiler) getInitCode(varName string) string {
 func (c *widgetCompiler) getConfigCode() string {
 	n := c.node
 
+	html := n.HTML()
+
 	if n.Key == "" && n.Field == "" && !n.IsVolume && len(n.Css) == 0 &&
-		n.Config == "" && len(n.Geom) == 0 && n.Text == "" {
+		n.Config == "" && len(n.Geom) == 0 && n.Text == "" && html == "" {
 		return ""
 	}
 
@@ -184,7 +186,6 @@ func (c *widgetCompiler) getConfigCode() string {
 		config = append(config, fmt.Sprintf("geom:[%s]", strings.Join(geom, ",")))
 	}
 
-	html := n.HTML()
 	if html != "" {
 		config = append(config, "html:`"+html+"`")
 	}
