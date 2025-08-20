@@ -10,9 +10,10 @@ class Dialog extends lx.AppComponent {
 	 *     [waiting] {Function},
 	 *     [error] {Function},
 	 * }}
+	 * @param ignoreEvents {Array<String>}
 	 */
 	request(config, ignoreEvents = []) {
-		return __sendRequest(
+		return _sendRequest(
 			config.method,
 			config.url,
 			config.data,
@@ -42,44 +43,11 @@ class Dialog extends lx.AppComponent {
 	}
 
 	requestParamsToString(params) {
-		return requestParamsToString(params);
+		return _requestParamsToString(params);
 	}
 
 	requestParamsFromString(params) {
-		return requestParamsFromString(params);
-	}
-
-	/**
-	 * TODO - does not use. Need to be clearyfied is it really deprecated
-	 * @deprecated
-	 */
-	handlersToConfig(handlers) {
-		var onSuccess,
-			onWaiting,
-			onError;
-		if (handlers) {
-			if (lx.isFunction(handlers) || lx.isArray(handlers)) {
-				onSuccess = handlers;
-			} else if (lx.isObject(handlers)) {
-				onWaiting = handlers.waiting;
-				onSuccess = handlers.success;
-				onError = handlers.error;
-			}
-		}
-		function initHandler(handlerData) {
-			if (!handlerData) return null;
-			if (lx.isFunction(handlerData)) return handlerData;
-			if (lx.isArray(handlerData)) return (res)=>handlerData[1].call(handlerData[0], res);
-			return null;
-		}
-		var config = {},
-			success = initHandler(onSuccess),
-			waiting = initHandler(onWaiting),
-			error = initHandler(onError);
-		if (success) config.success = success;
-		if (waiting) config.waiting = waiting;
-		if (error) config.error = error;
-		return config;
+		return _requestParamsFromString(params);
 	}
 }
 
@@ -87,43 +55,41 @@ class Dialog extends lx.AppComponent {
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-function __sendRequest(method, url, data, headers, success, waiting, error, ignoreEvents = []) {
+function _sendRequest(method, url, data, headers, hSuccess, hWaiting, hError, ignoreEvents = []) {
 	url = url || '';
 	headers = headers || {};
 	let calculatedUrl = url;
-	if (method.toLowerCase() == 'get') {
-		let argsString = requestParamsToString(data);
-		if (argsString != '') url += '?' + argsString;
+	if (method.toLowerCase() === 'get') {
+		let argsString = _requestParamsToString(data);
+		if (argsString !== '') calculatedUrl += '?' + argsString;
 	}
 
-	if (!__isAjax(calculatedUrl)) {
-		__sendCorsRequest(method, url, data, headers, success, waiting, error);
+	if (!_isAjax(url)) {
+		_sendCorsRequest(method, calculatedUrl, data, headers, hSuccess, hWaiting, hError);
 		return;
 	}
 
-	const request = createRequest(),
-		handlerMap = {success, waiting, error};
+	const request = _createRequest();
 	if (!request) {
 		return /*TODO error*/;
 	}
 
-	// Wrapper for success
 	function successHandlerWrapper(request, handler) {
-		var response = request.response;
+		let response = request.response;
 
 		// Pass control to the custom handler
-		var contentType = request.getResponseHeader('Content-Type') || '';
+		let contentType = request.getResponseHeader('Content-Type') || '';
 
 		// @lx:<mode DEV:
-		var responseAndDump = _checkAlert(response), dump;
+		let responseAndDump = _checkAlert(response), dump;
 		response = responseAndDump[0];
 		dump = responseAndDump[1];
 		// @lx:mode>
 
-		var result = contentType.match(/(?:application|text)\/json/)
+		let result = contentType.match(/(?:application|text)\/json/)
 			? JSON.parse(response)
 			: response;
-		callHandler(handler, [result, request]);
+		_callHandler(handler, [result, request]);
 
 		// @lx:<mode DEV:
 		if (dump) lx.alert(dump);
@@ -131,34 +97,34 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 	}
 
 	function errorHandlerWrapper(request, handler) {
-		var response = request.response,
+		let response = request.response,
 			contentType = request.getResponseHeader('Content-Type') || '';
 
 		// @lx:<mode DEV:
-		var responseAndDump = _checkAlert(response), dump;
+		let responseAndDump = _checkAlert(response), dump;
 		response = responseAndDump[0];
 		dump = responseAndDump[1];
 		// @lx:mode>
 
-		var result = contentType.match(/text\/json/) ? JSON.parse(response) : response;
+		let result = contentType.match(/\/json/) ? JSON.parse(response) : response;
 
-		callHandler(handler, [result, request]);
+		_callHandler(handler, [result, request]);
 
 		// @lx:<mode DEV:
 		if (dump) lx.alert(dump);
 		// @lx:mode>
 
-		switch (result.error_code) {
+		switch (request.status) {
 			case 401:
 				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_UNAUTHORIZED)) lx.app.events.trigger(
 					lx.EVENT_AJAX_REQUEST_UNAUTHORIZED,
-					[result, request, {method, url, data, headers, success, waiting, error}]
+					[result, request, {method, url, data, headers, success:hSuccess, waiting:hWaiting, error:hError}]
 				);
 				break;
 			case 403:
 				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_FORBIDDEN)) lx.app.events.trigger(
 					lx.EVENT_AJAX_REQUEST_FORBIDDEN,
-					[result, request, {method, url, data, headers, success, waiting, error}]
+					[result, request, {method, url, data, headers, success:hSuccess, waiting:hWaiting, error:hError}]
 				);
 				break;
 		}
@@ -167,17 +133,17 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 	// Assign a custom handler
 	request.onreadystatechange = function() {
 		// If the data exchange has not yet been completed
-		if (request.readyState != 4) {
+		if (request.readyState !== 4) {
 			// Notify the user about the download
-			callHandler(handlerMap.waiting);
+			_callHandler(hWaiting);
 			return;
 		}
 
-		if (request.status == 200) {
-			successHandlerWrapper(request, handlerMap.success);
+		if (request.status === 200) {
+			successHandlerWrapper(request, hSuccess);
 		} else {
 			// Notify the user about the error occurred
-			errorHandlerWrapper(request, handlerMap.error);
+			errorHandlerWrapper(request, hError);
 		}
 	};
 
@@ -185,7 +151,7 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 	request.open(method, calculatedUrl, true);
 	if (!ignoreEvents.includes(lx.EVENT_BEFORE_AJAX_REQUEST))
 		lx.app.events.trigger(lx.EVENT_BEFORE_AJAX_REQUEST, [request]);
-	for (var name in headers) {
+	for (let name in headers) {
 		request.setRequestHeader(name, headers[name]);
 	}
 
@@ -203,22 +169,22 @@ function __sendRequest(method, url, data, headers, success, waiting, error, igno
 	}
 }
 
-function __sendCorsRequest(method, url, data, headers, success, waiting, error) {
+function _sendCorsRequest(method, url, data, headers, success, waiting, error) {
 	let options = {method, mode: 'cors'};
-	if (method.toLowerCase() != 'get' && data && !data.lxEmpty()) {
+	if (method.toLowerCase() !== 'get' && data && !data.lxEmpty()) {
 		options.body = lx.Json.encode(data);
 	}
 
 	fetch(url, options)
-		.then(res=>res.json()).then(res=>callHandler(success, res))
-		.catch(res=>callHandler(error, res));
+		.then(res=>res.json()).then(res=>_callHandler(success, res))
+		.catch(res=>_callHandler(error, res));
 }
 
 /**
  * @return {XMLHttpRequest}
  */
-function createRequest() {
-	let request = false;
+function _createRequest() {
+	let request = null;
 
 	if (window.XMLHttpRequest) {
 		// Safari, Konqueror
@@ -233,7 +199,7 @@ function createRequest() {
 	}
 
 	if (!request) {
-		console.log("Невозможно создать XMLHttpRequest");
+		console.error("Can not create XMLHttpRequest");
 	}
 
 	return request;
@@ -242,13 +208,13 @@ function createRequest() {
 /**
  * //TODO - "first=value&arr[]=foo+bar&arr[]=baz"
  */
-function requestParamsToString(args) {
+function _requestParamsToString(args) {
 	if (!args) return '';
 	if (lx.isString(args)) return args;
 	if (!lx.isObject(args)) return '';
-	var arr = [];
-	var result = '';
-	for (var i in args) arr.push(i + '=' + args[i]);
+	let arr = [],
+		result = '';
+	for (let i in args) arr.push(i + '=' + args[i]);
 	if (arr.len) result = arr.join('&');
 	return result;
 }
@@ -256,42 +222,45 @@ function requestParamsToString(args) {
 /**
  * //TODO - "first=value&arr[]=foo+bar&arr[]=baz"
  */
-function requestParamsFromString(str) {
-	if (!str || str == '') return {};
+function _requestParamsFromString(str) {
+	if (!str || str === '') return {};
 
-	var arr = str.split('&'),
+	let arr = str.split('&'),
 		result = {};
-	for (var i=0, l=arr.len; i<l; i++) {
-		var boof = arr[i].split('=');
-		result[boof[0]] = boof[1];
+	for (let i=0, l=arr.len; i<l; i++) {
+		let bf = arr[i].split('=');
+		result[bf[0]] = bf[1];
 	}
 	return result;
 }
 
-function callHandler(handler, args) {
+function _callHandler(handler, args) {
 	if (!handler) return;
 	if (args !== undefined && !lx.isArray(args)) args = [args];
-	if (lx.isArray(handler))
-		if (args) handler[1].apply(handler[0], args);
-		else handler[1].call(handler[0]);
-	else
-	if (args) handler.apply(null, args);
-	else handler();
+	if (lx.isArray(handler)) {
+		args
+			? handler[1].apply(handler[0], args)
+			: handler[1].call(handler[0]);
+		return;
+	}
+	args
+		? handler.apply(null, args)
+		: handler();
 }
 
-function __isAjax(url) {
-	if (url == '' || url == location.origin) return true;
+function _isAjax(url) {
+	if (url === '' || url === location.origin) return true;
 
 	let reg = new RegExp('^\\w+?:' + '/' + '/');
 	if (!url.match(reg)) return true;
 
 	reg = new RegExp('^\\w+?:' + '/' + '/' + '[^\\/]+');
-	return url.match(reg) == location.origin;
+	return url.match(reg) === location.origin;
 }
 
 // @lx:<mode DEV:
 function _checkAlert(res) {
-	var dump = res.match(/<pre class="lx-alert">[\w\W]*<\/pre>$/);
+	let dump = res.match(/<pre class="lx-alert">[\w\W]*<\/pre>$/);
 	if (dump) {
 		dump = dump[0];
 		res = res.replace(dump, '');
