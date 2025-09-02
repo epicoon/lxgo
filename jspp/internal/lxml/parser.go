@@ -137,8 +137,12 @@ func (p *lxmlParser) parseLine() {
 	if line == "" {
 		return
 	}
+	re := regexp.MustCompile(`^\s*$`)
+	if re.MatchString(line) {
+		return
+	}
 
-	re := regexp.MustCompile(`^((?: |\t)*)(<?[/*&]?\b[\w\d\._]+\b>?)`)
+	re = regexp.MustCompile(`^((?: |\t)*)(<?[/*&]?\b[\w\d\._]+\b>?)`)
 	matches := re.FindStringSubmatch(line)
 	if len(matches) != 3 {
 		p.AddError("wrong line format")

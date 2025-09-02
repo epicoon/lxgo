@@ -113,14 +113,20 @@ type ILogger interface {
 
 type CHttpResource func() IHttpResource
 type HttpResourcesList map[string]CHttpResource
-type HttpTemplatesList map[string]HttpTemplateOptions
+type HttpTemplatesList map[string]HttpTemplateConfig
 type AssetsList map[string]string
 type FMiddleware func(IHandleContext) error
 type CSerializer func() ISerializer
 
-type HttpTemplateOptions struct {
+type HttpTemplateConfig struct {
 	Template string
 	Params   any
+}
+
+type HttpProxyConfig struct {
+	Server string
+	Routes []string
+	Map    map[string]string
 }
 
 type HttpResourceConfig struct {
@@ -159,6 +165,7 @@ type IRouter interface {
 	RegisterResources(routes HttpResourcesList)
 	RegisterResource(route string, method string, cResource CHttpResource)
 	RegisterFileAssets(assets map[string]string)
+	RegisterProxy(conf HttpProxyConfig)
 	GetAssetRoute(path string) string
 	Handle(res IHttpResource, route string, w http.ResponseWriter, r *http.Request) IHttpResponse
 	Start()
@@ -171,6 +178,7 @@ type IHandleContext interface {
 	ResponseWriter() http.ResponseWriter
 	Request() *http.Request
 	Resource() IHttpResource
+	Has(key any) bool
 	Set(key any, value any)
 	Get(key any) any
 }

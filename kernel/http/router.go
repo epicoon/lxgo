@@ -100,6 +100,30 @@ func (router *Router) RegisterFileAssets(assets map[string]string) {
 	}
 }
 
+func (router *Router) RegisterProxy(conf kernel.HttpProxyConfig) {
+	for _, path := range conf.Routes {
+		router.RegisterResource(path, "", newProxyHandler)
+	}
+	for path := range conf.Map {
+		router.RegisterResource(path, "", newProxyHandler)
+	}
+
+	router.AddMiddleware(func(ctx kernel.IHandleContext) error {
+		r := ctx.Route()
+		if slices.Contains(conf.Routes, r) {
+			ctx.Set("Server", conf.Server)
+			return nil
+		}
+		path, exists := conf.Map[r]
+		if exists {
+			ctx.Set("Server", conf.Server)
+			ctx.Set("Path", path)
+			return nil
+		}
+		return nil
+	})
+}
+
 func (router *Router) GetAssetRoute(path string) string {
 	for urlPrefix, dir := range router.assetsMap {
 		if dir == path {

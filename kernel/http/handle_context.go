@@ -17,6 +17,8 @@ type HandleContext struct {
 	metaData map[any]any
 }
 
+var _ kernel.IHandleContext = (*HandleContext)(nil)
+
 func (h *HandleContext) App() kernel.IApp {
 	return h.app
 }
@@ -42,6 +44,11 @@ func (c *HandleContext) ResponseWriter() http.ResponseWriter {
 
 func (c *HandleContext) Request() *http.Request {
 	return c.request
+}
+
+func (c *HandleContext) Has(key any) bool {
+	_, exists := c.metaData[key]
+	return exists
 }
 
 func (c *HandleContext) Set(key any, value any) {

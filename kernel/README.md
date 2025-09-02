@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.4`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.5`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -22,6 +22,7 @@ You can create your own web-server - an application with components, routing and
 * [Templates](#tpl)
 * [Components](#components)
 * [Events](#events)
+* [Proxy API](#proxy)
 
 
 ## See also:
@@ -150,7 +151,7 @@ Templates:
 
 func InitRoutes(router kernel.IRouter) {
 	router.RegisterTemplates(kernel.HttpTemplatesList{
-		"/": kernel.HttpTemplateOptions{
+		"/": kernel.HttpTemplateConfig{
 			Template: "home",
 			Params:   struct{ Title string }{Title: "Home page"},
 		},
@@ -590,5 +591,23 @@ app.Events().Subscribe(kernel.EVENT_APP_BEFORE_SEND_ASSET, func(e kernel.IEvent)
 	request := e.Payload().Get("request").(*http.Request)
 
 	// do something ...
+})
+```
+
+
+### <a name="proxy">Proxy API</a>
+You can set up proxy requests handling:
+```go
+app.Router().RegisterProxy(kernel.HttpProxyConfig{
+    // The destination
+    Server: "http://some-domain",
+    // The list of routes - "/path" on your side and "/path" on destination side
+    Routes: []string{
+        "/path",
+    },
+    // The list of routes - "/local-path" on your side and "/orig-path" on destination side
+    Map: map[string]string{
+        "/local-path": "/orig-path",
+    },
 })
 ```
