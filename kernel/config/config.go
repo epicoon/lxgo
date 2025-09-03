@@ -3,26 +3,37 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 
 	"github.com/epicoon/lxgo/kernel"
 	"gopkg.in/yaml.v3"
 )
 
-func Load(filepath string) (*kernel.Config, error) {
-	file, err := os.Open(filepath)
+func Load(path string) (*kernel.Config, error) {
+	conf, err := load(path)
 	if err != nil {
-		return nil, fmt.Errorf("can not open config file: %w", err)
-	}
-	defer file.Close()
-
-	decoder := yaml.NewDecoder(file)
-	config := make(kernel.Config)
-	if err := decoder.Decode(config); err != nil {
-		return nil, fmt.Errorf("cannot decode config file: %w", err)
+		return nil, err
 	}
 
-	return &config, nil
+	if !HasParam(conf, "Local") {
+		return conf, nil
+	}
+
+	lPath, err := GetParam[string](conf, "Local")
+	if err != nil {
+		return conf, fmt.Errorf("wrong type for local config path: %v", err)
+	}
+	dir := filepath.Dir(path)
+	lPath = filepath.Join(dir, lPath)
+	lConf, err := load(lPath)
+	if err != nil {
+		return conf, fmt.Errorf("can not read local config: %v", err)
+	}
+
+	mergeRecursive(*conf, *lConf)
+
+	return conf, nil
 }
 
 func SetParam(c *kernel.Config, param string, val any) {
@@ -62,4 +73,34 @@ func GetParam[T any](c *kernel.Config, param string) (T, error) {
 	}
 
 	return *new(T), fmt.Errorf("wrong value type for config %q param: %v, type: %T", param, val, val)
+}
+
+func load(path string) (*kernel.Config, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("can not open config file: %w", err)
+	}
+	defer file.Close()
+
+	decoder := yaml.NewDecoder(file)
+	config := make(kernel.Config)
+	if err := decoder.Decode(config); err != nil {
+		return nil, fmt.Errorf("cannot decode config file: %w", err)
+	}
+
+	return &config, nil
+}
+
+func mergeRecursive(dst, src kernel.Config) {
+	for key, srcVal := range src {
+		if dstVal, ok := dst[key]; ok {
+			dstMap, okDst := dstVal.(map[string]any)
+			srcMap, okSrc := srcVal.(map[string]any)
+			if okDst && okSrc {
+				mergeRecursive(dstMap, srcMap)
+				continue
+			}
+		}
+		dst[key] = srcVal
+	}
 }

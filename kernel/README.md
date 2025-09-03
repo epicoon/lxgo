@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.5`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.6`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -23,6 +23,7 @@ You can create your own web-server - an application with components, routing and
 * [Components](#components)
 * [Events](#events)
 * [Proxy API](#proxy)
+* [Local config](#lconfig)
 
 
 ## See also:
@@ -611,3 +612,17 @@ app.Router().RegisterProxy(kernel.HttpProxyConfig{
     },
 })
 ```
+
+
+### <a name="lconfig">Local config</a>
+You can use local configuration file:
+1. Create the file `config-local.yaml` next to the `config.yaml` file
+```yaml
+Params:
+  LocalParam: test
+```
+2. Add parameter `Local` to your `config.yaml` file
+```yaml
+Local: config-local.yaml
+```
+3. Don't forget to set ignore local file by your VCS
