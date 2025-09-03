@@ -94,8 +94,8 @@ func load(path string) (*kernel.Config, error) {
 func mergeRecursive(dst, src kernel.Config) {
 	for key, srcVal := range src {
 		if dstVal, ok := dst[key]; ok {
-			dstMap, okDst := dstVal.(map[string]any)
-			srcMap, okSrc := srcVal.(map[string]any)
+			dstMap, okDst := dstVal.(kernel.Config)
+			srcMap, okSrc := srcVal.(kernel.Config)
 			if okDst && okSrc {
 				mergeRecursive(dstMap, srcMap)
 				continue
