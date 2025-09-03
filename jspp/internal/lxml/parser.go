@@ -289,8 +289,12 @@ func (p *lxmlParser) defineLineType(head string) int {
 func (p *lxmlParser) splitLines(text string) {
 	p.texts = make([]string, 0)
 
+	// Remove first empty lines
+	re := regexp.MustCompile(`^(\s*(\r\n|\r|\n))*`)
+	text = re.ReplaceAllString(text, "")
+
 	// Remove common shift
-	re := regexp.MustCompile(`^(?: |\t)*`)
+	re = regexp.MustCompile(`^(?: |\t)*`)
 	shift := re.FindString(text)
 	if shift != "" {
 		re = regexp.MustCompile(`(^|\r\n|\r|\n)` + shift)
