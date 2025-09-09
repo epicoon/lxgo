@@ -133,11 +133,17 @@ func (p *lxmlParser) Widgets() []string {
 }
 
 func (p *lxmlParser) parseLine() {
+	// Ignore empty lines
 	line := p.lines[p.currentLine]
 	if line == "" {
 		return
 	}
 	re := regexp.MustCompile(`^\s*$`)
+	if re.MatchString(line) {
+		return
+	}
+	// Ignore comments
+	re = regexp.MustCompile(`^\s*//.*$`)
 	if re.MatchString(line) {
 		return
 	}
