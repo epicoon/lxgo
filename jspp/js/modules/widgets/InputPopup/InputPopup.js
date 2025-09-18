@@ -60,13 +60,14 @@ class InputPopup extends lx.Box {
 		lx(this)>stream.del('r');
 		this.useRenderCache();
 		if (title) {
-			let row = new lx.Box({
+			let titleBox = lx(this)>stream>title;
+			if (!titleBox) titleBox = new lx.Box({
 				key: 'title',
 				text: title,
 				before: buttons
 			});
-			row.align(lx.CENTER, lx.MIDDLE);
-			row.height( lx(row)>text.height('px') + 10 + 'px' );
+			titleBox.align(lx.CENTER, lx.MIDDLE);
+			titleBox.height( lx(titleBox)>text.height('px') + 10 + 'px' );
 		}
 		captions.forEach((caption, i)=>{
 			let row = new lx.Box({
