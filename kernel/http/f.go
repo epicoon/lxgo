@@ -9,6 +9,9 @@ import (
 func Lang(req *http.Request) (string, error) {
 	lc, err := req.Cookie("lxlang")
 	if err != nil {
+		if err == http.ErrNoCookie {
+			return "en-EN", nil
+		}
 		return "en-EN", err
 	}
 	return lc.Value, nil
