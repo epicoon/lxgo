@@ -222,13 +222,6 @@ class CssContext {
             }
         }
 
-        //TODO deprecated
-        // for (let i=0, l=this.presetStyles.length; i<l; i++) {
-        //     let name = this.presetStyles[i];
-        //     let reg = new RegExp('([ :])' + name + '([ ;{}])', 'g');
-        //     result = result.replace(reg, '$1' + name + '-' + this.preset.name + '$2');
-        // }
-
         return result;
     }
 }

@@ -13,6 +13,10 @@ class AppComponentSettable extends lx.AppComponent {
      */
     addSettings(list) {
         let key = this.defaultSettingKey();
+        if (key === null) {
+            this.settings = list;
+            return;
+        }
         if (!lx.isArray(list) || !(key in list)) {
             let temp = {};
             temp[key] = list;
@@ -25,10 +29,10 @@ class AppComponentSettable extends lx.AppComponent {
 
     /**
      * @abstract
-     * @returns {string}
+     * @returns {string|null}
      */
     defaultSettingKey() {
-        return '';
+        return null;
     }
 
     /**
