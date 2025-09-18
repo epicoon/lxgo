@@ -81,8 +81,8 @@ class AlignPositioningStrategy extends lx.PositioningStrategy {
 
 	allocate(elem, config) {
 		var geom = this.geomFromConfig(config);
-		elem.style('width', geom.w || 0);
-		elem.style('height', geom.h || 0);
+		if (geom.w !== undefined) elem.style('width', geom.w);
+		if (geom.h !== undefined) elem.style('height', geom.h);
 		this.actualizeIndents();
 	}
 

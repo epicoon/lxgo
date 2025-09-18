@@ -1,16 +1,5 @@
 // @lx:namespace lx;
-class DomSelector extends lx.AppComponentSettable {
-
-	//TODO deprecated
-	getTostsElement() {
-		return document.querySelector("[lxid^='" + this.settings['tosts'] + "']");
-	}
-
-	//TODO deprecated
-	getAlertsElement() {
-		return document.querySelector("[lxid^='" + this.settings['alerts'] + "']");
-	}
-
+class DomSelector extends lx.AppComponent {
 	getElementByAttrs(attrs, parent = null) {
 		let selector = '';
 		for (let name in attrs)

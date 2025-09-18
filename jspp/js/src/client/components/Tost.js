@@ -1,50 +1,72 @@
-let __tosts = null;
+let _tosts = null;
 
+/**
+ * @settings:
+ * - message - CSS-class for messages box
+ * - warning - CSS-class for warning box
+ * - error - CSS-class for error box
+ * - lifetime - tost display duration in milliseconds
+ * - defaultType - 'message', 'warning' or 'error'
+ * - width - tost width
+ */
 // @lx:namespace lx;
-class Tost extends lx.AppComponent {
-	// @lx:const TYPE_MESSAGE = 1;
-	// @lx:const TYPE_WARNING = 2;
-	// @lx:const TYPE_ERROR = 3;
+class Tost extends lx.AppComponentSettable {
+	// @lx:const TYPE_MESSAGE = 'message';
+	// @lx:const TYPE_WARNING = 'warning';
+	// @lx:const TYPE_ERROR = 'error';
 
 	init() {
-		this.lifetime = 3000;
-		this.type = lx.self(TYPE_MESSAGE);
-		this.widthLimit = '40%';
-
 		lx.tostMessage = msg => this.message(msg);
 		lx.tostWarning = msg => this.warning(msg);
 		lx.tostError = msg => this.error(msg);
 	}
 
-	setType(type) {
-		if (type == lx.self(TYPE_MESSAGE) || type == lx.self(TYPE_WARNING) || type == lx.self(TYPE_ERROR))
-			this.type = type;
+	lifetime() {
+		if ('lifetime' in this.settings)
+			return this.settings.lifetime;
+		return 3000;
+	}
+
+	defaultType() {
+		if ('defaultType' in this.settings)
+			return this.settings.defaultType;
+		return lx.Tost.TYPE_MESSAGE;
+	}
+
+	widthLimit() {
+		if ('width' in this.settings)
+			return this.settings.width;
+		return '40%';
 	}
 
 	message(msg) {
-		__print(this, msg, lx.Tost.TYPE_MESSAGE);
+		_print(this, msg, lx.Tost.TYPE_MESSAGE);
 	}
 
 	warning(msg) {
-		__print(this, msg, lx.Tost.TYPE_WARNING);
+		_print(this, msg, lx.Tost.TYPE_WARNING);
 	}
 
 	error(msg) {
-		__print(this, msg, lx.Tost.TYPE_ERROR);
+		_print(this, msg, lx.Tost.TYPE_ERROR);
 	}
 
 	align(h, v) {
-		var config = lx.isObject(h)
+		let config = lx.isObject(h)
 			? h
 			: {horizontal: h, vertical: v};
 		config.subject = 'lx_tost';
 		if (config.direction == undefined) config.direction = lx.VERTICAL;
 		if (config.indent == undefined) config.indent = '10px';
-		__getTosts().align(config);
+		_getTosts().align(config);
 	}
 }
 
-function __print(self, config, typeArg) {
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * PRIVATE
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+function _print(self, config, typeArg) {
 	if (!config) return;
 
 	let message,
@@ -53,12 +75,12 @@ function __print(self, config, typeArg) {
 
 	if (lx.isString(config) || lx.isArray(config)) {
 		message = config;
-		lifetime = self.lifetime;
-		type = typeArg || self.type;
+		lifetime = self.lifetime();
+		type = typeArg || self.defaultType();
 	} else if (lx.isObject(config)) {
 		message = config.message;
-		lifetime = lx.getFirstDefined(config.lifetime, self.lifetime);
-		type = config.type || typeArg || self.type;
+		lifetime = lx.getFirstDefined(config.lifetime, self.lifetime());
+		type = config.type || typeArg || self.defaultType();
 	} else return;
 
 	if (message && lx.isArray(message))
@@ -70,14 +92,27 @@ function __print(self, config, typeArg) {
 	) return;
 
 	const el = new lx.Box({
-		parent: __getTosts(),
+		parent: _getTosts(),
 		depthCluster: lx.DepthClusterMap.CLUSTER_URGENT,
 		key: 'lx_tost',
 		text: message
 	});
+	_decorate(self, el, type)
 
-	//TODO - use css
-	var color, borderColor;
+	if (lifetime) setTimeout(function(el) { el.del(); }, lifetime, el)
+	else {
+		el.style('cursor', 'pointer');
+		el.click(()=>el.del());
+	}
+}
+
+function _decorate(self, tost, type) {
+	if (type in self.settings) {
+		tost.addClass(self.settings[type]);
+		return;
+	}
+
+	let color, borderColor;
 	switch (type) {
 		case lx.Tost.TYPE_MESSAGE:
 			color = 'lightgreen';
@@ -92,27 +127,42 @@ function __print(self, config, typeArg) {
 			borderColor = 'red';
 			break;
 	}
-	el.roundCorners('8px');
-	el.border({color: borderColor});
-	el.fill(color);
-	el.style('color', 'black');
+	tost.roundCorners('8px');
+	tost.border({color: borderColor});
+	tost.fill(color);
+	tost.style('color', 'black');
 
-	el.width(self.widthLimit);
-	el.width( el.get('text').width('px') + 20 + 'px' );
-	el.height( el.get('text').height('px') + 20 + 'px' );
-	el.align(lx.CENTER, lx.MIDDLE);
-	if (lifetime) setTimeout(function(el) { el.del(); }, lifetime, el);
+	tost.width(self.widthLimit());
+	tost.width( tost.get('text').width('px') + 20 + 'px' );
+	tost.height( tost.get('text').height('px') + 20 + 'px' );
+	tost.align(lx.CENTER, lx.MIDDLE);
 }
 
-function __getTosts() {
-	if (!__tosts) __initTosts();
-	return __tosts;
+function _getTosts() {
+	if (!_tosts) _initTosts();
+	return _tosts;
 }
 
-function __initTosts() {
-	__tosts = lx.Box.rise(lx.app.domSelector.getTostsElement());
-	__tosts.key = 'tosts';
-	__tosts.align({
+function _initTosts() {
+	let wrapper = lx.app.domSelector.getElementByAttrs({lxid: 'lx-tosts'});
+	if (!wrapper) {
+		wrapper = document.createElement('div');
+		wrapper.setAttribute('lxid', 'lx-tosts');
+		Object.assign(wrapper.style, {
+			position: 'absolute',
+			top: '0',
+			left: '0',
+			width: '100%',
+			height: '100%',
+		});
+		const body = document.body;
+		if (body.firstChild) body.insertBefore(wrapper, body.firstChild);
+		else body.appendChild(wrapper);
+	}
+
+	_tosts = lx.Box.rise(wrapper);
+	_tosts.key = 'tosts';
+	_tosts.align({
 		indent: '10px',
 		subject: 'lx_tost',
 		vertical: lx.TOP,
