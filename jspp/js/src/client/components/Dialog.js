@@ -117,14 +117,20 @@ function _sendRequest(method, url, data, headers, hSuccess, hWaiting, hError, ig
 		switch (request.status) {
 			case 401:
 				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_UNAUTHORIZED)) lx.app.events.trigger(
-					lx.EVENT_AJAX_REQUEST_UNAUTHORIZED,
-					[result, request, {method, url, data, headers, success:hSuccess, waiting:hWaiting, error:hError}]
+					lx.EVENT_AJAX_REQUEST_UNAUTHORIZED, {
+						response: result,
+						request,
+						options: {method, url, data, headers, success:hSuccess, waiting:hWaiting, error:hError}
+					}
 				);
 				break;
 			case 403:
 				if (!ignoreEvents.includes(lx.EVENT_AJAX_REQUEST_FORBIDDEN)) lx.app.events.trigger(
-					lx.EVENT_AJAX_REQUEST_FORBIDDEN,
-					[result, request, {method, url, data, headers, success:hSuccess, waiting:hWaiting, error:hError}]
+					lx.EVENT_AJAX_REQUEST_FORBIDDEN, {
+						response: result,
+						request,
+						options: {method, url, data, headers, success:hSuccess, waiting:hWaiting, error:hError}
+					}
 				);
 				break;
 		}
@@ -150,7 +156,7 @@ function _sendRequest(method, url, data, headers, hSuccess, hWaiting, hError, ig
 	// Initialize connection
 	request.open(method, calculatedUrl, true);
 	if (!ignoreEvents.includes(lx.EVENT_BEFORE_AJAX_REQUEST))
-		lx.app.events.trigger(lx.EVENT_BEFORE_AJAX_REQUEST, [request]);
+		lx.app.events.trigger(lx.EVENT_BEFORE_AJAX_REQUEST, request);
 	for (let name in headers) {
 		request.setRequestHeader(name, headers[name]);
 	}
