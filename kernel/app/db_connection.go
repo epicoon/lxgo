@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/epicoon/lxgo/kernel"
 	"github.com/epicoon/lxgo/kernel/config"
@@ -13,12 +14,14 @@ import (
 )
 
 type ConnectionConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
+	Host                string
+	Port                int
+	User                string
+	Password            string
+	DBName              string
+	SSLMode             string
+	ConnectAttempts     int
+	ConnectAttemptDelay int
 }
 
 type Connection struct {
@@ -39,6 +42,14 @@ func (c *Connection) SetConfig(cfg *kernel.Config) {
 	val, err := config.GetParam[string](cfg, "SSLMode")
 	if err != nil || val == "" {
 		config.SetParam(cfg, "SSLMode", "disable")
+	}
+	att, err := config.GetParam[int](cfg, "ConnectAttempts")
+	if err != nil || att == 0 {
+		config.SetParam(cfg, "ConnectAttempts", 10)
+	}
+	att, err = config.GetParam[int](cfg, "ConnectAttemptDelay")
+	if err != nil || att == 0 {
+		config.SetParam(cfg, "ConnectAttemptDelay", 2)
 	}
 	c.cfg = new(ConnectionConfig)
 
@@ -66,9 +77,18 @@ func (c *Connection) Connect() error {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	c.db = db
+	maxRetries := cfg.ConnectAttempts
+	delay := time.Duration(cfg.ConnectAttemptDelay) * time.Second
 
-	return nil
+	for i := 1; i <= maxRetries; i++ {
+		if err = db.Ping(); err == nil {
+			c.db = db
+			return nil
+		}
+		time.Sleep(delay)
+	}
+
+	return fmt.Errorf("failed to connect to DB after %d attempts: %w", maxRetries, err)
 }
 
 func (c *Connection) Close() error {
