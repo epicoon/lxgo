@@ -131,13 +131,18 @@ func (pf *appPathfinder) getAliases() map[string]string {
 
 func getProjectRoot() string {
 	wd, _ := os.Getwd()
-	for !isGoModPresent(wd) && wd != "/" {
+	for !isGoRoot(wd) && wd != "/" {
 		wd = filepath.Dir(wd)
 	}
 	return wd
 }
 
-func isGoModPresent(path string) bool {
-	_, err := os.Stat(filepath.Join(path, "go.mod"))
-	return err == nil
+func isGoRoot(path string) bool {
+	if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {
+		return true
+	}
+	if _, err := os.Stat(filepath.Join(path, "bin")); err == nil {
+		return true
+	}
+	return false
 }

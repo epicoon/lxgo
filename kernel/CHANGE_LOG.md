@@ -1,5 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
 Date: 2025.09.22
+Version: v0.1.0-alpha.12
+Changes:
+- refactor application pathfinder
+
+------------------------------------------------------------------------------------------------------------------------
+Date: 2025.09.22
 Version: v0.1.0-alpha.11
 Changes:
 - add retry DB connecting, DB config params - ConnectAttempts, ConnectAttemptDelay (seconds)
