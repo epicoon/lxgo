@@ -9,7 +9,8 @@ type JSPreprocessorConfig struct {
 	*app.ComponentConfig
 	Mode           string
 	CorePath       string
-	CachePath      string
+	MapsPath       string
+	ModsPath       string
 	AssetLinksPath struct {
 		Inner string
 		Outer string

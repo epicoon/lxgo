@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -177,7 +179,40 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 		return nil
 	}
 
-	jsData := pp.ModulesMap().NewData(match[1], path)
+	var entryPath string
+	modsPath := pp.Config().ModsPath
+	if modsPath != "" {
+		re = regexp.MustCompile(`@lx:namespace +?([^;]+?) *?;`)
+		nmspMatch := re.FindStringSubmatch(code)
+		if nmspMatch == nil {
+			entryPath = modsPath
+		} else {
+			nmsp := strings.ReplaceAll(nmspMatch[1], ".", "/")
+			entryPath = filepath.Join(modsPath, nmsp)
+		}
+
+		destPath := entryPath
+
+		dir, file := filepath.Split(path)
+		dirName := filepath.Base(dir)
+		ext := filepath.Ext(file)
+		fileName := strings.TrimSuffix(file, ext)
+		if dirName == fileName {
+			entryPath = filepath.Join(destPath, dirName, file)
+			if err := copyDir(dir, filepath.Join(destPath, dirName)); err != nil {
+				return fmt.Errorf("JS-Module copying error: %v", err)
+			}
+		} else {
+			entryPath = filepath.Join(destPath, file)
+			if err := copyFile(path, entryPath); err != nil {
+				return fmt.Errorf("JS-Module copying error: %v", err)
+			}
+		}
+	} else {
+		entryPath = path
+	}
+
+	jsData := pp.ModulesMap().NewData(match[1], entryPath)
 
 	re = regexp.MustCompile(`@lx:module-data: *(.+?) *= *([^;]+?) *;`)
 	matches := re.FindAllStringSubmatch(code, -1)
@@ -235,4 +270,46 @@ func checkPluginPath(pp jspp.IPreprocessor, path string, info os.FileInfo, ppMap
 	*ppMap = append(*ppMap, plugin)
 
 	return nil
+}
+
+func copyFile(src, dest string) error {
+	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
+		return err
+	}
+
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	return err
+}
+
+func copyDir(srcDir, destDir string) error {
+	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+
+		destPath := filepath.Join(destDir, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(destPath, info.Mode())
+		} else {
+			return copyFile(path, destPath)
+		}
+	})
 }
