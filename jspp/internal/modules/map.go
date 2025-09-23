@@ -25,7 +25,7 @@ func NewMap(pp jspp.IPreprocessor) jspp.IModulesMap {
 
 func (m *Map) Path() string {
 	app := m.pp.App()
-	dir := app.Pathfinder().GetAbsPath(m.pp.Config().CachePath)
+	dir := app.Pathfinder().GetAbsPath(m.pp.Config().MapsPath)
 	return filepath.Join(dir, "_modules.json")
 }
 

@@ -1,8 +1,8 @@
-#lx:module lx.TestModule;
+// @lx:module lx.TestModule;
 
-#lx:require classes/;
+// @lx:require classes/;
 
-#lx:namespace lx;
+// @lx:namespace lx;
 class TestModule {
     constructor() {
         this.tests = {};

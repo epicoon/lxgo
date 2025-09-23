@@ -35,12 +35,24 @@ func NewCompileCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 		app:     options.App,
 	}
 	c.RegisterActions(cmd.ActionsList{
+		"build":             build,
 		"build-core":        buildCore,
 		"build-maps":        buildMaps,
 		"build-modules-map": buildModulesMap,
 		"build-plugins-map": buildPluginsMap,
 	})
 	return c
+}
+
+/** @function cmd.FAction */
+func build(com cmd.ICommand) error {
+	if err := buildCore(com); err != nil {
+		return err
+	}
+	if err := buildMaps(com); err != nil {
+		return err
+	}
+	return nil
 }
 
 /** @function cmd.FAction */
@@ -64,7 +76,7 @@ func buildCore(com cmd.ICommand) error {
 
 /** @function cmd.FAction */
 func buildMaps(com cmd.ICommand) error {
-	return build(com, utils.MapBuilderOptions{
+	return buildMap(com, utils.MapBuilderOptions{
 		Modules: true,
 		Plugins: true,
 	})
@@ -72,19 +84,19 @@ func buildMaps(com cmd.ICommand) error {
 
 /** @function cmd.FAction */
 func buildModulesMap(com cmd.ICommand) error {
-	return build(com, utils.MapBuilderOptions{
+	return buildMap(com, utils.MapBuilderOptions{
 		Modules: true,
 	})
 }
 
 /** @function cmd.FAction */
 func buildPluginsMap(com cmd.ICommand) error {
-	return build(com, utils.MapBuilderOptions{
+	return buildMap(com, utils.MapBuilderOptions{
 		Plugins: true,
 	})
 }
 
-func build(com cmd.ICommand, op utils.MapBuilderOptions) error {
+func buildMap(com cmd.ICommand, op utils.MapBuilderOptions) error {
 	c := com.(*CompileCommand)
 	app := c.app
 	if app == nil {

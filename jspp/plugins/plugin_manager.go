@@ -27,7 +27,7 @@ func NewMap(pp jspp.IPreprocessor) jspp.IPluginManager {
 
 func (m *PluginManager) Path() string {
 	app := m.pp.App()
-	dir := app.Pathfinder().GetAbsPath(m.pp.Config().CachePath)
+	dir := app.Pathfinder().GetAbsPath(m.pp.Config().MapsPath)
 	return filepath.Join(dir, "_plugins.json")
 }
 

@@ -18,8 +18,10 @@
       Mode: DEV
       # Path to directory where will be the core of JS-code
       CorePath: frontend/build/core.js
-      # Path to directory where Preprocessor keep its cache files
-      CachePath: .sys/cmp/jspp
+      # Path to directory where the Preprocessor keeps its maps files
+      MapsPath: .sys/cmp/jspp
+      # Path to directory where the Preprocessor copies JS-modules files
+      ModsPath: .sys/cmp/jspp/modules
       # Preprocessor automatically creates links to asset files
       #  to hide the real location on the server
       AssetLinksPath:
@@ -105,6 +107,8 @@ You'll need it to build `code.js` and modules and plugins maps
   `go run . jspp:build-modules-map`
   * command to build plugins map only
   `go run . jspp:build-plugins-map`
+  * command to build `core.js` and modules and plugins maps
+  `go run . jspp:build`
 
 
 ### <a name="link3">3. Build `core.js` and use it on the browser side</a>
@@ -120,7 +124,7 @@ You'll need it to build `code.js` and modules and plugins maps
   )
 
   // "/js/" - URL path to get asset from client side
-  // "frontend/build" - path to directory contains [[core.js]] according to [[Components.JSPreprocessor.CachePath]] application configuration parameter
+  // "frontend/build" - path to directory contains [[core.js]] according to [[Components.JSPreprocessor.CorePath]] application configuration parameter
   app.Router().RegisterFileAssets(kernel.AssetsList{
   	"/js/": "frontend/build",
   })
