@@ -11,6 +11,7 @@ type JSPreprocessorConfig struct {
 	CorePath       string
 	MapsPath       string
 	ModsPath       string
+	PluginsPath    string
 	AssetLinksPath struct {
 		Inner string
 		Outer string

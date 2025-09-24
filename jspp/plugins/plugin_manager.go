@@ -32,6 +32,12 @@ func (m *PluginManager) Path() string {
 }
 
 func (m *PluginManager) Has(key string) bool {
+	if m.data == nil {
+		if err := m.Load(); err != nil {
+			m.pp.LogError("can not load plugins map: %v", err)
+			return false
+		}
+	}
 	_, ok := m.data[key]
 	return ok
 }
@@ -41,7 +47,6 @@ func (m *PluginManager) Get(pluginName string) jspp.IPlugin {
 		return p
 	}
 
-	app := m.pp.App()
 	if m.data == nil {
 		if err := m.Load(); err != nil {
 			m.pp.LogError("can not load plugins map: %v", err)
@@ -56,6 +61,7 @@ func (m *PluginManager) Get(pluginName string) jspp.IPlugin {
 
 	var plugin jspp.IPlugin
 	if pluginData.Plugin() != "" {
+		app := m.pp.App()
 		p := app.DIContainer().Get(pluginData.Plugin())
 		attempt, ok := p.(jspp.IPlugin)
 		if ok {

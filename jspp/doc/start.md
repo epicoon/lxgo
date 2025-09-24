@@ -20,8 +20,10 @@
       CorePath: frontend/build/core.js
       # Path to directory where the Preprocessor keeps its maps files
       MapsPath: .sys/cmp/jspp
-      # Path to directory where the Preprocessor copies JS-modules files
+      # Path to directory where the Preprocessor copies JS-modules files to lock it for the app
       ModsPath: .sys/cmp/jspp/modules
+      # Path to directory where the Preprocessor copies external plugins to lock it for the app
+      PluginsPath: .sys/cmp/jspp/plugins
       # Preprocessor automatically creates links to asset files
       #  to hide the real location on the server
       AssetLinksPath:

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
+	"github.com/epicoon/lxgo/kernel/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,30 +101,44 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 	var mmMap []jspp.IJSModuleData
 	var ppMap []jspp.IPluginData
 
-	for _, p := range pp.Config().Modules {
-		dir := pp.App().Pathfinder().GetAbsPath(p)
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
+	if op.Modules {
+		if modsPath := pp.Config().ModsPath; modsPath != "" {
+			if err := clearDir(modsPath); err != nil {
+				pp.LogError("failed to clear modules path %s: %v", modsPath, err)
+			}
+		}
+		for _, p := range pp.Config().Modules {
+			dir := pp.App().Pathfinder().GetAbsPath(p)
+			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return nil
+				}
+				if err := checkPath(pp, path, info, MapBuilderOptions{Modules: true}, &mmMap, &ppMap); err != nil {
+					return err
+				}
 				return nil
-			}
-			if err := checkPath(pp, path, info, MapBuilderOptions{Modules: true}, &mmMap, &ppMap); err != nil {
-				return err
-			}
-			return nil
-		})
+			})
+		}
 	}
 
-	for _, p := range pp.Config().Plugins {
-		dir := pp.App().Pathfinder().GetAbsPath(p)
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
+	if op.Plugins {
+		if pluginsPath := pp.Config().PluginsPath; pluginsPath != "" {
+			if err := clearDir(pluginsPath); err != nil {
+				pp.LogError("failed to clear plugins path %s: %v", pluginsPath, err)
+			}
+		}
+		for _, p := range pp.Config().Plugins {
+			dir := pp.App().Pathfinder().GetAbsPath(p)
+			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return nil
+				}
+				if err := checkPath(pp, path, info, MapBuilderOptions{Plugins: true}, &mmMap, &ppMap); err != nil {
+					return err
+				}
 				return nil
-			}
-			if err := checkPath(pp, path, info, MapBuilderOptions{Plugins: true}, &mmMap, &ppMap); err != nil {
-				return err
-			}
-			return nil
-		})
+			})
+		}
 	}
 
 	goModules := getGoModules()
@@ -179,37 +194,16 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 		return nil
 	}
 
-	var entryPath string
 	modsPath := pp.Config().ModsPath
-	if modsPath != "" {
-		re = regexp.MustCompile(`@lx:namespace +?([^;]+?) *?;`)
-		nmspMatch := re.FindStringSubmatch(code)
-		if nmspMatch == nil {
-			entryPath = modsPath
-		} else {
-			nmsp := strings.ReplaceAll(nmspMatch[1], ".", "/")
-			entryPath = filepath.Join(modsPath, nmsp)
+	entryPath := path
+	root := pp.App().Pathfinder().GetRoot()
+	if strings.HasPrefix(entryPath, root) {
+		entryPath, _ = filepath.Rel(root, entryPath)
+	} else if modsPath != "" {
+		entryPath, err = makeCopy(&code, path, modsPath)
+		if err != nil {
+			return err
 		}
-
-		destPath := entryPath
-
-		dir, file := filepath.Split(path)
-		dirName := filepath.Base(dir)
-		ext := filepath.Ext(file)
-		fileName := strings.TrimSuffix(file, ext)
-		if dirName == fileName {
-			entryPath = filepath.Join(destPath, dirName, file)
-			if err := copyDir(dir, filepath.Join(destPath, dirName)); err != nil {
-				return fmt.Errorf("JS-Module copying error: %v", err)
-			}
-		} else {
-			entryPath = filepath.Join(destPath, file)
-			if err := copyFile(path, entryPath); err != nil {
-				return fmt.Errorf("JS-Module copying error: %v", err)
-			}
-		}
-	} else {
-		entryPath = path
 	}
 
 	jsData := pp.ModulesMap().NewData(match[1], entryPath)
@@ -248,6 +242,7 @@ func checkPluginPath(pp jspp.IPreprocessor, path string, info os.FileInfo, ppMap
 	var config struct {
 		Name   string         `yaml:"name"`
 		Server map[string]any `yaml:"server"`
+		Client map[string]any `yaml:"client"`
 	}
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return err
@@ -266,10 +261,101 @@ func checkPluginPath(pp jspp.IPreprocessor, path string, info os.FileInfo, ppMap
 	} else {
 		key = ""
 	}
-	plugin := pp.PluginManager().NewData(config.Name, path, key)
+
+	ppPath := pp.Config().PluginsPath
+	entry := path
+	root := pp.App().Pathfinder().GetRoot()
+	if strings.HasPrefix(entry, root) {
+		entry, _ = filepath.Rel(root, entry)
+	} else if ppPath != "" {
+		rawFile, exists := config.Client["file"]
+		var file string
+		if exists {
+			file = rawFile.(string)
+		} else {
+			file = "Plugin.js"
+		}
+
+		var code string
+		if file != "" {
+			filePath := filepath.Join(path, file)
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+			code = string(data)
+		} else {
+			code = ""
+		}
+
+		entry, err = makeCopy(&code, path, ppPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	plugin := pp.PluginManager().NewData(config.Name, entry, key)
 	*ppMap = append(*ppMap, plugin)
 
 	return nil
+}
+
+func clearDir(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("failed to clear %s: %v", path, err)
+		}
+	}
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return fmt.Errorf("failed to recreate %s: %v", path, err)
+	}
+	return nil
+}
+
+func makeCopy(code *string, path, locPath string) (entryPath string, err error) {
+	var destPath string
+	re := regexp.MustCompile(`@lx:namespace +?([^;]+?) *?;`)
+	nmspMatch := re.FindStringSubmatch(*code)
+	if nmspMatch == nil {
+		destPath = locPath
+	} else {
+		nmsp := strings.ReplaceAll(nmspMatch[1], ".", "/")
+		destPath = filepath.Join(locPath, nmsp)
+	}
+
+	dir, file := filepath.Split(path)
+	dirName := filepath.Base(dir)
+	ext := filepath.Ext(file)
+	fileName := strings.TrimSuffix(file, ext)
+	if dirName == fileName {
+		destPath = filepath.Join(destPath, dirName)
+		if _, err := os.Stat(destPath); err == nil {
+			rand := utils.GenRandomHash(8)
+			destPath = filepath.Join(destPath, rand)
+		} else if !os.IsNotExist(err) {
+			return "", fmt.Errorf("failed to stat %s: %v", destPath, err)
+		}
+
+		if err := copyDir(dir, destPath); err != nil {
+			return "", fmt.Errorf("JS-Module copying error: %v", err)
+		}
+		entryPath = filepath.Join(destPath, file)
+	} else {
+		destPath = filepath.Join(destPath, file)
+		if _, err := os.Stat(destPath); err == nil {
+			rand := utils.GenRandomHash(8)
+			destPath = filepath.Join(destPath, rand)
+		} else if !os.IsNotExist(err) {
+			return "", fmt.Errorf("failed to stat %s: %v", destPath, err)
+		}
+
+		if err := copyFile(path, destPath); err != nil {
+			return "", fmt.Errorf("JS-Module copying error: %v", err)
+		}
+		entryPath = destPath
+	}
+
+	return
 }
 
 func copyFile(src, dest string) error {

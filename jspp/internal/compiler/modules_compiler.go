@@ -69,7 +69,7 @@ func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, fil
 		if os.IsNotExist(err) {
 			c.pp.LogError("File for module '%s' does not exist", moduleName)
 		} else {
-			c.pp.LogError("Error while module '%s' file checking", moduleName)
+			c.pp.LogError("Error while module '%s' file checking: %v", moduleName, err)
 		}
 		return
 	}
