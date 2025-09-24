@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -89,6 +90,33 @@ func GetParam[T any](c *kernel.Config, param string) (T, error) {
 		}
 
 		return output.Interface().(T), nil
+	}
+
+	switch any(*new(T)).(type) {
+	case int:
+		if s, ok := val.(string); ok {
+			num, err := strconv.Atoi(s)
+			if err != nil {
+				return *new(T), fmt.Errorf("cannot convert config param %q value %q to int: %w", param, s, err)
+			}
+			return any(num).(T), nil
+		}
+	case int64:
+		if s, ok := val.(string); ok {
+			num, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return *new(T), fmt.Errorf("cannot convert config param %q value %q to int64: %w", param, s, err)
+			}
+			return any(num).(T), nil
+		}
+	case float64:
+		if s, ok := val.(string); ok {
+			num, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				return *new(T), fmt.Errorf("cannot convert config param %q value %q to float64: %w", param, s, err)
+			}
+			return any(num).(T), nil
+		}
 	}
 
 	return *new(T), fmt.Errorf("wrong value type for config %q param: %v, type: %T", param, val, val)

@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.12`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.13`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
