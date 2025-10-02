@@ -154,28 +154,42 @@ func (router *Router) Handle(res kernel.IHttpResource, route string, w http.Resp
 }
 
 func (router *Router) Start() {
-	availRoutes := slices.Collect(maps.Keys(router.resources))
+	http.Handle("/", router)
+}
 
-	for route, hList := range router.resources {
-		http.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cResource := defineResource(w, r, hList, availRoutes)
-			if cResource == nil {
-				return
-			}
+func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestedRoute := r.URL.Path
+	if requestedRoute != "/" {
+		requestedRoute, _ = strings.CutSuffix(requestedRoute, "/")
+	}
 
-			res := cResource()
-			res.Init()
-			if response := router.Handle(res, route, w, r); response != nil {
-				ctx := res.Context()
-				if router.app != nil {
-					router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.NewData(map[string]any{
-						"context":  ctx,
-						"response": response,
-					}))
-				}
-				response.Send(ctx.ResponseWriter())
+	cResource, code := router.defineResource(requestedRoute, r.Method)
+	if code != 0 {
+		switch code {
+		case http.StatusNotFound:
+			http.NotFound(w, r)
+		case http.StatusMethodNotAllowed:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		default:
+			if router.app != nil {
+				router.app.LogError(fmt.Sprintf("Can not define resource, code: %d", code), "HttpHandling")
 			}
-		}))
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	res := cResource()
+	res.Init()
+	if response := router.Handle(res, requestedRoute, w, r); response != nil {
+		ctx := res.Context()
+		if router.app != nil {
+			router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.NewData(map[string]any{
+				"context":  ctx,
+				"response": response,
+			}))
+		}
+		response.Send(ctx.ResponseWriter())
 	}
 }
 
@@ -183,25 +197,17 @@ func (router *Router) Start() {
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-func parseRoute(route string) (string, string) {
-	if strings.Contains(route, "[") && strings.Contains(route, "]") {
-		start := strings.Index(route, "[")
-		end := strings.Index(route, "]")
-		method := route[start+1 : end]
-		path := route[:start]
-		return path, method
+func (router *Router) defineResource(requestedRoute, method string) (kernel.CHttpResource, int) {
+	hList, ok := router.resources[requestedRoute]
+	if !ok {
+		return nil, http.StatusNotFound
 	}
-	return route, ""
-}
 
-func defineResource(w http.ResponseWriter, r *http.Request, hList kernel.HttpResourcesList, availRoutes []string) kernel.CHttpResource {
-	requestedRoute := r.URL.Path
+	availRoutes := slices.Collect(maps.Keys(router.resources))
 	if !slices.Contains(availRoutes, requestedRoute) {
-		http.NotFound(w, r)
-		return nil
+		return nil, http.StatusNotFound
 	}
 
-	method := r.Method
 	var cHandler kernel.CHttpResource
 	try, exists := hList[method]
 	if exists {
@@ -214,11 +220,21 @@ func defineResource(w http.ResponseWriter, r *http.Request, hList kernel.HttpRes
 	}
 
 	if cHandler == nil {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return nil
+		return nil, http.StatusMethodNotAllowed
 	}
 
-	return cHandler
+	return cHandler, 0
+}
+
+func parseRoute(route string) (string, string) {
+	if strings.Contains(route, "[") && strings.Contains(route, "]") {
+		start := strings.Index(route, "[")
+		end := strings.Index(route, "]")
+		method := route[start+1 : end]
+		path := route[:start]
+		return path, method
+	}
+	return route, ""
 }
 
 func processResource(router *Router, resource kernel.IHttpResource) kernel.IHttpResponse {
