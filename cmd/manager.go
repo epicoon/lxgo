@@ -45,6 +45,11 @@ func (m *manager) prepare() {
 			} else {
 				params[key] = true
 			}
+		} else if strings.HasPrefix(arg, "-") {
+			flags, _ := strings.CutPrefix(arg, "-")
+			for _, l := range flags {
+				params[string(l)] = true
+			}
 		}
 	}
 

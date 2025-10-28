@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.14`. Details [here](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.15`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -24,6 +24,7 @@ You can create your own web-server - an application with components, routing and
 * [Events](#events)
 * [Proxy API](#proxy)
 * [Local config](#lconfig)
+* [Local managing](#lmanaging)
 
 
 ## See also:
@@ -79,27 +80,27 @@ Port: 8081
     var _ (kernel.IApp) = (*App)(nil)
 
     func NewApp() kernel.IApp {
-        return &App{App: lxApp.NewApp()}
+        app := &App{App: lxApp.NewApp()}
+        // Apply app config
+        if err := lxApp.Configurate(app); err != nil {
+            panic(err)
+        }
+        return app
+    }
+
+    func (app *App) ConfigPath() string {
+        return "config.yaml"
     }
 
     func main() {
         // Create app instance
         app := NewApp()
 
-        // Apply app config
-        conf, err := config.Load(app.Pathfinder().GetAbsPath("config.yaml"))
-        if err != nil {
-            fmt.Printf("can not read application config. Cause: %v\n", err)
-            return
-        }
-        if err := lxApp.InitApp(app, conf); err != nil {
-            fmt.Printf("can not init application: %sv\n", err)
-            return
-        }
+        // For resources cleaning
+        defer app.Final()
 
         // Run app
         app.Run()
-        app.Final()
     }
     ```
 - run `go mod tidy` command to get the `lxgo/kernel` package
@@ -584,6 +585,9 @@ There are several events of application lifecycle:
         | key       | type                     |
         | --------- | ------------------------ |
         | renderer  | kernel.ITemplateRenderer |
+* `kernel.EVENT_CONFIG_REFRESHED`
+    - **trigger**: after successful applying the applicaion config in runtime. See [local managing](#lmanaging)
+    - **payload**: `NONE`
 
 Example of events using:
 ```go
@@ -626,3 +630,38 @@ Params:
 Local: config-local.yaml
 ```
 3. Don't forget to set ignore local file by your VCS
+
+
+### <a name="lmanaging">Local managing</a>
+
+You can manage your application in runtime using socket file.
+
+1. Console command wrapper
+```go
+package yourCmd
+
+func NewManageCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
+	return kernelCmd.NewManageCommand(kernelCmd.ManageCommandOptions{
+		SocketPath: "/path/to/app_control.sock",
+	})
+}
+```
+
+2. Use console command
+```go
+package main
+
+func main() {
+    cmd.Init(cmd.CommandsList{
+        // ...
+		"manage": yourCmd.NewManageCommand,
+        // ...
+    })
+}
+```
+
+3. Call commands:
+    * `go run . manage:status`
+    * `go run . manage:refresh-config -t`
+    * `go run . manage:refresh-config`
+    * `go run . manage:trigger --event=NAME`

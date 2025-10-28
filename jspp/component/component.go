@@ -69,7 +69,11 @@ func NewJSPreprocesor() *JSPreprocessor {
 	return pp
 }
 
-func (pp *JSPreprocessor) Name() string {
+func (c *JSPreprocessor) Name() string {
+	return "JSPreprocessor"
+}
+
+func (pp *JSPreprocessor) LogCategory() string {
 	return "JSPreprocessor"
 }
 

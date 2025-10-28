@@ -1,4 +1,13 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2025.10.28
+Version: v0.1.0-alpha.15
+Changes:
+- add manage socket
+- add runtime manage console command
+- refactor app component
+- add func utils.SliceDiff[T comparable](slice1, slice2 []T) []T
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2025.09.30
 Version: v0.1.0-alpha.14
 Changes:

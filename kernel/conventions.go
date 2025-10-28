@@ -22,14 +22,17 @@ type Config Dict
 type CAppComponentConfig func() IAppComponentConfig
 
 type IApp interface {
+	BaseApp() IApp
 	SetPort(p int)
+	ConfigPath() string
 	SetConfig(c *Config)
+	SetConfigParam(key string, val any)
+	Config() *Config
 	SetComponent(key any, c IAppComponent)
 	HasComponent(key any) bool
 	Component(key any) IAppComponent
 	SetConnection(c IConnection)
 	SetRouter(r IRouter)
-	Config() *Config
 	Pathfinder() IPathfinder
 	DIContainer() IDIContainer
 	Connection() IConnection
@@ -40,6 +43,8 @@ type IApp interface {
 	Log(msg string, category string)
 	LogWarning(msg string, category string)
 	LogError(msg string, category string)
+	Logger() ILogger
+	SetLogger(ILogger)
 	Run()
 	Final()
 }
@@ -52,6 +57,12 @@ type IAppComponent interface {
 	App() IApp
 	CConfig() CAppComponentConfig
 	AfterInit()
+	LogCategory() string
+	Log(msg string, params ...any)
+	LogWarning(msg string, params ...any)
+	LogError(msg string, params ...any)
+	Run() error
+	Final() error
 }
 
 type IAppComponentConfig interface {
@@ -257,6 +268,7 @@ const EVENT_APP_BEFORE_HANDLE_REQUEST = "appBeforeHandleRequest"
 const EVENT_APP_BEFORE_SEND_RESPONSE = "appBeforeSendResponse"
 const EVENT_APP_BEFORE_SEND_ASSET = "appBeforeSendAsset"
 const EVENT_RENDERER_BEFORE_RENDER = "rendererBeforeRender"
+const EVENT_CONFIG_REFRESHED = "configRefreshed"
 
 type FEventHandler func(e IEvent)
 

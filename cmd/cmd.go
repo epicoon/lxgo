@@ -117,9 +117,10 @@ func validate(c ICommand) error {
 					}
 				}
 			case ParamTypeBool:
-				if val == "false" {
+				switch val {
+				case "false":
 					c.SetParam(pName, false)
-				} else if val == "true" {
+				case "true":
 					c.SetParam(pName, true)
 				}
 				val = c.Param(pName)

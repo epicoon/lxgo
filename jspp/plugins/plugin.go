@@ -33,7 +33,7 @@ func (p *Plugin) Init(pp jspp.IPreprocessor, name, path string) {
 	p.pp = pp
 	p.app = pp.App()
 	p.name = name
-	p.path = path
+	p.path = p.app.Pathfinder().GetAbsPath(path)
 	p.pathfinder = newPluginPathfinder(p)
 }
 

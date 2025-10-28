@@ -21,6 +21,8 @@ type ComponentConfig struct {
 	data map[string]any
 }
 
+var _ kernel.IAppComponentConfig = (*ComponentConfig)(nil)
+
 /** @constructor */
 func NewComponentConfigStruct() *ComponentConfig {
 	return &ComponentConfig{tp: compTypeStruct}
@@ -59,10 +61,13 @@ func (cc *ComponentConfig) Get(key string) any {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * AppComponent
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/** @interface kernel.IAppComponent */
 type AppComponent struct {
 	app    kernel.IApp
 	config kernel.IAppComponentConfig
 }
+
+var _ kernel.IAppComponent = (*AppComponent)(nil)
 
 /** @constructor */
 func NewAppComponent() *AppComponent {
@@ -125,6 +130,35 @@ func (c *AppComponent) GetConfig() kernel.IAppComponentConfig {
 	return c.config
 }
 
+func (c *AppComponent) Log(msg string, params ...any) {
+	if len(params) > 0 {
+		c.App().Log(fmt.Sprintf(msg, params...), c.LogCategory())
+	} else {
+		c.App().Log(msg, c.LogCategory())
+	}
+}
+
+func (c *AppComponent) LogWarning(msg string, params ...any) {
+	if len(params) > 0 {
+		c.App().LogWarning(fmt.Sprintf(msg, params...), c.LogCategory())
+	} else {
+		c.App().LogWarning(msg, c.LogCategory())
+	}
+}
+
+func (c *AppComponent) LogError(msg string, params ...any) {
+	if len(params) > 0 {
+		c.App().LogError(fmt.Sprintf(msg, params...), c.LogCategory())
+	} else {
+		c.App().LogError(msg, c.LogCategory())
+	}
+}
+
+/** @abstract */
+func (c *AppComponent) LogCategory() string {
+	return "AppComponent"
+}
+
 /** @abstract */
 func (c *AppComponent) Name() string {
 	// Pass
@@ -144,4 +178,16 @@ func (c *AppComponent) CConfig() kernel.CAppComponentConfig {
 /** @abstract */
 func (c *AppComponent) AfterInit() {
 	// Pass
+}
+
+/** @abstract */
+func (c *AppComponent) Run() error {
+	// Pass
+	return nil
+}
+
+/** @abstract */
+func (c *AppComponent) Final() error {
+	// Pass
+	return nil
 }

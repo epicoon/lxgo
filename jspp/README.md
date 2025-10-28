@@ -1,19 +1,19 @@
 # The package helps to work with JS
 
-> Actual version: `v0.1.0-alpha.16`. Details [here](https://github.com/epicoon/lxgo/tree/master/jspp/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.17`. [Details](https://github.com/epicoon/lxgo/tree/master/jspp/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
 
 ## Provides:
-* Build JS-code from different JS files
-* Creating frontend application
+* Build JS-bundle from different JS files
+* Create frontend application
 * Set of widgets
 * CSS organization:
   - Simple CSS-preprocessor on JS
   - Presets
   - Widgets customization
-* Models and binding mechanisms
+* Models and binding reactivity mechanisms
 * Internationalization
 * Simple AJAX handling
 * Way to organize code with plugins
