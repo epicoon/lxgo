@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/epicoon/lxgo/kernel"
-	"github.com/epicoon/lxgo/kernel/config"
 	"github.com/epicoon/lxgo/kernel/conv"
 
 	_ "github.com/lib/pq"
@@ -39,20 +38,7 @@ func (c *Connection) SetApp(app kernel.IApp) {
 }
 
 func (c *Connection) SetConfig(cfg *kernel.Config) {
-	val, err := config.GetParam[string](cfg, "SSLMode")
-	if err != nil || val == "" {
-		config.SetParam(cfg, "SSLMode", "disable")
-	}
-	att, err := config.GetParam[int](cfg, "ConnectAttempts")
-	if err != nil || att == 0 {
-		config.SetParam(cfg, "ConnectAttempts", 10)
-	}
-	att, err = config.GetParam[int](cfg, "ConnectAttemptDelay")
-	if err != nil || att == 0 {
-		config.SetParam(cfg, "ConnectAttemptDelay", 2)
-	}
 	c.cfg = new(ConnectionConfig)
-
 	conv.DictToStruct((*kernel.Dict)(cfg), c.cfg)
 }
 
@@ -67,9 +53,13 @@ func (c *Connection) Connect() error {
 		return err
 	}
 
+	SSLMode := cfg.SSLMode
+	if SSLMode == "" {
+		SSLMode = "disable"
+	}
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, SSLMode,
 	)
 
 	db, err := sql.Open("postgres", dsn)
@@ -77,10 +67,17 @@ func (c *Connection) Connect() error {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	maxRetries := cfg.ConnectAttempts
-	delay := time.Duration(cfg.ConnectAttemptDelay) * time.Second
+	attempts := cfg.ConnectAttempts
+	if attempts == 0 {
+		attempts = 10
+	}
+	attDelay := cfg.ConnectAttemptDelay
+	if attDelay == 0 {
+		attDelay = 2
+	}
+	delay := time.Duration(attDelay) * time.Second
 
-	for i := 1; i <= maxRetries; i++ {
+	for i := 1; i <= attempts; i++ {
 		if err = db.Ping(); err == nil {
 			c.db = db
 			return nil
@@ -88,7 +85,7 @@ func (c *Connection) Connect() error {
 		time.Sleep(delay)
 	}
 
-	return fmt.Errorf("failed to connect to DB after %d attempts: %w", maxRetries, err)
+	return fmt.Errorf("failed to connect to DB after %d attempts: %w", attempts, err)
 }
 
 func (c *Connection) Close() error {
