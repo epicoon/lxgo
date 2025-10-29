@@ -24,8 +24,8 @@ func Run(app kernel.IApp, conn net.Conn, test bool) {
 	}
 
 	origConf := app.Config()
-
 	diff := compareConfigs(origConf, newConf)
+
 	if test {
 		lines := []string{}
 		if len(diff.errs) > 0 {
@@ -53,7 +53,14 @@ func Run(app kernel.IApp, conn net.Conn, test bool) {
 			}
 		}
 
-		conn.Write([]byte(strings.Join(lines, "\n")))
+		var msg string
+		if len(lines) == 0 {
+			msg = "Nothing to change"
+		} else {
+			msg = strings.Join(lines, "\n")
+		}
+
+		conn.Write([]byte(msg))
 		return
 	}
 
