@@ -7,6 +7,7 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	// @lx:const TYPE_PROPORTIONAL = 2;
 	// @lx:const TYPE_STREAM = 3;
 	// @lx:const TYPE_ADAPTIVE = 4;
+	// @lx:const TYPE_FIT = 5;
 	// @lx:const DEAULT_COLUMNS_AMOUNT = 12;
 	// @lx:const COLUMN_MIN_WIDTH = '40px';
 	// @lx:const ROW_MIN_HEIGHT = '40px';
@@ -17,7 +18,8 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	 *         lx.GridPositioningStrategy.TYPE_SIMPLE,
 	 *         lx.GridPositioningStrategy.TYPE_PROPORTIONAL,
 	 *         lx.GridPositioningStrategy.TYPE_STREAM,
-	 *         lx.GridPositioningStrategy.TYPE_ADAPTIVE
+	 *         lx.GridPositioningStrategy.TYPE_ADAPTIVE,
+	 *         lx.GridPositioningStrategy.TYPE_FIT
 	 *     )} [type = lx.GridPositioningStrategy.TYPE_SIMPLE],
 	 *     {Number} [cols = lx.GridPositioningStrategy.DEAULT_COLUMNS_AMOUNT],
 	 *     {String} [minHeight],
@@ -32,7 +34,7 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	applyConfig(config={}) {
 		//TODO direction?
 		this.type = config.type || lx.self(TYPE_SIMPLE);
-		if (this.type !== lx.self(TYPE_ADAPTIVE))
+		if (this.type !== lx.self(TYPE_ADAPTIVE) && this.type !== lx.self(TYPE_FIT))
 			this.cols = config.cols || lx.self(DEAULT_COLUMNS_AMOUNT);
 		if (this.type == lx.self(TYPE_SIMPLE) || this.type == lx.self(TYPE_PROPORTIONAL))
 			this.map = new lx.BitMap(this.cols);
@@ -51,15 +53,27 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 		}
 
 		this.owner.addClass('lxps-grid-v');
-		if (this.type == lx.self(TYPE_ADAPTIVE))
-			this.owner.style(
-				'grid-template-columns',
-				'repeat(auto-fill,minmax('
-					+ lx.getFirstDefined(this.minWidth, lx.self(COLUMN_MIN_WIDTH))
-					+ ',1fr))'
-			);
-		else
-			this.owner.style('grid-template-columns', 'repeat(' + this.cols + ',1fr)');
+		switch (this.type) {
+			case lx.self(TYPE_ADAPTIVE):
+				this.owner.style(
+					'grid-template-columns',
+					'repeat(auto-fill,minmax('
+						+ lx.getFirstDefined(this.minWidth, lx.self(COLUMN_MIN_WIDTH))
+						+ ',1fr))'
+				);
+				break;
+			case lx.self(TYPE_FIT):
+				this.owner.style(
+					'grid-template-columns',
+					'repeat(auto-fit,minmax('
+						+ lx.getFirstDefined(this.minWidth, lx.self(COLUMN_MIN_WIDTH))
+						+ ',1fr))'
+				);
+				break;
+			default:
+				this.owner.style('grid-template-columns', 'repeat(' + this.cols + ',1fr)');
+		}
+
 		if (this.type != lx.self(TYPE_PROPORTIONAL)) {
 			this.owner.height('auto');
 		}
@@ -67,7 +81,8 @@ class GridPositioningStrategy extends lx.PositioningStrategy {
 	}
 
 	setCols(cols) {
-		if (this.type == lx.self(TYPE_ADAPTIVE) || this.cols === cols) return;
+		if (this.type == lx.self(TYPE_ADAPTIVE) || this.type == lx.self(TYPE_FIT) || this.cols === cols)
+			return;
 		this.cols = cols;
 		if (this.map) this.map.setX(cols);
 		this.owner.style('grid-template-columns', 'repeat(' + this.cols + ',1fr)');

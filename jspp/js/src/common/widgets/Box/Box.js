@@ -1107,6 +1107,15 @@ class Box extends lx.Rect {
     }
 
     /**
+     * @positioning lx.GridPositioningStrategy[.TYPE_FIT]
+     * @param [config] {Object: #schema(lx.GridPositioningStrategy::init::config)}
+     */
+    gridFit(config={}) {
+        config.type = lx.GridPositioningStrategy.TYPE_FIT;
+        return this.grid(config);        
+    }
+
+    /**
      * @positioning lx.SlotPositioningStrategy
      * @param [config] {Object: #schema(lx.SlotPositioningStrategy::init::config)}
      */
