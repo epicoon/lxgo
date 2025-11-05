@@ -180,8 +180,8 @@ func (p *lxmlParser) parseLine() {
 
 	// Return from HTML
 	if p.inHTML {
-		if depth != p.currentDepth {
-			p.AddError(fmt.Sprintf("wrong depth: %d expected", p.currentDepth))
+		if depth > p.currentDepth {
+			p.AddError(fmt.Sprintf("wrong depth: %d or less expected", p.currentDepth))
 			return
 		}
 		p.inHTML = false
