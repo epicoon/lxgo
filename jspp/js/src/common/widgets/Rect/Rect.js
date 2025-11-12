@@ -1446,11 +1446,10 @@ class Rect extends lx.Element {
     on(eventName, func) {
         if (!func) return this;
 
-        //TODO
         if (eventName == 'mousedown') this.on('touchstart', func);
         else if (eventName == 'mousemove') this.on('touchmove', func);
         else if (eventName == 'mouseup') this.on('touchend', func);
-        else if (eventName == 'click') this.on('touchstart', func);
+        else if (eventName == 'click') this.on('touchend', func);
 
         if (lx.isString(func))
             func = this.unpackFunction(func);

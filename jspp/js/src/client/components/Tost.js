@@ -99,11 +99,13 @@ function _print(self, config, typeArg) {
 	});
 	_decorate(self, el, type)
 
-	if (lifetime) setTimeout(function(el) { el.del(); }, lifetime, el)
-	else {
-		el.style('cursor', 'pointer');
-		el.click(()=>el.del());
-	}
+	if (lifetime)
+		el._timeoutID = setTimeout(function(el) { el.del(); }, lifetime, el);
+	el.style('cursor', 'pointer');
+	el.click(()=>{
+		if (el._timeoutID) clearTimeout(el._timeoutID);
+		el.del();
+	});
 }
 
 function _decorate(self, tost, type) {
