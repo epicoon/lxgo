@@ -220,7 +220,7 @@ func getFieldValue(config *kernel.Dict, fieldName string, fieldType reflect.Type
 	case reflect.Slice:
 		rawSlice, err := GetDictItem[[]any](config, fieldName)
 		if err != nil {
-			return nil, err
+			return getSlice(config, fieldName, fieldType)
 		}
 
 		sliceType := fieldType.Elem()
@@ -298,6 +298,93 @@ func getFieldValue(config *kernel.Dict, fieldName string, fieldType reflect.Type
 	}
 }
 
+func getSlice(config *kernel.Dict, fieldName string, fieldType reflect.Type) (any, error) {
+	rawVal, exists := (*config)[fieldName]
+	if !exists {
+		return nil, fmt.Errorf("does not contain item '%s'", fieldName)
+	}
+
+	rawSlice, ok := toAnySlice(rawVal)
+	if !ok {
+		return nil, fmt.Errorf("expected slice/array for '%s', got %T", fieldName, rawVal)
+	}
+
+	sliceType := fieldType.Elem()
+	resultSlice := reflect.MakeSlice(reflect.SliceOf(sliceType), 0, len(rawSlice))
+
+	for _, item := range rawSlice {
+		elemValue := reflect.New(sliceType).Elem()
+		if sliceType.Kind() == reflect.Struct {
+			dict, ok := convertToDict(item)
+			if !ok {
+				return nil, fmt.Errorf("expected Dict for struct slice element, got %T", item)
+			}
+			err := DictToStruct(&dict, elemValue.Addr().Interface())
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			rv := reflect.ValueOf(item)
+			if rv.Type().AssignableTo(sliceType) {
+				elemValue.Set(rv)
+			} else if rv.Type().ConvertibleTo(sliceType) {
+				elemValue.Set(rv.Convert(sliceType))
+			} else {
+				switch sliceType.Kind() {
+				case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
+					switch v := item.(type) {
+					case float64:
+						elemValue.SetInt(int64(v))
+					case float32:
+						elemValue.SetInt(int64(v))
+					case int:
+						elemValue.SetInt(int64(v))
+					case int64:
+						elemValue.SetInt(v)
+					case string:
+						if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+							elemValue.SetInt(n)
+						} else {
+							return nil, fmt.Errorf("cannot convert %q to int: %v", v, err)
+						}
+					default:
+						return nil, fmt.Errorf("cannot assign slice element of type %T to %s", item, sliceType)
+					}
+				case reflect.Float32, reflect.Float64:
+					switch v := item.(type) {
+					case float64:
+						elemValue.SetFloat(v)
+					case float32:
+						elemValue.SetFloat(float64(v))
+					case int:
+						elemValue.SetFloat(float64(v))
+					case int64:
+						elemValue.SetFloat(float64(v))
+					case string:
+						if f, err := strconv.ParseFloat(v, 64); err == nil {
+							elemValue.SetFloat(f)
+						} else {
+							return nil, fmt.Errorf("cannot convert %q to float: %v", v, err)
+						}
+					default:
+						return nil, fmt.Errorf("cannot assign slice element of type %T to %s", item, sliceType)
+					}
+				case reflect.String:
+					elemValue.SetString(ToString(item))
+				default:
+					if reflect.TypeOf(item).AssignableTo(sliceType) {
+						elemValue.Set(reflect.ValueOf(item))
+					} else {
+						return nil, fmt.Errorf("unsupported slice element conversion: %T -> %s", item, sliceType)
+					}
+				}
+			}
+		}
+		resultSlice = reflect.Append(resultSlice, elemValue)
+	}
+	return resultSlice.Interface(), nil
+}
+
 func convertToDict(item any) (kernel.Dict, bool) {
 	switch v := item.(type) {
 	case kernel.Dict:
@@ -324,4 +411,21 @@ func convertToDict(item any) (kernel.Dict, bool) {
 		}
 		return nil, false
 	}
+}
+
+func toAnySlice(v any) ([]any, bool) {
+	if v == nil {
+		return nil, false
+	}
+	rv := reflect.ValueOf(v)
+	kind := rv.Kind()
+	if kind != reflect.Slice && kind != reflect.Array {
+		return nil, false
+	}
+	n := rv.Len()
+	out := make([]any, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, rv.Index(i).Interface())
+	}
+	return out, true
 }
