@@ -172,8 +172,7 @@ func DictToStruct(dict *kernel.Dict, s any) error {
 			}
 		}
 
-		_, exists := (*dict)[tag]
-		if !exists {
+		if _, exists := (*dict)[tag]; !exists {
 			continue
 		}
 
@@ -182,7 +181,9 @@ func DictToStruct(dict *kernel.Dict, s any) error {
 			return err
 		}
 
-		fieldValue.Set(reflect.ValueOf(v))
+		if err := setFieldValue(fieldValue, v); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -238,7 +239,9 @@ func getFieldValue(config *kernel.Dict, fieldName string, fieldType reflect.Type
 					return nil, err
 				}
 			} else {
-				elemValue.Set(reflect.ValueOf(item))
+				if err := setFieldValue(elemValue, item); err != nil {
+					return nil, err
+				}
 			}
 			resultSlice = reflect.Append(resultSlice, elemValue)
 		}
@@ -270,7 +273,9 @@ func getFieldValue(config *kernel.Dict, fieldName string, fieldType reflect.Type
 					return nil, err
 				}
 			} else {
-				elemValue.Set(reflect.ValueOf(value))
+				if err := setFieldValue(elemValue, value); err != nil {
+					return nil, err
+				}
 			}
 
 			resultMap.SetMapIndex(reflect.ValueOf(key), elemValue)
@@ -428,4 +433,137 @@ func toAnySlice(v any) ([]any, bool) {
 		out = append(out, rv.Index(i).Interface())
 	}
 	return out, true
+}
+
+func setFieldValue(field reflect.Value, v any) error {
+	if !field.IsValid() || !field.CanSet() {
+		return fmt.Errorf("field cannot be set")
+	}
+
+	if v == nil {
+		// nil for pointers and interfaces
+		if field.Kind() == reflect.Ptr || field.Kind() == reflect.Interface || field.Kind() == reflect.Slice || field.Kind() == reflect.Map {
+			field.Set(reflect.Zero(field.Type()))
+			return nil
+		}
+		return nil
+	}
+
+	rv := reflect.ValueOf(v)
+
+	// If the types match
+	if rv.Type().AssignableTo(field.Type()) {
+		field.Set(rv)
+		return nil
+	}
+
+	// If conv is possible
+	if rv.Type().ConvertibleTo(field.Type()) {
+		field.Set(rv.Convert(field.Type()))
+		return nil
+	}
+
+	// Numbers
+	switch field.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch rv.Kind() {
+		case reflect.Float32, reflect.Float64:
+			field.SetInt(int64(rv.Float()))
+			return nil
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			field.SetInt(rv.Int())
+			return nil
+		case reflect.String:
+			if n, err := strconv.ParseInt(rv.String(), 10, 64); err == nil {
+				field.SetInt(n)
+				return nil
+			}
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch rv.Kind() {
+		case reflect.Float32, reflect.Float64:
+			field.SetUint(uint64(rv.Float()))
+			return nil
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			field.SetUint(uint64(rv.Int()))
+			return nil
+		case reflect.String:
+			if n, err := strconv.ParseUint(rv.String(), 10, 64); err == nil {
+				field.SetUint(n)
+				return nil
+			}
+		}
+	case reflect.Float32, reflect.Float64:
+		switch rv.Kind() {
+		case reflect.Float32, reflect.Float64:
+			field.SetFloat(rv.Float())
+			return nil
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			field.SetFloat(float64(rv.Int()))
+			return nil
+		case reflect.String:
+			if f, err := strconv.ParseFloat(rv.String(), 64); err == nil {
+				field.SetFloat(f)
+				return nil
+			}
+		}
+	case reflect.String:
+		field.SetString(ToString(v))
+		return nil
+	case reflect.Slice:
+		// Slice
+		if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+			elemType := field.Type().Elem()
+			length := rv.Len()
+			result := reflect.MakeSlice(field.Type(), 0, length)
+			for i := 0; i < length; i++ {
+				item := rv.Index(i).Interface()
+				elem := reflect.New(elemType).Elem()
+				if err := setFieldValue(elem, item); err != nil {
+					return fmt.Errorf("cannot set slice element %d: %w", i, err)
+				}
+				result = reflect.Append(result, elem)
+			}
+			field.Set(result)
+			return nil
+		}
+	case reflect.Map:
+		// Map
+		if rv.Kind() == reflect.Map && field.Type().Key().Kind() == reflect.String {
+			result := reflect.MakeMap(field.Type())
+			for _, key := range rv.MapKeys() {
+				k := key.Interface()
+				ks := ToString(k)
+				val := rv.MapIndex(key).Interface()
+				elem := reflect.New(field.Type().Elem()).Elem()
+				if err := setFieldValue(elem, val); err != nil {
+					return fmt.Errorf("cannot set map element for key %s: %w", ks, err)
+				}
+				result.SetMapIndex(reflect.ValueOf(ks), elem)
+			}
+			field.Set(result)
+			return nil
+		}
+	case reflect.Struct:
+		// kernel.Dict
+		if d, ok := v.(kernel.Dict); ok {
+			ptr := reflect.New(field.Type())
+			if err := DictToStruct(&d, ptr.Interface()); err != nil {
+				return err
+			}
+			field.Set(ptr.Elem())
+			return nil
+		}
+		if m, ok := v.(map[string]any); ok {
+			dd := kernel.Dict(m)
+			ptr := reflect.New(field.Type())
+			if err := DictToStruct(&dd, ptr.Interface()); err != nil {
+				return err
+			}
+			field.Set(ptr.Elem())
+			return nil
+		}
+	}
+
+	return fmt.Errorf("cannot assign %T to %s", v, field.Type())
 }
