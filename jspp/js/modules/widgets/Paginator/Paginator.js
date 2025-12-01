@@ -23,7 +23,7 @@ class Paginator extends lx.Box {
 	// @lx:const DEFAULT_ELEMENTS_PER_PAGE = 10;
 
     static initCss(css) {
-        css.useHolder(lx.BasicCssContext);
+        css.useExtender(lx.BasicCssContext);
         css.addClass('lx-Paginator', {
             gridTemplateRows: '100% !important',
             overflow: 'hidden',

@@ -13,8 +13,6 @@ class CssContext {
         this.prefix = '';
         this.preset = null;
         this.proxyContexts = [];
-        this.presetClasses = [];
-        this.presetStyles = [];
     }
 
     configure(config) {
@@ -23,7 +21,7 @@ class CssContext {
             this.usePreset(config.preset);
         if (config.holders)
             for (let i in config.holders)
-                this.useHolder(config.holders[i]);
+                this.useExtender(config.holders[i]);
     }
 
     /**
@@ -41,10 +39,10 @@ class CssContext {
     }
 
     /**
-     * @param {class<lx.CssContextHolder>} holder 
+     * @param {class<lx.CssContextExtender>} extender
      */
-    useHolder(holder) {
-        this.proxyContexts.lxPushUnique(holder.getContext());
+    useExtender(extender) {
+        this.proxyContexts.lxPushUnique(extender.getContext());
     }
 
     /**
@@ -54,8 +52,6 @@ class CssContext {
         this.abstractClasses.lxMerge(context.abstractClasses, true);
         this.classes.lxMerge(context.classes, true);
         this.mixins.lxMerge(context.mixins, true);
-        this.presetClasses.lxMerge(context.presetClasses);
-        this.presetStyles.lxMerge(context.presetStyles);
         this.proxyContexts.lxMerge(context.proxyContexts);
         this.sequens.lxMerge(context.sequens);
         this.styles.lxMerge(context.styles, true);
@@ -105,61 +101,61 @@ class CssContext {
         return Object.keys(map);
     }
 
-    addClass(name, content = {}, pseudoclasses = {}) {
+    addClass(name, content = {}, specification = {}) {
         if (name[0] != '.') name = '.' + name;
 
         this.sequens.push({name, type: 'classes'});
 
-        let processed = _processContent(this, content, pseudoclasses);
+        let processed = _processContent(this, content, specification);
         this.classes[name] = new CssClass({
             context: this,
             name,
             content: processed.content,
-            pseudoclasses: processed.pseudoclasses
+            specification: processed.specification
         });
     }
 
-    inheritClass(name, parent, content = {}, pseudoclasses = {}) {
+    inheritClass(name, parent, content = {}, specification = {}) {
         if (name[0] != '.') name = '.' + name;
         if (parent[0] != '.') parent = '.' + parent;
 
         this.sequens.push({name, type: 'classes'});
 
-        let processed = _processContent(this, content, pseudoclasses);
+        let processed = _processContent(this, content, specification);
         this.classes[name] = new CssClass({
             context: this,
             parent,
             name,
             content: processed.content,
-            pseudoclasses: processed.pseudoclasses
+            specification: processed.specification
         });
     }
 
-    addAbstractClass(name, content = {}, pseudoclasses = {}) {
+    addAbstractClass(name, content = {}, specification = {}) {
         if (name[0] != '.') name = '.' + name;
 
-        let processed = _processContent(this, content, pseudoclasses);
+        let processed = _processContent(this, content, specification);
         this.abstractClasses[name] = new CssClass({
             context: this,
             isAbstract: true,
             name,
             content: processed.content,
-            pseudoclasses: processed.pseudoclasses
+            specification: processed.specification
         });
     }
 
-    inheritAbstractClass(name, parent, content = {}, pseudoclasses = {}) {
+    inheritAbstractClass(name, parent, content = {}, specification = {}) {
         if (name[0] != '.') name = '.' + name;
         if (parent[0] != '.') parent = '.' + parent;
 
-        let processed = _processContent(this, content, pseudoclasses);
+        let processed = _processContent(this, content, specification);
         this.abstractClasses[name] = new CssClass({
             context: this,
             isAbstract: true,
             parent,
             name,
             content: processed.content,
-            pseudoclasses: processed.pseudoclasses
+            specification: processed.specification
         });
     }
 
@@ -208,21 +204,33 @@ class CssContext {
     }
 
     toString() {
-        let result = '';
+        let result = '',
+            renderScope = {
+                presetStyles: [],
+                media: {},
+            };
         for (let i=0, l=this.sequens.length; i<l; i++) {
             const rule = this[this.sequens[i].type][this.sequens[i].name];
-            result += rule.render();
+            result += rule.render(renderScope);
         }
 
         if (this.prefix != '') {
-            for (let i=0, l=this.presetStyles.length; i<l; i++) {
-                let name = this.presetStyles[i];
+            for (let i=0, l=renderScope.presetStyles.length; i<l; i++) {
+                let name = renderScope.presetStyles[i];
                 let reg = new RegExp('([ :])' + name + '([ ;{}])', 'g');
                 result = result.replace(reg, '$1' + this.prefix + '-' + name + '$2');
             }
         }
 
-        return result;
+        let media = '';
+        for (let cond in renderScope.media) {
+            media += '@media(' + cond + '){'
+            for (let name in renderScope.media[cond])
+                media += name + renderScope.media[cond][name];
+            media += '}'
+        }
+
+        return result + media;
     }
 }
 
@@ -238,9 +246,9 @@ function _defineRulePreset(rule) {
     if (_defineAttrsPreset(rule.content))
         return true;
 
-    if (rule.pseudoclasses) {
-        for (let i in rule.pseudoclasses)
-            if (_defineAttrsPreset(rule.pseudoclasses[i]))
+    if (rule.specification) {
+        for (let i in rule.specification)
+            if (_defineAttrsPreset(rule.specification[i]))
                 return true;
     }
 
@@ -269,9 +277,9 @@ class CssClass {
         this.parent = lx.getFirstDefined(config.parent, null);
 
         this.selfContent = config.content;
-        this.selfPseudoclasses = config.pseudoclasses;
+        this.selfSpecification = config.specification;
         this.content = null;
-        this.pseudoclasses = null;
+        this.specification = null;
         this._isPreset = false;
         this.refresh();
     }
@@ -282,44 +290,45 @@ class CssClass {
 
     refresh() {
         this.content = lx.clone(this.selfContent);
-        this.pseudoclasses = lx.clone(this.selfPseudoclasses);
+        this.specification = lx.clone(this.selfSpecification);
         if (this.parent) _applyClassParent(this);
         this._isPreset = _defineRulePreset(this);
     }
 
-    render() {
+    render(renderScope) {
         const className = (this.context.prefix)
             ? '.' + this.context.prefix + '-' + this.basicName.replace(/^\./, '')
             : this.basicName;
 
-        //TODO deprecated
-        // const className = (this.isPreset() && this.context.preset)
-        //     ? this.basicName + '-' + this.context.preset.name
-        //     : this.basicName;
-
         let text = className + '{' + _getContentString(this.context, this.content) + '}';
 
-        for (let pseudoclassName in this.pseudoclasses) {
-            let pseudoclass = this.pseudoclasses[pseudoclassName];
-            pseudoclassName = (pseudoclassName == 'disabled')
-                ? className + '[' + pseudoclassName + ']'
-                : className + ':' + pseudoclassName;
-
-            text += pseudoclassName + '{' + _getContentString(this.context, pseudoclass) + '}';
+        for (let specificationName in this.specification) {
+            let iSpecification = this.specification[specificationName];
+            if (specificationName == 'disabled') {
+                specificationName = className + '[' + specificationName + ']';
+            } else if (specificationName[0] == ':') {
+                specificationName = className + specificationName;
+            } else if (specificationName == '@media') {
+                for (let cond in iSpecification) {
+                    if (!(cond in renderScope.media))
+                        renderScope.media[cond] = {};
+                    renderScope.media[cond][className] =
+                        '{' + _getContentString(this.context, iSpecification[cond]) + '}';
+                }
+                continue;
+            } else {
+                specificationName = className + ':' + specificationName;
+            }
+            text += specificationName + '{' + _getContentString(this.context, iSpecification) + '}';
         }
 
-        if (this.isPreset()) {
-            let className = this.basicName.substr(1);
-            if (!this.context.presetClasses.includes(className))
-                this.context.presetClasses.push(className);
-        }
         return text;
     }
 }
 
 function _applyClassParent(self) {
     self.content = _getClassPropertyWithParent(self, 'content');
-    self.pseudoclasses = _getClassPropertyWithParent(self, 'pseudoclasses');
+    self.specification = _getClassPropertyWithParent(self, 'specification');
 }
 
 function _getClassPropertyWithParent(cssClass, property) {
@@ -373,7 +382,7 @@ class CssStyle {
         this.content = config.content;
     }
 
-    render() {
+    render(renderScope) {
         let selector = this.selector,
             list = [...selector.matchAll(/\.\b[\w\d_-]+\b/g)];
         for (let i in list) {
@@ -385,12 +394,6 @@ class CssStyle {
                 let reg = new RegExp(cssClassName + '($|[^\w\d_-])');
                 selector = selector.replace(reg, '.' + this.context.prefix + '-' + cssClassName.replace(/^\./, '') + '$1');
             }
-
-            //TODO deprecated
-            // if (cssClass.isPreset()) {
-            //     let reg = new RegExp(cssClassName + '($|[^\w\d_-])');
-            //     selector = selector.replace(reg, cssClassName + '-' + cssClass.context.preset.name + '$1');
-            // }
         }
 
         return selector + '{' + _getContentString(this.context, this.content) + '}';
@@ -403,11 +406,11 @@ class CssStyle {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 class CssDirective extends CssStyle {
-    render() {
+    render(renderScope) {
         if (!/^@keyframes/.test(this.selector)) return super.render();
 
         if (_defineRulePreset(this))
-            this.context.presetStyles.lxPushUnique(this.selector.replace(/^@keyframes\s+/, ''));
+            renderScope.presetStyles.lxPushUnique(this.selector.replace(/^@keyframes\s+/, ''));
 
         let content = [];
         for (let key in this.content) {
@@ -423,9 +426,9 @@ class CssDirective extends CssStyle {
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-function _processContent(self, content, pseudoclasses) {
+function _processContent(self, content, specification) {
     if (lx.isString(content)) {
-        return {content, pseudoclasses};
+        return {content, specification};
     }
 
     let processedContent = {};
@@ -444,7 +447,7 @@ function _processContent(self, content, pseudoclasses) {
 
         if (result.content) {
             processedContent.lxMerge(result.content);
-            if (result.pseudoclasses) pseudoclasses.lxMerge(result.pseudoclasses);
+            if (result.specification) specification.lxMerge(result.specification);
         } else {
             processedContent.lxMerge(result);
         }
@@ -452,7 +455,7 @@ function _processContent(self, content, pseudoclasses) {
 
     return {
         content: processedContent,
-        pseudoclasses
+        specification
     };
 }
 

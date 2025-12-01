@@ -25,7 +25,7 @@ class ActiveBox extends lx.Box {
 	}
 
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		let shadowSize = css.preset.shadowSize + 2,
 			shadowShift = Math.floor(shadowSize * 0.5);
 		css.addClass('lx-ActiveBox', {

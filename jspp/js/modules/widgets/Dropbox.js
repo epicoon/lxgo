@@ -26,7 +26,7 @@ let _opened = null;
 // @lx:namespace lx;
 class Dropbox extends lx.Box {
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.addClass('lx-Dropbox', {
 			borderRadius: css.preset.borderRadius,
 			cursor: 'pointer',

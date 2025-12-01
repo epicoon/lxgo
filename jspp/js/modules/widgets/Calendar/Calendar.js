@@ -50,7 +50,7 @@ let _monthTitles = [
 // @lx:namespace lx;
 class Calendar extends lx.Input {
     static initCss(css) {
-        css.useHolder(lx.BasicCssContext);
+        css.useExtender(lx.BasicCssContext);
         css.inheritClass('lx-Calendar', 'Input');
         css.inheritClass('lx-Calendar-daysTable', 'AbstractBox', {
             color: css.preset.textColor,

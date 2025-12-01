@@ -98,7 +98,7 @@ class CssManager extends lx.AppComponentSettable {
     }
 
     /**
-     * @param {Function<lx.CssPreset>|lx.CssPreset} preset
+     * @param {Function<lx.CssPreset>|lx.CssPreset|string} preset
      * @param {String} prefix
      * @returns {lx.CssScope|null}
      */
@@ -114,7 +114,16 @@ class CssManager extends lx.AppComponentSettable {
 
         const isDefault = (prefix === ''),
             presetKey = isDefault ? preset.lxFullClassName() : prefix;
-        this.registerPreset(presetKey, preset, isDefault);
+
+        if (this.presets.has(presetKey)) {
+            let ePreset = this.presets.get(presetKey);
+            if (ePreset.preset.lxFullClassName() !== preset.lxFullClassName()) {
+                lx.logError('Preset "' + prefix + '" already exists');
+                return;
+            }
+            preset = ePreset;
+        } else this.registerPreset(presetKey, preset, isDefault);
+
         return this.registerScope(prefix, preset);
     }
 
@@ -265,6 +274,14 @@ class PresetsList {
      */
     register(name, preset) {
         _list[name] = preset;
+    }
+
+    /**
+     * @param {String} name
+     * @returns {Boolean}
+     */
+    has(name) {
+        return name in _list;
     }
 
     /**

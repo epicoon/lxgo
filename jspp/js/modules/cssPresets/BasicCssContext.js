@@ -1,7 +1,7 @@
 // @lx:module lx.BasicCssContext;
 
 // @lx:namespace lx;
-class BasicCssContext extends lx.CssContextHolder {
+class BasicCssContext extends lx.CssContextExtender {
     static init(css) {
         css.registerMixin('img', url => {
             return {
@@ -53,7 +53,7 @@ class BasicCssContext extends lx.CssContextHolder {
             }
             return {
                 content: iconFlex,
-                pseudoclasses: {
+                specification: {
                     after: iconStyle
                 }
             };
@@ -74,7 +74,7 @@ class BasicCssContext extends lx.CssContextHolder {
                         }
                     )
                 },
-                pseudoclasses: {
+                specification: {
                     'hover:not([disabled])': {
                         marginTop: '-2px',
                         boxShadow: this.presetValue(

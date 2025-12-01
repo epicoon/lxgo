@@ -29,7 +29,7 @@ class Marks extends lx.Box {
 	// @lx:const MODE_MULTI_SHEET = 2;
 
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-Marks-mark', 'ActiveButton');
 		css.addClass('lx-Marks-active', {
 			backgroundColor: css.preset.checkedDarkColor,

@@ -13,7 +13,7 @@
 // @lx:namespace lx;
 class Checkbox extends lx.Box {
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.addClass('lx-Checkbox-0', {
 			border: 'solid #61615e 1px',
 			width: '16px',

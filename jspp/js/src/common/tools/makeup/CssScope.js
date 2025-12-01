@@ -55,14 +55,21 @@ class CssScope {
         if (!elemClass || !lx.isFunction(elemClass)) return;
         if (this.elems.includes(elemClass.getKey()))
             return;
-        if (!elemClass.initCss || lx.app.functionHelper.isEmptyFunction(elemClass.initCss))
-            return;
+
+        let fInitCss = null;
+        const preset = this.context.preset,
+            injections = preset.injectElementsCss(),
+            className = elemClass.lxFullName();
+        if (className in injections) fInitCss = injections[className];
+        else if (elemClass.initCss && !lx.app.functionHelper.isEmptyFunction(elemClass.initCss))
+            fInitCss = elemClass.initCss;
+        if (fInitCss === null) return;
 
         const context = new lx.CssContext();
         if (this.name !== _defaultName)
             context.setPrefix(this.name);
-        context.usePreset(this.context.preset);
-        elemClass.initCss(context);
+        context.usePreset(preset);
+        fInitCss.call(elemClass, context);
         let css = context.toString();
 
         // @lx:<context CLIENT:
@@ -75,9 +82,8 @@ class CssScope {
         // @lx:context>
 
         let nn = context.getClassNames();
-        for (let i in nn) {
+        for (let i in nn)
             this.classes.lxPushUnique(nn[i]);
-        }
         this.context.merge(context);
         this.elems.push(elemClass.getKey());
     }

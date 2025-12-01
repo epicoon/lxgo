@@ -27,7 +27,7 @@ class MultiBox extends lx.Box {
 	// @lx:const MARKS_MIN_WIDTH = 100;
 
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-MultiBox', 'AbstractBox', {
 			color: css.preset.textColor
 		});

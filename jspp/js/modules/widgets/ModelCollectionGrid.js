@@ -25,7 +25,7 @@ class ModelCollectionGrid extends lx.Box {
     // @lx:const DEFAULT_COLUMN_WIDTH = '200px';
 
     static initCss(css) {
-        css.useHolder(lx.BasicCssContext);
+        css.useExtender(lx.BasicCssContext);
         css.inheritClass('lx-MCG', 'AbstractBox', {
             color: css.preset.textColor
         });

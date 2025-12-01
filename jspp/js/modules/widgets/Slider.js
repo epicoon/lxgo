@@ -19,7 +19,7 @@
 // @lx:namespace lx;
 class Slider extends lx.Box {
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-slider-track', 'Button');
 		css.inheritClass('lx-slider-handle', 'ActiveButton');
 	}

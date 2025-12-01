@@ -16,7 +16,7 @@ class BoxSlider extends lx.Box {
 	// @lx:const TYPE_OPACITY = 2;
 
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.addAbstractClass('lx-IS-button', {
 			'@icon': ['\\276F', {fontSize:'calc(25px + 1.0vh)', paddingBottom:'10px'}],
 			borderTopLeftRadius: css.preset.borderRadius,

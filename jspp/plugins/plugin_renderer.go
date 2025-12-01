@@ -240,7 +240,7 @@ func (r *pluginRenderer) compileMainJs() {
 	if len(require) > 0 {
 		requireStr := ""
 		for _, req := range require {
-			requireStr += fmt.Sprintf("@lx:require -U %s;\n", req)
+			requireStr += fmt.Sprintf("@lx:require %s;\n", req)
 		}
 		code = requireStr + code
 	}

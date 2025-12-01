@@ -30,7 +30,7 @@ class Button extends lx.Box {
 	 * @param {lx.CssContext} css
 	 */
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-Button', 'ActiveButton');
 		css.inheritClass('lx-Button-hint', 'AbstractBox', {
 			padding: '10px'

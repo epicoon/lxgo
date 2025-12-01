@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -438,7 +439,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 				for _, m := range use {
 					mStr, ok := m.(string)
 					if !ok {
-						c.pp.LogError("invaliv format for 'use' element '%v' in application config '%s': string require", m, cPath)
+						c.pp.LogError("invaliv format for 'use' element '%v' in JS-application config '%s': string require", m, cPath)
 						continue
 					}
 					if !slices.Contains(c.useModules, mStr) {
@@ -446,7 +447,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 					}
 				}
 			} else {
-				c.pp.LogError("invaliv format for 'use' in application config '%s': []string require", cPath)
+				c.pp.LogError("invaliv format for 'use' in JS-application config '%s': []string require", cPath)
 			}
 		}
 
@@ -458,7 +459,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 
 		bConf, err := json.Marshal(conf)
 		if err != nil {
-			c.pp.LogError("can not marshal to json application config '%s':", cPath, err)
+			c.pp.LogError("can not marshal to json JS-application config '%s':", cPath, err)
 		} else {
 			res = string(bConf)
 		}
@@ -471,21 +472,55 @@ func (c *Compiler) parseAppConfig() (res string) {
 	rawConf, err := os.ReadFile(cPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			c.pp.LogError("application config '%s' not found", cPath)
+			c.pp.LogError("JS-application config '%s' not found", cPath)
 		} else {
-			c.pp.LogError("can not read application config '%s': %v", cPath, err)
+			c.pp.LogError("can not read JS-application config '%s': %v", cPath, err)
 		}
 		return
 	}
 
 	if err := yaml.Unmarshal(rawConf, &conf); err != nil {
-		c.pp.LogError("can not unmarshal yaml application config '%s':", cPath, err)
+		c.pp.LogError("can not unmarshal yaml JS-application config '%s': %v", cPath, err)
 		return
+	}
+
+	_, exists := conf["local"]
+	if exists {
+		localPath, ok := conf["local"].(string)
+		if !ok {
+			c.pp.LogError("invalid format for JS-application local config path: '%v'", conf["local"])
+		} else {
+			var path string
+			switch localPath[0] {
+			case '/':
+				path = localPath
+			case '@':
+				path = c.pathfinder.GetAbsPath(localPath)
+			default:
+				dir := filepath.Dir(cPath)
+				path = filepath.Join(dir, localPath)
+			}
+			rawConf, err := os.ReadFile(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					c.pp.LogError("JS-application local config '%s' not found", path)
+				} else {
+					c.pp.LogError("can not read JS-application local config '%s': %v", path, err)
+				}
+				return
+			}
+			lConf := make(map[string]any)
+			if err := yaml.Unmarshal(rawConf, &lConf); err != nil {
+				c.pp.LogError("can not unmarshal yaml JS-application local config '%s': %v", cPath, err)
+				return
+			}
+			mergeRecursive(conf, lConf)
+		}
 	}
 
 	bConf, err := json.Marshal(conf)
 	if err != nil {
-		c.pp.LogError("can not marshal to json application config '%s':", cPath, err)
+		c.pp.LogError("can not marshal to json JS-application config '%s':", cPath, err)
 		return
 	}
 
@@ -506,4 +541,46 @@ func clearI18n(code string) string {
 		return "'" + key + "'"
 	})
 	return code
+}
+
+func deepCopyMap(m map[string]any) map[string]any {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		if sm, ok := v.(map[string]any); ok {
+			out[k] = deepCopyMap(sm)
+		} else {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func mergeRecursive(dst, src map[string]any) {
+	if dst == nil || src == nil {
+		return
+	}
+
+	for key, srcVal := range src {
+		if dstVal, ok := dst[key]; ok {
+			dstMap, okDst := dstVal.(map[string]any)
+			srcMap, okSrc := srcVal.(map[string]any)
+			if okDst && okSrc {
+				if dstMap == nil {
+					dstMap = make(map[string]any)
+					dst[key] = dstMap
+				}
+				mergeRecursive(dstMap, srcMap)
+				continue
+			}
+		}
+
+		if sm, ok := srcVal.(map[string]any); ok {
+			dst[key] = deepCopyMap(sm)
+		} else {
+			dst[key] = srcVal
+		}
+	}
 }

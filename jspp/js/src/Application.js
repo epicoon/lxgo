@@ -3,6 +3,7 @@
 // @lx:require client/components/;
 // @lx:context>
 
+let _params = {};
 let _settings = {};
 let _root = null;
 let _autoParent = [];
@@ -41,6 +42,7 @@ function _componentsMap() {
 // @lx:namespace lx;
 class Application {
     constructor() {
+        this.params = {};
         this._components = {};
         this.registerComponents(_componentsMap());
     }
@@ -118,6 +120,7 @@ class Application {
     /**
      * @param [config] {Object:{
      *     [root] {lx.Box|Object|bool},
+     *     [params] {Dict},
      *     [settings] {Dict},
      *     [components] {Object},
      *     [modulesCode] {String},
@@ -128,6 +131,13 @@ class Application {
             let css = new lx.CssTag({id:'lxbody'});
             css.addCss('.lxbody{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden}.lx-abspos{position:absolute}.lxps-grid-v{display:grid;grid-auto-flow:row;grid-template-columns:1fr;grid-auto-rows:auto}.lxps-grid-h{display:grid;grid-auto-flow:column;grid-template-rows:1fr;grid-auto-columns:auto}input{overflow:hidden;visibility:inherit;box-sizing:border-box}div{overflow:visible;visibility:inherit;box-sizing:border-box;color:inherit}');
             css.commit();
+        }
+
+        if (config.params) {
+            _params = config.params;
+            for (let name in _params) Object.defineProperty(this.params, name, {
+                get: ()=>_params[name]
+            });
         }
 
         if (config.settings)

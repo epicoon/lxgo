@@ -1,6 +1,6 @@
 # The package helps to work with JS
 
-> Actual version: `v0.1.0-alpha.20`. [Details](https://github.com/epicoon/lxgo/tree/master/jspp/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.21`. [Details](https://github.com/epicoon/lxgo/tree/master/jspp/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -12,7 +12,7 @@
 * CSS organization:
   - Simple CSS-preprocessor on JS
   - Presets
-  - Widgets customization
+  - Widgets customization using CSS-scopes
 * Models and binding reactivity mechanisms
 * Internationalization
 * Simple AJAX handling
@@ -26,6 +26,7 @@
 * [Application components](https://github.com/epicoon/lxgo/tree/master/jspp/doc/components.md)
 * [Elements](https://github.com/epicoon/lxgo/tree/master/jspp/doc/elements.md)
 * [Widgets](https://github.com/epicoon/lxgo/tree/master/jspp/doc/widgets.md)
+* [CSS](https://github.com/epicoon/lxgo/tree/master/jspp/doc/css.md)
 * [Models and binding](https://github.com/epicoon/lxgo/tree/master/jspp/doc/models.md)
 * [Plugins](https://github.com/epicoon/lxgo/tree/master/jspp/doc/plugins.md)
 * [Preprocessor features](https://github.com/epicoon/lxgo/tree/master/jspp/doc/pp.md)
@@ -33,6 +34,5 @@
 
 
 TODO add info
-  - all about css (context, presets, scopes)
   - ajax
   - tools (lx.Timer, lx.TableManager ect.)

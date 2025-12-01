@@ -29,7 +29,7 @@
 // @lx:namespace lx;
 class TreeBox extends lx.Box {
 	static initCss(css) {
-		css.useHolder(lx.BasicCssContext);
+		css.useExtender(lx.BasicCssContext);
 		css.addClass('lx-TreeBox', {
 			color: css.preset.textColor,
 			overflow: 'auto',

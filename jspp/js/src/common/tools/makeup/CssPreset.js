@@ -4,6 +4,22 @@ class CssPreset {
         _init(this);
     }
 
+    /**
+     * @abstract
+     * @returns {Object}
+     */
+    getSettings() {
+        return {};
+    }
+
+    /**
+     * @abstract
+     * @returns {Object}
+     */
+    injectElementsCss() {
+        return {};
+    }
+
     createProperty(...args) {
         return new lx.CssValue(this, '', args.join(' '));
     }
@@ -23,10 +39,6 @@ class CssPreset {
         return new lx.CssValue(this, '', 'linear-gradient(' + dir + ',' + color0 + ',' + color1 + ')');
     }
     
-    getSettings() {
-        return {};
-    }
-
     get name() {
         return lx.self(getName());
     }

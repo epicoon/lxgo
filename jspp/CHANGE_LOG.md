@@ -1,9 +1,19 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2025.12.01
+Version: v0.1.0-alpha.21
+Changes:
+- add: lx.CssContext @media support
+- add: lx.Preset.injectElementsCss()
+- add: lx.app params from server
+- add: JS-application local config
+- refactor: plugin require via config now without inline -U flag
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2025.11.12
 Version: v0.1.0-alpha.20
 Changes:
-- refactor - tost messages can be removed by click in any cases
-- fix lx.Rect click event for touchscreen
+- refactor: tost messages can be removed by click in any cases
+- fix: lx.Rect click event for touchscreen
 
 ------------------------------------------------------------------------------------------------------------------------
 Date: 2025.11.05
