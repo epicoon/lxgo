@@ -306,8 +306,8 @@ class CssClass {
             let iSpecification = this.specification[specificationName];
             if (specificationName == 'disabled') {
                 specificationName = className + '[' + specificationName + ']';
-            } else if (specificationName[0] == ':') {
-                specificationName = className + specificationName;
+            } else if (/^[a-z]/.test(specificationName)) {
+                specificationName = className + ':' + specificationName;
             } else if (specificationName == '@media') {
                 for (let cond in iSpecification) {
                     if (!(cond in renderScope.media))
@@ -317,7 +317,7 @@ class CssClass {
                 }
                 continue;
             } else {
-                specificationName = className + ':' + specificationName;
+                specificationName = className + specificationName;
             }
             text += specificationName + '{' + _getContentString(this.context, iSpecification) + '}';
         }
