@@ -144,6 +144,24 @@ class CssManager extends lx.AppComponentSettable {
 
     /**
      * @param {String} name
+     * @param {Object} params
+     */
+    updatePreset(name, params) {
+        if (lx.isObject(name)) {
+            params = name;
+            name = null;
+        }
+
+        const preset = this.getPreset(name);
+        preset.update(params);
+        for (let i in _scopes) {
+            if (_scopes[i].context.preset !== preset) continue;
+            _scopes[i].update();
+        }
+    }
+
+    /**
+     * @param {String} name
      */
     setDefaultPreset(name) {
         if (this.settings.defaultPreset) {
@@ -158,7 +176,7 @@ class CssManager extends lx.AppComponentSettable {
      * @returns {lx.CssPreset|null}
      */
     getPreset(name = null) {
-        if (name === null)
+        if (name === null || name === '')
             return this.presets.get(this.getPresetName());
 
         if (lx.isString(name))

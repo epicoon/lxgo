@@ -1,14 +1,18 @@
+const _priv = new WeakMap();
+
 // @lx:namespace lx;
 class CssPreset {
     constructor() {
-        _init(this);
+        _priv.set(this, { params: {} });
+        this.ready = false;
+        this.update(this.getParams());
     }
 
     /**
      * @abstract
      * @returns {Object}
      */
-    getSettings() {
+    getParams() {
         return {};
     }
 
@@ -18,6 +22,28 @@ class CssPreset {
      */
     injectElementsCss() {
         return {};
+    }
+
+    /**
+     * @param {Object} params
+     */
+    update(params) {
+        const store = _priv.get(this) || {};
+        store.params = Object.assign({}, store.params, params);
+        _priv.set(this, store);
+
+        if (!this.ready) {
+            for (let name in store.params) {
+                Object.defineProperty(this, name, {
+                    get: function() {
+                        const p = _priv.get(this);
+                        return new lx.CssValue(this, name, p.params[name]);
+                    },
+                    enumerable: true,
+                });
+            }
+            this.ready = true;
+        }
     }
 
     createProperty(...args) {
@@ -45,17 +71,6 @@ class CssPreset {
 
     static getName() {
         return null;
-    }
-}
-
-function _init(self) {
-    const map = self.getSettings();
-    for (let name in map) {
-        Object.defineProperty(self, name, {
-            get: function() {
-                return new lx.CssValue(self, name, map[name]);
-            }
-        });
     }
 }
 

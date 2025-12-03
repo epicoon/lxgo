@@ -53,24 +53,15 @@ class CssScope {
      */
     addElement(elemClass) {
         if (!elemClass || !lx.isFunction(elemClass)) return;
-        if (this.elems.includes(elemClass.getKey()))
+
+        const className = elemClass.lxFullName();
+        if (this.elems.includes(className))
             return;
 
-        let fInitCss = null;
-        const preset = this.context.preset,
-            injections = preset.injectElementsCss(),
-            className = elemClass.lxFullName();
-        if (className in injections) fInitCss = injections[className];
-        else if (elemClass.initCss && !lx.app.functionHelper.isEmptyFunction(elemClass.initCss))
-            fInitCss = elemClass.initCss;
-        if (fInitCss === null) return;
-
-        const context = new lx.CssContext();
-        if (this.name !== _defaultName)
-            context.setPrefix(this.name);
-        context.usePreset(preset);
-        fInitCss.call(elemClass, context);
-        let css = context.toString();
+        const context = _initCss(this, elemClass);
+        if (context === null) return;
+        const css = context.toString();
+        if (css === '') return;
 
         // @lx:<context CLIENT:
         const cssTag = new lx.CssTag({id: this.name});
@@ -85,7 +76,50 @@ class CssScope {
         for (let i in nn)
             this.classes.lxPushUnique(nn[i]);
         this.context.merge(context);
-        this.elems.push(elemClass.getKey());
+        this.elems.push(className);
+    }
+
+    update() {
+        const preset = this.context.preset;
+        this.classes = [];
+        this.context = new lx.CssContext();
+        // @lx:<context CLIENT:
+        const cssTag = new lx.CssTag({id: this.name});
+        cssTag.setCss('');
+        // @lx:context>
+        // @lx:<context SERVER:
+        this.css = '';
+        // @lx:context>
+        this.context.usePreset(preset);
+        if (this.name !== _defaultName)
+            this.context.setPrefix(this.name);
+
+        for (let i in this.elems) {
+            const className = this.elems[i],
+                elemClass = lx.getClassConstructor(className);
+            if (!elemClass) continue;
+
+            const context = _initCss(this, elemClass);
+            if (context === null) continue;
+            const css = context.toString();
+            if (css === '') continue;
+
+            // @lx:<context CLIENT:
+            cssTag.addCss(css);
+            // @lx:context>
+            // @lx:<context SERVER:
+            this.css += css;
+            // @lx:context>
+
+            let nn = context.getClassNames();
+            for (let i in nn)
+                this.classes.lxPushUnique(nn[i]);
+            this.context.merge(context);
+        }
+
+        // @lx:<context CLIENT:
+        cssTag.commit();
+        // @lx:context>
     }
 
     /**
@@ -98,4 +132,31 @@ class CssScope {
         let key = '.' + name;
         return this.classes.includes(key);
     }
+}
+
+/**
+ * @private
+ * @param {CssScope} self
+ * @param {Function<lx.Element.constructor>} elemClass
+ * @param {String} className
+ * @returns {lx.CssContext}
+ */
+function _initCss(self, elemClass) {
+    const preset = self.context.preset,
+        className = elemClass.lxFullName();
+
+    let fInitCss = null;
+    const injections = preset.injectElementsCss();
+    if (className in injections) fInitCss = injections[className];
+    else if (elemClass.initCss && !lx.app.functionHelper.isEmptyFunction(elemClass.initCss))
+        fInitCss = elemClass.initCss;
+    if (fInitCss === null) return null;
+
+    const context = new lx.CssContext();
+    if (self.name !== _defaultName)
+        context.setPrefix(self.name);
+    context.usePreset(preset);
+
+    fInitCss.call(elemClass, context);
+    return context;
 }

@@ -6,7 +6,7 @@ class CssPresetWhite extends lx.CssPreset {
         return 'white';
     }
 
-    getSettings() {
+    getParams() {
         return {
             mainBackgroundColor: 'white',
             altMainBackgroundColor: '#F0F0F0',

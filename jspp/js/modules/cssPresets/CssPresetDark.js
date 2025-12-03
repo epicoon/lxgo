@@ -6,7 +6,7 @@ class CssPresetDark extends lx.CssPreset {
         return 'dark';
     }
 
-    getSettings() {
+    getParams() {
         return {
             mainBackgroundColor: '#272822',
             altMainBackgroundColor: '#3E434C',

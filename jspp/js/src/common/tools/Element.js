@@ -9,11 +9,11 @@ class Element {
 
     // @lx:<context CLIENT:
     /**
-     * @param {String} key - called method key  ключ вызываемого метода
-     * @param {Array} params - paramrters to call method
+     * @param {String} method - called method name
+     * @param {Array} params - parameters to call method
      */
-    static ajax(key, params = []) {
-        return new lx.ElementRequest(this.getKey(), key, params);
+    static ajax(method, params = []) {
+        return new lx.ElementRequest(this.getKey(), method, params);
     }
 
     /**
