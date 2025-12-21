@@ -27,13 +27,6 @@ func (r *Response) SetCode(code int) {
 	r.code = code
 }
 
-func (r *Response) Code() int {
-	if r.code == 0 {
-		return http.StatusOK
-	}
-	return r.code
-}
-
 func (r *Response) AddHeader(key, val string) {
 	r.headers[key] = val
 }
@@ -58,6 +51,21 @@ func (r *Response) SetJsonData(data any) error {
 	r.data = string(jsonBody)
 	r.dataType = typeJson
 	return nil
+}
+
+func (r *Response) Code() int {
+	if r.code == 0 {
+		return http.StatusOK
+	}
+	return r.code
+}
+
+func (r *Response) Headers() map[string]string {
+	return r.headers
+}
+
+func (r *Response) Data() string {
+	return r.data
 }
 
 func (r *Response) Send(w http.ResponseWriter) {

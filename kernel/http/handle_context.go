@@ -14,10 +14,19 @@ type HandleContext struct {
 	writer   http.ResponseWriter
 	request  *http.Request
 	resource kernel.IHttpResource
+	params   map[string]any
 	metaData map[any]any
 }
 
 var _ kernel.IHandleContext = (*HandleContext)(nil)
+
+func NewHandleContext(app kernel.IApp, route string, res kernel.IHttpResource) kernel.IHandleContext {
+	return &HandleContext{
+		app:      app,
+		route:    route,
+		resource: res,
+	}
+}
 
 func (h *HandleContext) App() kernel.IApp {
 	return h.app
@@ -49,6 +58,14 @@ func (c *HandleContext) Request() *http.Request {
 func (c *HandleContext) Has(key any) bool {
 	_, exists := c.metaData[key]
 	return exists
+}
+
+func (c *HandleContext) SetParams(params map[string]any) {
+	c.params = params
+}
+
+func (c *HandleContext) Params() map[string]any {
+	return c.params
 }
 
 func (c *HandleContext) Set(key any, value any) {

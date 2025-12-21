@@ -190,6 +190,8 @@ type IHandleContext interface {
 	Request() *http.Request
 	Resource() IHttpResource
 	Has(key any) bool
+	SetParams(params map[string]any)
+	Params() map[string]any
 	Set(key any, value any)
 	Get(key any) any
 }
@@ -225,11 +227,13 @@ type IHttpResource interface {
 
 type IHttpResponse interface {
 	SetCode(code int)
-	Code() int
 	AddHeader(key, val string)
 	SetError(code int, msg string)
 	SetHtmlData(data string)
 	SetJsonData(data any) error
+	Code() int
+	Headers() map[string]string
+	Data() string
 	Send(w http.ResponseWriter)
 }
 

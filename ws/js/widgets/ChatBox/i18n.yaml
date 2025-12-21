@@ -1,0 +1,222 @@
+en-EN:
+  send: Send
+  noConnection: The conenction is absent
+  noChannel: The channel is not found
+  allLabel: All
+
+  newMate: New mate
+  Dog: Dog
+  Cow: Cow
+  Cat: Cat
+  Horse: Horse
+  Donkey: Donkey
+  Tiger: Tiger
+  Lion: Lion
+  Panther: Panther
+  Leopard: Leopard
+  Cheetah: Cheetah
+  Bear: Bear
+  Elephant: Elephant
+  PolarBear: Polar bear
+  Turtle: Turtle
+  Tortoise: Tortoise
+  Crocodile: Crocodile
+  Rabbit: Rabbit
+  Porcupine: Porcupine
+  Hare: Hare
+  Hen: Hen
+  Pigeon: Pigeon
+  Albatross: Albatross
+  Crow: Crow
+  Fish: Fish
+  Dolphin: Dolphin
+  Frog: Frog
+  Whale: Whale
+  Alligator: Alligator
+  Eagle: Eagle
+  FlyingSquirrel: Flying squirrel
+  Ostrich: Ostrich
+  Fox: Fox
+  Goat: Goat
+  Jackal: Jackal
+  Emu: Emu
+  Armadillo: Armadillo
+  Eel: Eel
+  Goose: Goose
+  ArcticFox: Arctic fox
+  Wolf: Wolf
+  Beagle: Beagle
+  Gorilla: Gorilla
+  Chimpanzee: Chimpanzee
+  Monkey: Monkey
+  Beaver: Beaver
+  Orangutan: Orangutan
+  Antelope: Antelope
+  Bat: Bat
+  Badger: Badger
+  Giraffe: Giraffe
+  HermitCrab: Hermit crab
+  GiantPanda: Giant panda
+  Hamster: Hamster
+  Cobra: Cobra
+  HammerheadShark: Hammerhead shark
+  Camel: Camel
+  Hawk: Hawk
+  Deer: Deer
+  Chameleon: Chameleon
+  Hippopotamus: Hippopotamus
+  Jaguar: Jaguar
+  Chihuahua: Chihuahua
+  KingCobra: King cobra
+  Ibex: Ibex
+  Lizard: Lizard
+  Koala: Koala
+  Kangaroo: Kangaroo
+  Iguana: Iguana
+  Llama: Llama
+  Chinchillas: Chinchillas
+  Dodo: Dodo
+  Jellyfish: Jellyfish
+  Rhinoceros: Rhinoceros
+  Hedgehog: Hedgehog
+  Zebra: Zebra
+  Possum: Possum
+  Wombat: Wombat
+  Bison: Bison
+  Bull: Bull
+  Buffalo: Buffalo
+  Sheep: Sheep
+  Meerkat: Meerkat
+  Mouse: Mouse
+  Otter: Otter
+  Sloth: Sloth
+  Owl: Owl
+  Vulture: Vulture
+  Flamingo: Flamingo
+  Racoon: Racoon
+  Mole: Mole
+  Duck: Duck
+  Swan: Swan
+  Lynx: Lynx
+  MonitorLizard: Monitor lizard
+  Elk: Elk
+  Boar: Boar
+  Lemur: Lemur
+  Mule: Mule
+  Baboon: Baboon
+  Mammoth: Mammoth
+  Blue: Blue whale
+  Rat: Rat
+  Snake: Snake
+  Peacock: Peacock
+
+ru-RU:
+  send: Отправить
+  noConnection: Соединение отсутствует
+  allLabel: Для всех
+
+  newMate: Новый участник
+  Dog: Собака
+  Cow: Корова
+  Cat: Кошка
+  Horse: Лошадь
+  Donkey: осел
+  Tiger: Тигр
+  Lion: Лев
+  Panther: Пантера
+  Leopard: Леопард
+  Cheetah: Гепард
+  Bear: Медведь
+  Elephant: Слон
+  PolarBear: Полярный медведь
+  Turtle: Черепаха
+  Tortoise: Черепаха
+  Crocodile: Крокодил
+  Rabbit: Кролик
+  Porcupine: Дикобраз
+  Hare: Заяц
+  Hen: Курицы
+  Pigeon: Голубь
+  Albatross: Альбатрос
+  Crow: Ворона
+  Fish: Рыбы
+  Dolphin: Дельфин
+  Frog: Лягушка
+  Whale: Кит
+  Alligator: Аллигатор
+  Eagle: Орел
+  FlyingSquirrel: Белка-летяга
+  Ostrich: Страус
+  Fox: Лиса
+  Goat: Козел
+  Jackal: Шакал
+  Emu: Эму
+  Armadillo: Броненосец
+  Eel: Угорь
+  Goose: Гусь
+  ArcticFox: Арктическая лиса
+  Wolf: Волк
+  Beagle: Бигль
+  Gorilla: Горилла
+  Chimpanzee: Шимпанзе
+  Monkey: Обезьяна
+  Beaver: Бобер
+  Orangutan: Орангутанг
+  Antelope: Антилопа
+  Bat: Летучая мышь
+  Badger: Барсук
+  Giraffe: Жирафа
+  HermitCrab: Рак-Отшельник
+  GiantPanda: Большая панда
+  Hamster: Хомяк
+  Cobra: Кобра
+  HammerheadShark: Акула-молот
+  Camel: Верблюд
+  Hawk: Ястреб
+  Deer: Олень
+  Chameleon: Хамелеон
+  Hippopotamus: Бегемот
+  Jaguar: Ягуар
+  Chihuahua: Чихуахуа
+  KingCobra: Королевская кобра
+  Ibex: Козерог
+  Lizard: Ящерица
+  Koala: Коала
+  Kangaroo: Кенгуру
+  Iguana: Игуана
+  Llama: Лама
+  Chinchillas: Шиншиллы
+  Dodo: Додо
+  Jellyfish: Медуза
+  Rhinoceros: Носорог
+  Hedgehog: Ёж
+  Zebra: Зебра
+  Possum: Опоссум
+  Wombat: Вомбат
+  Bison: Бизон
+  Bull: Бык
+  Buffalo: Баффало
+  Sheep: Овец
+  Meerkat: Сурикат
+  Mouse: Мышь
+  Otter: Выдра
+  Sloth: Лень
+  Owl: Сова
+  Vulture: Стервятник
+  Flamingo: Фламинго
+  Racoon: Енот
+  Mole: Крот
+  Duck: Утка
+  Swan: Лебедь
+  Lynx: Рысь
+  MonitorLizard: Варан
+  Elk: Лось
+  Boar: Кабан
+  Lemur: Лемур
+  Mule: Мул
+  Baboon: Бабуин
+  Mammoth: Мамонт
+  Blue: Синий кит
+  Rat: Крыса
+  Snake: Змея
+  Peacock: Павлин

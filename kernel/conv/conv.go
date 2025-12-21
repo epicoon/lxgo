@@ -65,6 +65,11 @@ func ToMap(s any) map[string]any {
 	return result
 }
 
+func GetMapItem[T any](m map[string]any, item string) (T, error) {
+	d := kernel.Dict(m)
+	return GetDictItem[T](&d, item)
+}
+
 func GetDictItem[T any](d *kernel.Dict, item string) (T, error) {
 	val, exists := (*d)[item]
 	if !exists {
@@ -112,6 +117,13 @@ func GetDictItem[T any](d *kernel.Dict, item string) (T, error) {
 			result = any(str).(T)
 		} else {
 			return *new(T), fmt.Errorf("wrong value type for '%v': expected string, got %T", item, val)
+		}
+	case map[string]any:
+		conf, ok := val.(kernel.Config)
+		if ok {
+			result = any(conf.ToMap()).(T)
+		} else {
+			return *new(T), fmt.Errorf("wrong value type for '%v': expected map[string]any, got %T", item, val)
 		}
 	default:
 		typedVal, ok := val.(T)
@@ -283,20 +295,21 @@ func getFieldValue(config *kernel.Dict, fieldName string, fieldType reflect.Type
 		return resultMap.Interface(), nil
 
 	case reflect.Struct:
-		dict, err := GetDictItem[kernel.Dict](config, fieldName)
-		if err != nil {
-			d, err := GetDictItem[kernel.Config](config, fieldName)
-			if err != nil {
-				return nil, err
-			}
-			dict = d.ToDict()
+		raw := (*config)[fieldName]
+
+		dict, ok := convertToDict(raw)
+		if !ok {
+			return nil, fmt.Errorf("expected object for '%s', got %T", fieldName, raw)
 		}
+
 		ptr := reflect.New(fieldType)
-		err = DictToStruct(&dict, ptr.Interface())
-		if err != nil {
+		if err := DictToStruct(&dict, ptr.Interface()); err != nil {
 			return nil, err
 		}
 		return ptr.Elem().Interface(), nil
+
+	case reflect.Interface:
+		return (*config)[fieldName], nil
 
 	default:
 		return nil, fmt.Errorf("unsupported field type: %s", fieldType)
@@ -397,6 +410,18 @@ func convertToDict(item any) (kernel.Dict, bool) {
 	case map[string]any:
 		dict := kernel.Dict(v)
 		return dict, true
+	case *map[string]any:
+		if v == nil {
+			return nil, false
+		}
+		return kernel.Dict(*v), true
+	case kernel.Config:
+		return v.ToDict(), true
+	case *kernel.Config:
+		if v == nil {
+			return nil, false
+		}
+		return v.ToDict(), true
 	default:
 		val := reflect.ValueOf(item)
 		method := val.MethodByName("ToDict")

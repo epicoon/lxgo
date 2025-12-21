@@ -38,10 +38,6 @@ const __lims = {
  */
 // @lx:namespace lx;
 class ColorPicker extends lx.Box {
-    getBasicCss() {
-        return 'lx-ColorPicker';
-    }
-
     static initCss(css) {
         css.inheritClass('lx-ColorPicker', 'AbstractBox');
         css.addClass('lx-ColorPicker-pick', {
