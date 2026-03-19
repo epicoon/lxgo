@@ -119,9 +119,10 @@ func (p *WidgetParser) getSquare(line string, n *tree.WidgetNode) string {
 	if len(matches) == 3 {
 		key := matches[1]
 		val := matches[2]
-		if key == "f" || key == "field" {
+		switch key {
+		case "f", "field":
 			n.Field = val
-		} else if key == "m" || key == "matrix" {
+		case "m", "matrix":
 			n.Field = val
 			n.IsMatrix = true
 		}
@@ -131,11 +132,13 @@ func (p *WidgetParser) getSquare(line string, n *tree.WidgetNode) string {
 	}
 
 	// [10:10:10:10]
+	// [-10:-10:-10:-10]
 	// [10:10:10:10]px
 	// [10%:10%:10px:10px]
 	// [::10:10:10:10]
-	re = regexp.MustCompile(`^\[(?:(\d+)([\w%]*))?:(?:(\d+)([\w%]*))?:(?:(\d+)([\w%]*))?:(?:(\d+)([\w%]*))?(?::(\d+)([\w%]*))?(?::(\d+)([\w%]*))?\]([\w%]+)?`)
+	re = regexp.MustCompile(`^\[(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?(?::(-?\d+)([\w%]*))?(?::(-?\d+)([\w%]*))?\]([\w%]+)?`)
 	matches = re.FindStringSubmatch(line)
+
 	if len(matches) != 14 {
 		p.parser.AddError("wrong square brackets format")
 		return ""
@@ -158,8 +161,9 @@ func (p *WidgetParser) getSquare(line string, n *tree.WidgetNode) string {
 
 		n.Geom = append(n.Geom, res)
 	}
-	re = regexp.MustCompile(`^\[(?:\d+[\w%]*)?:(?:\d+[\w%]*)?:(?:\d+[\w%]*)?:(?:\d+[\w%]*)?(?::\d+[\w%]*)?(?::\d+[\w%]*)?\](?:[\w%]+)?\s*`)
+	re = regexp.MustCompile(`^\[(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?(?::-?\d+[\w%]*)?(?::-?\d+[\w%]*)?\](?:[\w%]+)?\s*`)
 	line = re.ReplaceAllString(line, "")
+
 	return line
 }
 

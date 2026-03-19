@@ -106,8 +106,7 @@ func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) er
 		if compConf.IsMap() {
 			//TODO
 		} else {
-			err := conv.DictToStruct((*kernel.Dict)(conf), compConf)
-			if err != nil {
+			if err := conv.DictToStruct((*kernel.Dict)(conf), compConf); err != nil {
 				return fmt.Errorf("can not set config for application component '%s': %s", c.Name(), err)
 			}
 		}

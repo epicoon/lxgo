@@ -217,6 +217,10 @@ func (c *serverConfig) Key() string {
 	return get[string](&c.absConfig, "key", "", "server")
 }
 
+func (c *serverConfig) File() string {
+	return get[string](&c.absConfig, "file", "", "server")
+}
+
 func (c *serverConfig) RootSnippet() string {
 	return get[string](&c.absConfig, "rootSnippet", "snippets/_root.js", "server")
 }

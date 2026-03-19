@@ -28,6 +28,15 @@ func (p *SyntaxParser) Run(head, line string) cvt.INode {
 	n := p.node
 	n.Op = head
 
+	if head == "call" {
+		c, _ := strings.CutPrefix(line, ":")
+		n.Code = strings.TrimLeft(c, " ")
+		if !strings.HasSuffix(n.Code, ";") {
+			n.Code += ";"
+		}
+		return n
+	}
+
 	if head == "else" {
 		return n
 	}

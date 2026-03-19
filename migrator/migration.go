@@ -64,9 +64,9 @@ func (m *migration) isApplied() bool {
 }
 
 func getMigrations(mode int) ([]*migration, error) {
-	files, err := os.ReadDir(m.path)
+	files, err := os.ReadDir(m.migrationsPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read directory %s: %w", m.path, err)
+		return nil, fmt.Errorf("failed to read directory %s: %w", m.migrationsPath, err)
 	}
 
 	var migrations []*migration

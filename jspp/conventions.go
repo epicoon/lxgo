@@ -189,6 +189,7 @@ type IPluginConfig interface {
 
 type IPluginServerConfig interface {
 	Key() string
+	File() string
 	RootSnippet() string
 	Snippets() []string
 	/**

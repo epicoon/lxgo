@@ -66,6 +66,10 @@ func (c *MigratorCommand) Config() *cmd.Config {
 					},
 				},
 			},
+			"up-seeds": cmd.ActionConfig{
+				Description: "Apply seeds",
+				Executor:    upSeeds,
+			},
 		},
 	}
 }
@@ -176,5 +180,11 @@ func down(c cmd.ICommand) error {
 
 	Down(cnt)
 
+	return nil
+}
+
+/** @type cmd.FAction */
+func upSeeds(c cmd.ICommand) error {
+	UpSeeds()
 	return nil
 }

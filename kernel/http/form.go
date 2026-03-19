@@ -1,6 +1,8 @@
 package http
 
 import (
+	"reflect"
+
 	"github.com/epicoon/lxgo/kernel"
 	"github.com/epicoon/lxgo/kernel/errors"
 )
@@ -16,6 +18,52 @@ var _ kernel.IForm = (*Form)(nil)
 func PrepareForm(f kernel.IForm) kernel.IForm {
 	configureForm(f, f.Config())
 	return f
+}
+
+func FormToMap(f kernel.IForm) map[string]any {
+	result := make(map[string]any)
+
+	val := reflect.ValueOf(f)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return result
+	}
+
+	typ := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i)
+
+		tag := field.Tag.Get("json")
+		if tag == "" {
+			continue
+		}
+		if tag == "-" {
+			continue
+		}
+
+		jsonKey := tag
+		if comma := len(tag); comma > 0 {
+			for j, c := range tag {
+				if c == ',' {
+					jsonKey = tag[:j]
+					break
+				}
+			}
+		}
+
+		if !value.CanInterface() {
+			continue
+		}
+
+		result[jsonKey] = value.Interface()
+	}
+
+	return result
 }
 
 /** @constructor */

@@ -1,5 +1,7 @@
 # Package HTTP sessions in lxgo/kernel web-applications
 
+> Actual version: `v0.1.0-alpha.2`. [Details](https://github.com/epicoon/lxgo/tree/master/session/CHANGE_LOG.md)
+
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
 1. Add app component in your app config file:
@@ -11,9 +13,21 @@ Components:
     MaxLifeTime: 36000
 ```
 
+2. Plug application component:
+```go
+import (
+	"github.com/epicoon/lxgo/session"
+)
+
+// app implements kernel.IApp
+if err := session.SetAppComponent(app, "Components.SessionStorage"); err != nil {
+    // process err
+}
+```
+
 > Sessions will be associated with request contexts (`kernel.IHandleContext`)
 
-2. Example how to use sessions:
+3. Example how to use sessions:
 ```go
 // ... somewhere in [[kernel.IHttpResource.Run()]]
 // r is kernel.IHttpResource
@@ -24,7 +38,7 @@ if err != nil {
     r.LogError("Server configuration is wrong: sessions are required", "App")
     return r.HtmlResponse(kernel.HtmlResponseConfig{
         Code: 500,
-        Html: "internal server error"
+        Html: "internal server error",
     })
 }
 

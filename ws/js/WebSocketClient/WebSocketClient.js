@@ -184,12 +184,12 @@ class WebSocketClient {
         }
 
         if (!this.isConnected()) return;
-        _sendDataForce(this, {__lxws_action__:'close'});
+        _sendData(this, {__lxws_action__:'close'}, true);
     }
 
     break() {
         if (!this.isConnected()) return;
-        _sendDataForce(this, {__lxws_action__:'break'});
+        _sendData(this, {__lxws_action__:'break'}, true);
     }
 
     request(route, params = {}) {
@@ -1063,37 +1063,27 @@ function _getConnectionData(self) {
 }
 
 function _sendConnectionData(self) {
-    _sendDataForce(self, _getConnectionData(self));
+    _sendData(self, _getConnectionData(self), true);
 }
 
 function _sendReconnectionData(self, oldId) {
     let data = _getConnectionData(self);
     data.__lxws_action__ = 'reconnect';
     data.oldConnectionId = oldId;
-    _sendDataForce(self, data);
+    _sendData(self, data, true);
 }
 
-function _sendData(self, data) {
+function _sendData(self, data, force = false) {
     if (!self.isConnected()) return;
 
-    for (let i in self._onBeforeSend) {
-        let handler = self._onBeforeSend[i],
-            event = new lx.socket.ConnectionEvent('beforeSend', this, data);
-        if (handler(event) === false) return;
+    if (!('__lxws_action__' in data)) {
+        for (let i in self._onBeforeSend) {
+            let handler = self._onBeforeSend[i],
+                event = new lx.socket.ConnectionEvent('beforeSend', this, data);
+            if (handler(event) === false) return;
+        }
     }
 
-    if (self._timer) self._buffer.push(data);
+    if (!force && self._timer) self._buffer.push(data);
     else self._socket.send(JSON.stringify(data));
-}
-
-function _sendDataForce(self, data) {
-    if (!self.isConnected()) return;
-
-    for (let i in self._onBeforeSend) {
-        let handler = self._onBeforeSend[i],
-            event = new lx.socket.ConnectionEvent('beforeSend', this, data);
-        if (!handler(event)) return;
-    }
-
-    self._socket.send(JSON.stringify(data));
 }

@@ -36,7 +36,10 @@ func NewMigratorCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 		return nil
 	}
 
-	migrator.Init(connection.DB(), "migrations")
+	migrator.Init(migrator.Config{
+		DB:             connection.DB(),
+		MigrationsPath: "migrations",
+	})
 
 	return migrator.NewCommand()
 }

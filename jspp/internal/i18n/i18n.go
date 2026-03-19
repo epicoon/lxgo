@@ -1,6 +1,7 @@
 package i18n
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -51,6 +52,7 @@ func (m *I18nMap) Localize(text string, lang string) string {
 		orig := text[start : end+1]
 		var params map[string]string
 		key, params = extractParams(key)
+		key = strings.Trim(key, `'"`)
 
 		var tr string
 		if ok {
@@ -58,21 +60,18 @@ func (m *I18nMap) Localize(text string, lang string) string {
 		}
 		if tr != "" {
 			if len(params) > 0 {
-				re := regexp.MustCompile(`\$\{(.+?)\}`)
-				tr = re.ReplaceAllStringFunc(tr, func(s string) string {
-					matches := re.FindStringSubmatch(s)
-					if len(matches) < 2 {
-						return s
-					}
-					k := matches[1]
-					val, exists := params[k]
-					if !exists {
-						val = ""
-					}
-					return val
-				})
+				tr = "`" + tr + "`"
+				pp := make([]string, len(params))
+				i := 0
+				for key, val := range params {
+					pp[i] = key + "=" + val
+					i++
+				}
+				spp := "let " + strings.Join(pp, ",") + ";"
+				tr = fmt.Sprintf("(()=>{%sreturn %s})()", spp, tr)
+			} else {
+				tr = "'" + tr + "'"
 			}
-			tr = "'" + tr + "'"
 			text = strings.Replace(text, orig, tr, 1)
 			continue
 		}

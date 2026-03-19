@@ -37,8 +37,7 @@ func SetAppComponent(app kernel.IApp, configKey string) error {
 	}
 
 	pp := NewJSPreprocesor()
-	err := lxApp.InitComponent(pp, app, configKey)
-	if err != nil {
+	if err := lxApp.InitComponent(pp, app, configKey); err != nil {
 		return fmt.Errorf("can not init js-preprocessor component: %s", err)
 	}
 

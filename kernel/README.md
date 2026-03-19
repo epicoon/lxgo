@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.20`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.21`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -57,6 +57,13 @@ You can create your own web-server - an application with components, routing and
 ```yaml
 # Port your app will use
 Port: 8081
+```
+
+You can get application config param:
+```go
+// app kernel.IApp
+param1 := app.ConfigParam("ParamKey")
+param2 := app.ConfigParam("Object.ParamKey")
 ```
 
 
@@ -579,6 +586,12 @@ There are several events of application lifecycle:
         | -------- | --------------------- |
         | context  | kernel.IHandleContext |
         | response | kernel.IHttpResponse  |
+* `kernel.EVENT_APP_BEFORE_FINAL`
+    - **trigger**: before application final
+    - **payload**: `NONE`
+* `kernel.EVENT_APP_BEFORE_FAIL`
+    - **trigger**: before application failed or panic
+    - **payload**: `NONE`
 * `kernel.EVENT_RENDERER_BEFORE_RENDER`
     - **trigger**: before `app.TemplateRenderer()` render a template
     - **payload**:

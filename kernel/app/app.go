@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"strconv"
+	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
 	"github.com/epicoon/lxgo/kernel/config"
@@ -172,6 +174,26 @@ func (app *App) SetConfigParam(key string, val any) {
 	), "Config")
 }
 
+func (app *App) ConfigParam(key string) any {
+	conf := app.Config()
+	path := strings.Split(key, ".")
+	for i, step := range path {
+		if !config.HasParam(conf, step) {
+			return nil
+		}
+		if i == len(path)-1 {
+			val, _ := config.GetParam[any](conf, step)
+			return val
+		}
+		tryConf, err := config.GetParam[kernel.Config](conf, step)
+		if err != nil {
+			return nil
+		}
+		conf = &tryConf
+	}
+	return nil
+}
+
 func (app *App) Config() *kernel.Config {
 	return app.config
 }
@@ -267,7 +289,9 @@ func (app *App) SetLogger(l kernel.ILogger) {
 func (app *App) Run() {
 	defer func() {
 		if r := recover(); r != nil {
+			app.events.Trigger(kernel.EVENT_APP_BEFORE_FAIL)
 			fmt.Printf("Panic: %s\n", r)
+			debug.PrintStack()
 			return
 		}
 	}()
@@ -276,24 +300,31 @@ func (app *App) Run() {
 
 	if app.manageSocket != nil {
 		if err := app.manageSocket.Run(); err != nil {
-			log.Fatalf("Manage socket failed: %v", err)
+			fmt.Printf("Manage socket failed: %v\n", err)
+			return
 		}
 	}
 
 	app.router.Start()
 
-	if err := http.ListenAndServe(":"+strconv.Itoa(app.port), nil); err != nil {
-		log.Fatalf("Could not start server: %s\n", err.Error())
+	srv := http.Server{Addr: ":" + strconv.Itoa(app.port), Handler: nil}
+	if err := srv.ListenAndServe(); err != nil {
+		fmt.Printf("Could not start server: %s\n", err.Error())
+		return
 	}
 
 	for _, c := range app.components {
 		if err := c.Run(); err != nil {
-			log.Fatalf("Could not start app component '%s': %s\n", c.Name(), err.Error())
+			srv.Close()
+			fmt.Printf("Could not start app component '%s': %s\n", c.Name(), err.Error())
+			return
 		}
 	}
 }
 
 func (app *App) Final() {
+	app.events.Trigger(kernel.EVENT_APP_BEFORE_FINAL)
+
 	if app.connection != nil {
 		app.connection.Close()
 	}

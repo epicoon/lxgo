@@ -1,6 +1,6 @@
 # The package helps to work with the Web Socket protocol
 
-> Actual version: `v0.1.0-alpha.1`. [Details](https://github.com/epicoon/lxgo/tree/master/ws/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.2`. [Details](https://github.com/epicoon/lxgo/tree/master/ws/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 

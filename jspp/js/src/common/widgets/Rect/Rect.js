@@ -22,7 +22,13 @@
  *     beforeHide,
  *     displayout,
  *     displayin,
- *     display
+ *     display,
+ *     moveBegin,
+ *     beforeMove,
+ *     move,
+ *     resizeBegin,
+ *     moveEnd,
+ *     resizeEnd
  * ]
  */
 // @lx:namespace lx;
@@ -338,6 +344,15 @@ class Rect extends lx.Element {
     
     //==================================================================================================================
     /* 2. Common */
+    // addData(object)
+    // addData(key, val)
+    addData(key, val) {
+        if (!this.data) this.data = {};
+        if (lx.isString(key)) this.data[key] = val;
+        else if (lx.isObject(key))
+            for (let i in key) this.addData(i, key[i]);
+    }
+
     renderHtml() {
         return this.domElem.content;
     }

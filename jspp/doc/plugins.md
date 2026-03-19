@@ -58,10 +58,14 @@
       cacheType: 'on'
 
       server:
+        # If you need specific Plugin Go-implementation
         key: namespace.ExamplePlugin
+        # If you need specific Plugin code for server rendering
+        file: Plugin.js
         rootSnippet: snippets/_root.js
         snippets:
           - snippets
+        # Ways to plug snippets
         snippetsMap:
           ext1: "@alias/externalSnippet.js"
           ext2:

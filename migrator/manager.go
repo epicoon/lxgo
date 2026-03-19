@@ -6,8 +6,9 @@ import (
 )
 
 type manager struct {
-	db   *sql.DB
-	path string
+	db             *sql.DB
+	migrationsPath string
+	seedsPath      string
 }
 
 var m = new(manager)

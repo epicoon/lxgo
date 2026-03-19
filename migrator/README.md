@@ -1,6 +1,6 @@
 # Package for manage migrations
 
-> Actual version: `v0.1.0-alpha.2`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.3`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -62,7 +62,15 @@ func NewMigratorCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
     // Init migrator and return original command:
     // First arg - connection
     // Second arg - directory for migrations
-	migrator.Init(connection.DB(), "migrations")
+	migrator.Init(migrator.Config{
+		DB: connection.DB(),
+
+		// Path to directory with migrations
+		MigrationsPath: "runtime/migrations",
+
+		// If you use seeds - path to directory with seed files
+		SeedsPath: "runtime/seeds",
+	})
 	return migrator.NewCommand()
 }
 ```
@@ -92,6 +100,7 @@ func main() {
     - `go run . migrator:up`
     - `go run . migrator:down`
     - `go run . migrator:down --count=2`
+	- `go run . migrator:up-seeds`
 
 5. An example of migration:
 ```yaml
@@ -109,4 +118,13 @@ up:
 down:
   - DROP INDEX IF EXISTS my_table_name_idx;
   - DROP TABLE IF EXISTS my_table;
+```
+
+6. An example of seeds:
+```yaml
+# filename - table_name.yaml
+- id: 1
+  field: "value for 1"
+- id: 2
+  field: "value for 2"
 ```

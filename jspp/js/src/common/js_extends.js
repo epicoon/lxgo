@@ -1,14 +1,6 @@
 /**
  * Structure
  */
-Object.defineProperty(Object.prototype, "lxGetKeys", {
-	value: function() {
-		var result = [];
-		for (var key in this) result.push(key);
-		return result;
-	}	
-});
-
 Object.defineProperty(Object.prototype, "lxClone", {
 	value: function() {
 		if (!lx.isArray(this) && !lx.isStrictObject(this)) return this;
@@ -44,8 +36,8 @@ Object.defineProperty(Object.prototype, "lxCompare", {
 			if (lx.isArray(left) && !lx.isArray(right)) return false;
 			if (lx.isObject(left) && !lx.isObject(right)) return false;
 
-			var leftKeys = left.lxGetKeys()
-				rightKeys = right.lxGetKeys();
+			var leftKeys = Object.keys(left),
+				rightKeys = Object.keys(right);
 			if (leftKeys.len != rightKeys.len) return false;
 			if (leftKeys.lxDiff(rightKeys).len || rightKeys.lxDiff(leftKeys).len) return false;
 

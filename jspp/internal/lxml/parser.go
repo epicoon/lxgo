@@ -272,7 +272,7 @@ func (p *lxmlParser) newNodeParser(lineType, depth int) cvt.INodeParser {
 }
 
 func (p *lxmlParser) defineLineType(head string) int {
-	synt := []string{"if", "elseif", "else", "for"}
+	synt := []string{"call", "if", "elseif", "else", "for"}
 	if slices.Contains(synt, head) {
 		return cvt.NodeTypeSyntax
 	}

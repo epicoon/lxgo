@@ -1,4 +1,21 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.03.19
+Version: v0.1.0-alpha.24
+Changes:
+- refactor: snippet render error processing
+- rename[js]: lx.ModelTypeEnum.INTEGER -> lx.ModelTypeEnum.NUMBER
+- fix[js]: readonly lx.Checkbox
+- fix: command preview flag `:build-maps -p`
+- add: forwarding an backend-application configuration parameter to frontend-application
+- add: component config param `ModulesIgnore []string`
+- add: Plugin config param `server.file`
+- add: JS-module lx.HashRouter
+- fix: i18n with params
+- add: lx.ModelCollection.createByData(list, byFirst = true)
+- refactor: JS client-components
+- add: lxml directive `call`
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2025.12.03
 Version: v0.1.0-alpha.23
 Changes:

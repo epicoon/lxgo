@@ -62,25 +62,15 @@ class Dependencies extends lx.AppComponent {
             need
         });
         if (config.host) modulesRequest.host = config.host;
+        const self = this;
         let onLoad = function (res) {
             if (!res.success) {
                 console.error(res.data);
                 return;
             }
 
-            //TODO ??? do we need it? Refactor anywhere
-            // let necessaryCss = lx.app.dependencies.defineNecessaryCss(res.data.css);
-            // for (let i in necessaryCss) {
-            //     let tagRequest = new lx.AssetRequest(
-            //         necessaryCss[i],
-            //         {name: 'module_asset'},
-            //         'head-top'
-            //     );
-            //     tagRequest.send();
-            // }
-
             lx.app.functionHelper.createAndCallFunction('', res.data.code);
-            if (depend) lx.app.dependencies.depend({modules: config.modules});
+            if (depend) self.noteModules(config.modules);
             if (callback) callback();
         };
 

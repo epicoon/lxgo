@@ -119,12 +119,14 @@ func GetDictItem[T any](d *kernel.Dict, item string) (T, error) {
 			return *new(T), fmt.Errorf("wrong value type for '%v': expected string, got %T", item, val)
 		}
 	case map[string]any:
-		conf, ok := val.(kernel.Config)
-		if ok {
-			result = any(conf.ToMap()).(T)
-		} else {
-			return *new(T), fmt.Errorf("wrong value type for '%v': expected map[string]any, got %T", item, val)
+		if dict, ok := convertToDict(val); ok {
+			result = any(dict.ToMap()).(T)
+			return result, nil
 		}
+		return *new(T), fmt.Errorf(
+			"wrong value type for '%v': expected map[string]any, got %T",
+			item, val,
+		)
 	default:
 		typedVal, ok := val.(T)
 		if !ok {
@@ -223,6 +225,34 @@ func getFieldValue(config *kernel.Dict, fieldName string, fieldType reflect.Type
 
 	case reflect.Uint:
 		return GetDictItem[uint](config, fieldName)
+
+	case reflect.Uint64:
+		v, err := GetDictItem[uint](config, fieldName)
+		if err != nil {
+			return nil, err
+		}
+		return uint64(v), nil
+
+	case reflect.Uint32:
+		v, err := GetDictItem[uint](config, fieldName)
+		if err != nil {
+			return nil, err
+		}
+		return uint32(v), nil
+
+	case reflect.Uint16:
+		v, err := GetDictItem[uint](config, fieldName)
+		if err != nil {
+			return nil, err
+		}
+		return uint16(v), nil
+
+	case reflect.Uint8:
+		v, err := GetDictItem[uint](config, fieldName)
+		if err != nil {
+			return nil, err
+		}
+		return uint8(v), nil
 
 	case reflect.Bool:
 		return GetDictItem[bool](config, fieldName)

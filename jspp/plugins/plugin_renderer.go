@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -40,6 +41,8 @@ type pluginRenderer struct {
 	lang  string
 	title string
 	icon  string
+
+	serverCodeBlank string
 
 	assets jspp.IAssets
 	output pluginOutput
@@ -350,6 +353,92 @@ func (r *pluginRenderer) addAssets(compiler jspp.ICompiler) {
 	for _, m := range compiler.CompiledModules() {
 		r.assets.AddModule(m)
 	}
+}
+
+func (r *pluginRenderer) getServerCode(data map[string]any) string {
+	bData, err := json.Marshal(data)
+	if err != nil {
+		r.pp.LogError("error while plugin runtime data serialization for '%s': %v", r.plugin.Name(), err)
+		return ""
+	}
+	pluginData := string(bData)
+
+	blank := r.getServerCodeBlank()
+	if blank == "" {
+		return ""
+	}
+
+	return fmt.Sprintf(blank, pluginData)
+}
+
+func (r *pluginRenderer) getServerCodeBlank() string {
+	if r.serverCodeBlank == "" {
+		plugin := r.plugin
+
+		path := plugin.Config().Server().File()
+		if path == "" {
+			return r.defaultServerCodeBlank()
+		}
+
+		var code string
+		filePath := plugin.Pathfinder().GetAbsPath(plugin.Config().Server().File())
+
+		_, err := os.Stat(filePath)
+		if err == nil {
+			d, err := os.ReadFile(filePath)
+			if err != nil {
+				r.CollectErrorf("can not read file for plugin '%s': %v", plugin.Name(), err)
+				return r.defaultServerCodeBlank()
+			}
+			code = string(d)
+		} else {
+			if errors.Is(err, os.ErrNotExist) {
+				return r.defaultServerCodeBlank()
+			} else {
+				r.CollectErrorf("problem with client file for plugin '%s': %v", plugin.Name(), err)
+				return ""
+			}
+		}
+
+		compiler := r.pp.CompilerBuilder().
+			SetLang(r.lang).
+			SetI18n(r.plugin.I18n()).
+			SetServerContext().
+			SetFilePath(filepath.Join(plugin.Path(), "_.js")).
+			SetPathfinder(plugin.Pathfinder()).
+			SetCode(code).
+			SetUnwrapped().
+			Compiler()
+		pCode, err := compiler.Run()
+		if err != nil {
+			r.CollectErrorf("can not compile code for plugin '%s': %v", plugin.Name(), err)
+			return ""
+		}
+
+		r.addAssets(compiler)
+
+		pattern := `Plugin\.__afterDefinition\(\);`
+		re := regexp.MustCompile(pattern)
+		loc := re.FindStringIndex(pCode)
+		r.serverCodeBlank = "@lx:use lx.Plugin; (()=>{" +
+			pCode[:loc[1]] +
+			"lx.globalContext.$plugin=new Plugin(%s);" +
+			pCode[loc[1]:] +
+			"})()"
+	}
+
+	return r.serverCodeBlank
+}
+
+func (r *pluginRenderer) defaultServerCodeBlank() string {
+	if r.serverCodeBlank == "" {
+		r.serverCodeBlank = `
+			@lx:use lx.Plugin;
+			const $plugin = new lx.Plugin(%s);
+			lx.globalContext.$plugin = $plugin;
+		`
+	}
+	return r.serverCodeBlank
 }
 
 func (r *pluginRenderer) eachContext(f func(pr *pluginRenderer)) {

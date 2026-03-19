@@ -1,7 +1,3 @@
-#lx:public;
-
-#lx:use lx.Box;
-
 class HintHolder {
     constructor(context) {
         this.context = context;

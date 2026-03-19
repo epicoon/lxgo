@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.03.19
+Version: v0.1.0-alpha.21
+Changes:
+- fix map parsing for conv.DictToStruct()
+- add IApp.ConfigParam(key string) any
+- add EVENT_APP_BEFORE_FAIL
+- add EVENT_APP_BEFORE_FINAL
+- add IHttpResource.Redirect(URL string, code int, params map[string]any)
+- add FormToMap(f IForm) map[string]any
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2025.12.21
 Version: v0.1.0-alpha.20
 Changes:

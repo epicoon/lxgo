@@ -146,7 +146,10 @@ func CleanupTokensTable() {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 func actualizeMigrations(app kernel.IApp) {
-	migrator.Init(app.Connection().DB(), app.Pathfinder().GetAbsPath("migrations"))
+	migrator.Init(migrator.Config{
+		DB:             app.Connection().DB(),
+		MigrationsPath: app.Pathfinder().GetAbsPath("migrations"),
+	})
 	migrator.Up()
 }
 

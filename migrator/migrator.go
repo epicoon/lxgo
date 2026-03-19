@@ -3,6 +3,7 @@ package migrator
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,9 +22,16 @@ up: | # TODO SQL to up migration
 down: | # TODO SQL to down migration
 `
 
-func Init(db *sql.DB, migrationsPath string) {
-	m.db = db
-	m.path = migrationsPath
+type Config struct {
+	DB             *sql.DB
+	MigrationsPath string
+	SeedsPath      string
+}
+
+func Init(conf Config) {
+	m.db = conf.DB
+	m.migrationsPath = conf.MigrationsPath
+	m.seedsPath = conf.SeedsPath
 }
 
 func SetDB(db *sql.DB) {
@@ -31,14 +39,14 @@ func SetDB(db *sql.DB) {
 }
 
 func SetMigrationsPath(migrationsPath string) {
-	m.path = migrationsPath
+	m.migrationsPath = migrationsPath
 }
 
 func Create(name string) error {
 	timestamp := time.Now().UTC().Format("20060102150405.000")
 	filename := fmt.Sprintf("%s_%s.yaml", timestamp, name)
-	if m.path != "" {
-		migrationsPath := strings.TrimSuffix(m.path, "/")
+	if m.migrationsPath != "" {
+		migrationsPath := strings.TrimSuffix(m.migrationsPath, "/")
 		filename = filepath.Join(migrationsPath, filename)
 	}
 	file, err := os.Create(filename)
@@ -163,8 +171,53 @@ func Down(steps int) {
 	fmt.Println("Selected migrations rolled back successfully.")
 }
 
+func UpSeeds() {
+	if m.seedsPath == "" {
+		fmt.Println("Seeds path not set.")
+		return
+	}
+
+	files, err := os.ReadDir(m.seedsPath)
+	if err != nil {
+		fmt.Printf("Seeds failed. Cause: %s\n", err)
+		return
+	}
+
+	tx, err := m.db.Begin()
+	if err != nil {
+		fmt.Printf("Seeds failed. Cause: %s\n", err)
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		if !strings.HasSuffix(file.Name(), ".yaml") {
+			continue
+		}
+
+		err = applySeed(tx, file)
+		if err != nil {
+			fmt.Printf("Seed failed. Cause: %s\n", err)
+			return
+		}
+	}
+
+	fmt.Println("Seeds applied successfully.")
+}
+
 func upMigration(tx *sql.Tx, mig *migration) error {
-	content, err := os.ReadFile(filepath.Join(m.path, mig.file))
+	content, err := os.ReadFile(filepath.Join(m.migrationsPath, mig.file))
 	if err != nil {
 		return fmt.Errorf("failed to read migration file '%s': %s", mig.file, err)
 	}
@@ -210,7 +263,7 @@ func upMigration(tx *sql.Tx, mig *migration) error {
 }
 
 func downMigration(tx *sql.Tx, mig *migration) error {
-	content, err := os.ReadFile(filepath.Join(m.path, mig.file))
+	content, err := os.ReadFile(filepath.Join(m.migrationsPath, mig.file))
 	if err != nil {
 		return fmt.Errorf("failed to read migration file '%s': %s", mig.file, err)
 	}
@@ -252,5 +305,62 @@ func downMigration(tx *sql.Tx, mig *migration) error {
 	}
 
 	fmt.Printf("Migration '%s' rolled back successfully.\n", mig.file)
+	return nil
+}
+
+func applySeed(tx *sql.Tx, file fs.DirEntry) error {
+	table := strings.TrimSuffix(file.Name(), ".yaml")
+
+	path := filepath.Join(m.seedsPath, file.Name())
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read seed file '%s': %s", file.Name(), err)
+	}
+
+	var rows []map[string]any
+
+	err = yaml.Unmarshal(content, &rows)
+	if err != nil {
+		return fmt.Errorf("failed to parse seed file '%s': %s", file.Name(), err)
+	}
+
+	for _, row := range rows {
+		err = insertRow(tx, table, row)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("Seed '%s' applied.\n", file.Name())
+
+	return nil
+}
+
+func insertRow(tx *sql.Tx, table string, row map[string]any) error {
+	cols := []string{}
+	placeholders := []string{}
+	values := []any{}
+
+	i := 1
+	for k, v := range row {
+		cols = append(cols, k)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		values = append(values, v)
+		i++
+	}
+
+	query := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (%s)",
+		table,
+		strings.Join(cols, ", "),
+		strings.Join(placeholders, ", "),
+	)
+
+	_, err := tx.Exec(query, values...)
+	if err != nil {
+		return fmt.Errorf("seed insert failed for table '%s': %s", table, err)
+	}
+
 	return nil
 }

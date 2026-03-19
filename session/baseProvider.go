@@ -25,6 +25,13 @@ func (p *BaseProvider) Clear() {
 	p.sessions = make(map[string]ISession)
 }
 
+func (p *BaseProvider) AddSession(sess ISession, sid string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	sess.SetID(sid)
+	p.sessions[sid] = sess
+}
+
 func (p *BaseProvider) SessionInit(sid string, ctx kernel.IHandleContext) (ISession, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()

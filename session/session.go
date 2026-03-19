@@ -36,6 +36,14 @@ func NewSession(id string, ctx kernel.IHandleContext) ISession {
 	return &Session{id: id, ctx: ctx, createdAt: time.Now(), data: make(map[any]any)}
 }
 
+func (s *Session) ID() string {
+	return s.id
+}
+
+func (s *Session) SetID(sid string) {
+	s.id = sid
+}
+
 func (s *Session) Context() kernel.IHandleContext {
 	return s.ctx
 }
@@ -72,13 +80,9 @@ func (s *Session) Keys() []any {
 	return slices.Collect(maps.Keys(s.data))
 }
 
-func (s *Session) Delete(key any) error {
+func (s *Session) Remove(key any) error {
 	delete(s.data, key)
 	return nil
-}
-
-func (s *Session) SessionID() string {
-	return s.id
 }
 
 func (s *Session) CreatedAt() time.Time {

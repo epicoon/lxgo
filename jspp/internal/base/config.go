@@ -19,6 +19,7 @@ type JSPreprocessorConfig struct {
 	AppConfig          string
 	CssScopeRenderSide string
 	Modules            []string
+	ModulesIgnore      []string
 	Plugins            []string
 	Targets            []Target
 }
@@ -29,6 +30,7 @@ func NewJSPreprocessorConfig() kernel.IAppComponentConfig {
 		ComponentConfig:    app.NewComponentConfigStruct(),
 		CssScopeRenderSide: "client",
 		Modules:            []string{},
+		ModulesIgnore:      []string{},
 		Plugins:            []string{},
 		Targets:            []Target{},
 	}

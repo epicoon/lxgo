@@ -4,6 +4,11 @@ class ModelCollection extends lx.Collection {
 		this.modelClass = modelClass;
 	}
 
+	getModelSchema() {
+		if (!this.modelClass) return null;
+		return this.modelClass.getSchema();
+	}
+
 	getEmptyInstance() {
 		let result = new lx.ModelCollection();
 		result.modelClass = this.modelClass;
@@ -11,7 +16,7 @@ class ModelCollection extends lx.Collection {
 	}
 
 	add(data) {
-		var obj;
+		let obj;
 		if (!data) {
 			obj = new this.modelClass;
 		} else if (lx.isInstance(data, this.modelClass)) {
@@ -89,5 +94,51 @@ class ModelCollection extends lx.Collection {
 		c.setModelClass(_am_);
 		if (list) c.load(list);
 		return c;
+	}
+
+	static createByData(list, byFirst = true) {
+		if (!lx.isArray(list)) {
+			console.error('Incorrect data for lx.ModelCollection');
+			return;
+		}
+		if (!list.length) {
+			console.error('Empty data for lx.ModelCollection');
+			return;
+		}
+
+		const conf = {
+			schema: {},
+			list
+		};
+		if (byFirst) {
+			const first = list[0];
+			for (let fName in first) {
+				let val = first[fName];
+				if (val === true || val === false) {
+					conf.schema[fName] = {type: lx.ModelTypeEnum.BOOLEAN};
+				} else if (lx.isNumber(val)) {
+					conf.schema[fName] = {type: lx.ModelTypeEnum.NUMBER};
+				} else {
+					conf.schema[fName] = {type: lx.ModelTypeEnum.STRING};
+				}
+			}
+			return this.create(conf);
+		}
+
+		for (let i = 0; l < list.length; i++) {
+			const item = list[i];
+			for (let fName in item) {
+				if (fName in conf.schema) continue;
+				let val = item[fName];
+				if (val === true || val === false) {
+					conf.schema[fName] = {type: lx.ModelTypeEnum.BOOLEAN};
+				} else if (lx.isNumber(val)) {
+					conf.schema[fName] = {type: lx.ModelTypeEnum.NUMBER};
+				} else {
+					conf.schema[fName] = {type: lx.ModelTypeEnum.STRING};
+				}
+			}
+		}
+		return this.create(conf);
 	}
 }

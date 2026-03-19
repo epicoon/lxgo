@@ -110,7 +110,7 @@ func buildMap(com cmd.ICommand, op utils.MapBuilderOptions) error {
 		return errors.New("go.mod not found")
 	}
 
-	if c.Flag("preview") {
+	if c.Flag("p") {
 		if op.Modules {
 			src := utils.GetModulesSrcList(pp)
 			fmt.Println("Modules src directories:")

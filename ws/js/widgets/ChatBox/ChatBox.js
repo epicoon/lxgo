@@ -2,7 +2,6 @@
 // @lx:module-data: i18n = i18n.yaml;
 
 // @lx:use lx.BasicCssContext;
-// @lx:use lx.Box;
 // @lx:use lx.MultiBox;
 // @lx:use lx.JointMover;
 // @lx:use lx.Dropbox;
@@ -323,7 +322,7 @@ function _initConnection(self) {
     });
 
     socket.onChannelMateEntered(self.channel, e=>_updateMateChoice(self, e));
-    socket.onChannelMateLeave(self.channel, e=>_updateMateChoice(self, e));
+    socket.onChannelMateLeft(self.channel, e=>_updateMateChoice(self, e));
     socket.onChannelMateDisconnected(self.channel, e=>_updateMateChoice(self, e));
     socket.onChannelMateReconnected(self.channel, e=>_updateMateChoice(self, e));
 

@@ -78,7 +78,7 @@ class BindableModel extends lx.Model {
 			if (!def.type) return;
 			let result = true;
 			switch (def.type) {
-				case lx.ModelTypeEnum.INTEGER:
+				case lx.ModelTypeEnum.NUMBER:
 					if (!lx.isNumber(value))
 						result = false;
 					else return +value;

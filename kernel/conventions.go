@@ -27,6 +27,7 @@ type IApp interface {
 	ConfigPath() string
 	SetConfig(c *Config)
 	SetConfigParam(key string, val any)
+	ConfigParam(key string) any
 	Config() *Config
 	SetComponent(key any, c IAppComponent)
 	HasComponent(key any) bool
@@ -222,6 +223,7 @@ type IHttpResource interface {
 	JsonResponse(conf JsonResponseConfig) IHttpResponse
 	FailResponse(conf JsonResponseConfig) IHttpResponse
 	ErrorResponse(code int, msg string) IHttpResponse
+	Redirect(URL string, code int, params map[string]any) IHttpResponse
 	PostRedirect(url string, params map[string]any) IHttpResponse
 }
 
@@ -271,6 +273,8 @@ type IErrorsCollector interface {
 const EVENT_APP_BEFORE_HANDLE_REQUEST = "appBeforeHandleRequest"
 const EVENT_APP_BEFORE_SEND_RESPONSE = "appBeforeSendResponse"
 const EVENT_APP_BEFORE_SEND_ASSET = "appBeforeSendAsset"
+const EVENT_APP_BEFORE_FINAL = "appBeforeFinal"
+const EVENT_APP_BEFORE_FAIL = "appBeforeFail"
 const EVENT_RENDERER_BEFORE_RENDER = "rendererBeforeRender"
 const EVENT_CONFIG_REFRESHED = "configRefreshed"
 

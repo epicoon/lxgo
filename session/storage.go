@@ -40,6 +40,8 @@ type Storage struct {
 	provider IProvider
 }
 
+var _ IStorage = (*Storage)(nil)
+
 func SetAppComponent(app kernel.IApp, configKey string) error {
 	if app.HasComponent(APP_COMPONENT_KEY) {
 		return fmt.Errorf("the application already has component: %s", APP_COMPONENT_KEY)
@@ -95,13 +97,20 @@ func (c *Storage) Config() *Config {
 }
 
 func (s *Storage) Scaner() IScaner {
-	return &Scaner{provider: s.provider}
+	return &Scaner{
+		storage:  s,
+		provider: s.provider,
+	}
+}
+
+func (s *Storage) SessionCookieName() string {
+	return s.Config().CookieName
 }
 
 func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	cookie, err := ctx.Request().Cookie(s.Config().CookieName)
+	cookie, err := ctx.Request().Cookie(s.SessionCookieName())
 	provider := s.getProvider()
 	if err != nil || cookie.Value == "" {
 		sid := s.sessionId()
@@ -120,7 +129,7 @@ func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession) {
 func (s *Storage) DestroySession(sess ISession) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.getProvider().DestroySession(sess.SessionID())
+	s.getProvider().DestroySession(sess.ID())
 
 	cookie, err := sess.Context().Request().Cookie(s.Config().CookieName)
 	if err != nil || cookie.Value == "" {
@@ -129,6 +138,21 @@ func (s *Storage) DestroySession(sess ISession) {
 	expiration := time.Now()
 	newCookie := http.Cookie{Name: s.Config().CookieName, Path: "/", HttpOnly: true, Expires: expiration, MaxAge: -1}
 	http.SetCookie(sess.Context().ResponseWriter(), &newCookie)
+}
+
+func (s *Storage) SessionByID(sid string) ISession {
+	provider := s.getProvider()
+	if !provider.SessionExists(sid) {
+		return nil
+	}
+	session, _ := provider.SessionRead(sid)
+	return session
+}
+
+func (s *Storage) SetSessionID(sess ISession, sid string) {
+	provider := s.getProvider()
+	provider.DestroySession(sess.ID())
+	provider.AddSession(sess, sid)
 }
 
 func (s *Storage) GC() {

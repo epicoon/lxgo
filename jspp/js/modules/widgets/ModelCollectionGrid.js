@@ -412,7 +412,7 @@ function _getDefaultColumnWidget(type) {
         //TODO - старый способ представления первичного ключа на фронте. Требует рефакторинга
         case 'pk':
 
-        case lx.ModelTypeEnum.INTEGER:
+        case lx.ModelTypeEnum.NUMBER:
         case lx.ModelTypeEnum.BOOLEAN:
             return {width: '100px'};
         case lx.ModelTypeEnum.STRING:
@@ -424,7 +424,7 @@ function _getDefaultColumnWidget(type) {
 
 function _getDefaultColumnRender(type) {
     switch (type) {
-        case lx.ModelTypeEnum.INTEGER:
+        case lx.ModelTypeEnum.NUMBER:
         case lx.ModelTypeEnum.BOOLEAN:
         case lx.ModelTypeEnum.STRING:
             return null;

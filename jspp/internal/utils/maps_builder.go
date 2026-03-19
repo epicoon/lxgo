@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
@@ -51,7 +52,7 @@ func GetModulesSrcList(pp jspp.IPreprocessor) []string {
 
 	goMm := getGoModules()
 	for _, goMod := range goMm {
-		if goMod.Dir != "" {
+		if goMod.Dir != "" && !slices.Contains(pp.Config().ModulesIgnore, goMod.Dir) {
 			mmPaths = append(mmPaths, goMod.Dir)
 		}
 	}
@@ -143,6 +144,10 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 
 	goModules := getGoModules()
 	for _, goModule := range goModules {
+		if slices.Contains(pp.Config().ModulesIgnore, goModule.Dir) {
+			continue
+		}
+
 		filepath.Walk(goModule.Dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return nil
@@ -183,6 +188,14 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 		return nil
 	}
 
+	modsPath := pp.Config().ModsPath
+	if modsPath != "" {
+		fullModsPath := pp.App().Pathfinder().GetAbsPath(modsPath)
+		if strings.HasPrefix(path, fullModsPath) {
+			return nil
+		}
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -194,9 +207,9 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 		return nil
 	}
 
-	modsPath := pp.Config().ModsPath
 	entryPath := path
 	root := pp.App().Pathfinder().GetRoot()
+
 	if strings.HasPrefix(entryPath, root) {
 		entryPath, _ = filepath.Rel(root, entryPath)
 	} else if modsPath != "" {

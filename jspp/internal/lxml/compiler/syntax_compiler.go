@@ -30,12 +30,16 @@ func newSyntaxCompiler(tc *treeCompiler, node cvt.INode) (*syntaxCompiler, error
 }
 
 func (c *syntaxCompiler) run() string {
+	op := c.node.Op
+	if op == "call" {
+		return c.node.Code
+	}
+
 	code := ""
 	if c.node.Code != "" {
 		code = "(" + c.node.Code + ")"
 	}
 
-	op := c.node.Op
 	if op == "elseif" {
 		op = "else if"
 	}

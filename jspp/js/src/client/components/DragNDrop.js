@@ -1,95 +1,108 @@
-let __moved = false,
-	__movedDelta = { x: 0, y: 0 },
-	__movedElement = null;
+let _moved = false,
+	_movedDelta = { x: 0, y: 0 },
+	_movedElement = null;
 
 // @lx:namespace lx;
 class DragNDrop extends lx.AppComponent {
+	resetDelta(elem) {
+		let X = lx.app.mouse.x,
+			Y = lx.app.mouse.y,
+			el = _getElem(elem);
+
+		if (elem.moveParams.parentResize) {
+			_movedDelta.x = X - el.left('px') - el.width('px');
+			_movedDelta.y = Y - el.top('px') - el.height('px');
+			return;
+		}
+
+		_movedDelta.x = X - el.left('px');
+		_movedDelta.y = Y - el.top('px');
+	}
+
 	move(event) {
 		event = event || window.event;
 		lx.preventDefault(event);
 
-		__moved = true;
-		__movedElement = this;
+		_moved = true;
+		_movedElement = this;
 
-		var X = event.clientX || event.changedTouches[0].clientX,
-			Y = event.clientY || event.changedTouches[0].clientY;
-
-		var el = (this.moveParams.parentMove || this.moveParams.parentResize) ? this.parent : this;
+		let X = event.clientX || event.changedTouches[0].clientX,
+			Y = event.clientY || event.changedTouches[0].clientY,
+			el = _getElem(this);
 		el.emerge();
 
 		delete el.geom.bpg;
 		delete el.geom.bpv;
 
 		if (this.moveParams.parentResize) {
-			var p = this.parent;
-			__movedDelta.x = X - p.left('px') - p.width('px');
-			__movedDelta.y = Y - p.top('px') - p.height('px');
+			_movedDelta.x = X - el.left('px') - el.width('px');
+			_movedDelta.y = Y - el.top('px') - el.height('px');
 			this.trigger('moveBegin', event);
-			this.parent.trigger('resizeBegin', event);
+			el.trigger('resizeBegin', event);
 			return;
 		}
 
-		__movedDelta.x = X - el.left('px');
-		__movedDelta.y = Y - el.top('px');
+		_movedDelta.x = X - el.left('px');
+		_movedDelta.y = Y - el.top('px');
 
 		if (this.moveParams.parentMove) this.trigger('moveBegin', event);
 		el.trigger('moveBegin', event);
 	}
 
 	useElementMoving(bool = true) {
-		var method = bool ? 'on' : 'off';
-		lx[method]('mousemove', __watchForMove);
-		lx[method]('mouseup', __resetMovedElement);
-		lx[method]('touchmove', __watchForMove);
-		lx[method]('touchend', __resetMovedElement);
+		let method = bool ? 'on' : 'off';
+		lx[method]('mousemove', _watchForMove);
+		lx[method]('mouseup', _resetMovedElement);
+		lx[method]('touchmove', _watchForMove);
+		lx[method]('touchend', _resetMovedElement);
 	}
 }
 
-function __resetMovedElement(event) {
-	if (__movedElement == null) return;
+function _resetMovedElement(event) {
+	if (_movedElement == null) return;
 
-	var el = __movedElement;
-	__moved = false;
-	__movedElement = null;
+	var el = _movedElement;
+	_moved = false;
+	_movedElement = null;
 
 	el.trigger('moveEnd', event);
 	if (el.moveParams.parentResize && el.parent) el.parent.trigger('resizeEnd', event);
 }
 
-function __watchForMove(event) {
-	if (!__moved) return;
-	if (__movedElement == null) return;
+function _watchForMove(event) {
+	if (!_moved) return;
+	if (_movedElement == null) return;
 
-	if (__movedElement.moveParams.locked) {
-		__moved = false;
-		__movedElement = null;
+	if (_movedElement.moveParams.locked) {
+		_moved = false;
+		_movedElement = null;
 		return;
 	}
 
 	event = event || window.event;
 
-	var el = __movedElement,
-		info = el.moveParams;
-	
-	var X, Y;
-	if (event.clientX) X = event.clientX;
+	let el = _movedElement,
+		info = el.moveParams,
+		X, Y;
+
+		if (event.clientX) X = event.clientX;
 	else if (event.changedTouches) X = event.changedTouches[0].clientX;
 	if (event.clientY) Y = event.clientY;
 	else if (event.changedTouches) Y = event.changedTouches[0].clientY;
 
-	var newPos = {
-		x: X - __movedDelta.x,
-		y: Y - __movedDelta.y
+	let newPos = {
+		x: X - _movedDelta.x,
+		y: Y - _movedDelta.y
 	};
 
-	if (info.parentMove) newPos = __limitPosition(el.parent, newPos, info);
-	else if (info.parentResize) newPos = __limitPositionForResize(el, newPos, info);
-	else newPos = __limitPosition(el, newPos, info);
+	if (info.parentMove) newPos = _limitPosition(_getElem(el), newPos, info);
+	else if (info.parentResize) newPos = _limitPositionForResize(el, newPos, info);
+	else newPos = _limitPosition(el, newPos, info);
 
 	el.trigger('beforeMove', event, newPos);
 
 	if (info.parentResize) {
-		var p = el.parent;
+		var p = _getElem(el);
 		if (info.xMove) p.width( newPos.x - p.left('px') + 'px' );
 		if (info.yMove) p.height( newPos.y - p.top('px') + 'px' );
 		el.trigger('move', event);
@@ -97,7 +110,7 @@ function __watchForMove(event) {
 		return;
 	}
 
-	var movedEl = (info.parentMove) ? el.parent : el;
+	let movedEl = _getElem(el);
 	if (info.xMove) movedEl.left( newPos.x + 'px' );
 	if (info.yMove) movedEl.top( newPos.y + 'px' );
 
@@ -105,8 +118,8 @@ function __watchForMove(event) {
 	movedEl.trigger('move', event);
 }
 
-function __limitPositionForResize(el, newPos, info) {
-	var p = el.parent, pp = p.parent;
+function _limitPositionForResize(el, newPos, info) {
+	var p = _getElem(el), pp = p.parent;
 	if (info.xMove) {
 		if (info.moveStep > 1) newPos.x = Math.floor( newPos.x / info.moveStep ) * info.moveStep;
 		if (info.xLimit) {
@@ -124,7 +137,7 @@ function __limitPositionForResize(el, newPos, info) {
 	return newPos;
 }
 
-function __limitPosition(el, newPos, info) {
+function _limitPosition(el, newPos, info) {
 	if (info.xMove) {
 		if (info.moveStep > 1) newPos.x = Math.floor( newPos.x / info.moveStep ) * info.moveStep;
 		if (info.xLimit) {
@@ -154,4 +167,18 @@ function __limitPosition(el, newPos, info) {
 		}
 	} else newPos.y = el.top('px');
 	return newPos;
+}
+
+function _getElem(el) {
+	const info = el.moveParams;
+	if (info.parentMove && info.parentResize)
+		throw "Wrong widget movement settings: parentMove and parentResize can not be set at the same time";
+
+	if (!info.parentMove && !info.parentResize)
+		return el;
+
+	if (info.parentMove === true || info.parentResize === true)
+		return el.parent;
+
+	return info.parentMove || info.parentResize;
 }

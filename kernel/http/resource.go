@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -175,6 +176,23 @@ func (r *Resource) ErrorResponse(code int, msg string) kernel.IHttpResponse {
 	response := new(Response)
 	response.SetError(code, msg)
 	return response
+}
+
+func (r *Resource) Redirect(URL string, code int, params map[string]any) kernel.IHttpResponse {
+	u, err := url.Parse(URL)
+	if err != nil {
+		r.LogError(fmt.Sprintf("Can not redirect to %s: %v", URL, err), "HttpHandling")
+		return nil
+	}
+	q := u.Query()
+	for k, v := range params {
+		q.Set(k, fmt.Sprint(v))
+	}
+	u.RawQuery = q.Encode()
+	URL = u.String()
+
+	http.Redirect(r.context.ResponseWriter(), r.Request(), URL, code)
+	return nil
 }
 
 func (r *Resource) PostRedirect(url string, params map[string]any) kernel.IHttpResponse {

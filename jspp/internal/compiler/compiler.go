@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
@@ -462,6 +463,38 @@ func (c *Compiler) parseAppConfig() (res string) {
 			c.pp.LogError("can not marshal to json JS-application config '%s':", cPath, err)
 		} else {
 			res = string(bConf)
+			re := regexp.MustCompile(`@config\(([^)]+)\)`)
+			res = re.ReplaceAllStringFunc(res, func(match string) string {
+				matches := re.FindStringSubmatch(match)
+				if len(matches) != 2 {
+					return match
+				}
+
+				key := matches[1]
+				val := c.app.ConfigParam(key)
+				if val == nil {
+					return "null"
+				}
+
+				sVal, ok := val.(string)
+				if ok {
+					return sVal
+				}
+				bVal, ok := val.(bool)
+				if ok {
+					if bVal {
+						return "true"
+					} else {
+						return "false"
+					}
+				}
+				iVal, ok := val.(int)
+				if ok {
+					return strconv.Itoa(iVal)
+				}
+
+				return match
+			})
 		}
 	}()
 
@@ -518,13 +551,6 @@ func (c *Compiler) parseAppConfig() (res string) {
 		}
 	}
 
-	bConf, err := json.Marshal(conf)
-	if err != nil {
-		c.pp.LogError("can not marshal to json JS-application config '%s':", cPath, err)
-		return
-	}
-
-	res = string(bConf)
 	return
 }
 

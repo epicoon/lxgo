@@ -100,12 +100,11 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 
 	// Prepare plugin data
 	pData := sr.getPluginData()
-	bData, err := json.Marshal(pData)
-	if err != nil {
-		sr.pp.LogError("error while plugin runtime data serialization for '%s': %v", plugin.Name(), err)
+	// Prepare plugin code
+	pCode := pr.getServerCode(pData)
+	if pCode == "" {
 		return false
 	}
-	pluginData := string(bData)
 
 	// Prepare snippet data
 	sDataStruct := struct {
@@ -121,16 +120,13 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 	snippetData := string(sData)
 
 	// Prepare code edges
-	prev := fmt.Sprintf(`
-		@lx:use lx.Plugin;
-		const $plugin = new lx.Plugin(%s);
-		lx.globalContext.$plugin = $plugin;
+	prev := fmt.Sprintf(`%s
 		const $snippet = new lx.Snippet(%s);
 		lx.globalContext.$snippet = $snippet;
 		lx.app.start({
 			root: $snippet.widget,
 		});
-	`, pluginData, snippetData)
+	`, pCode, snippetData)
 	post := `
 		return {
 			app: lx.app.getResult(),
@@ -176,7 +172,12 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 		return false
 	}
 
-	conv.MapToStruct(rawRes.Result().(map[string]any), &res)
+	err = conv.MapToStruct(rawRes.Result().(map[string]any), &res)
+	if err != nil {
+		sr.pp.LogError("can not get snippet '%s' render result: %v", sr.path, err)
+		return false
+	}
+
 	sr.fillSnippet(res.Snippet)
 	pr.addAssets(compiler)
 	pr.applyBuildData(res.Plugin)

@@ -16,6 +16,12 @@
  * - lx-Paginator-middle
  * - lx-Paginator-page
  * - lx-Paginator-active
+ * - lx-Paginator-alt
+ * 
+ * Events:
+ * - change
+ * 
+ * Pages start with 1 (not 0)
  */
 // @lx:namespace lx;
 class Paginator extends lx.Box {
@@ -55,6 +61,9 @@ class Paginator extends lx.Box {
             'lx-Paginator-to-left'  : { '@icon': ['\\2039', {paddingBottom:'10px'}] },
             'lx-Paginator-to-right' : { '@icon': ['\\203A', {paddingBottom:'10px'}] }
         }, 'Paginator-button');
+        css.addClass('lx-Paginator-alt', {
+            cursor: 'pointer',
+        });
     }
 
     /**
@@ -65,7 +74,7 @@ class Paginator extends lx.Box {
      *     [slotsCount = lx.Paginator.DEFAULT_SLOTS_COUNT] {Number},
      *     [elementsPerPage = lx.Paginator.DEFAULT_ELEMENTS_PER_PAGE] {Number},
      *     [elementsCount = 0] {Number},
-     *     [activePage = 0] {Number}
+     *     [activePage = 1] {Number}
      * }}
      */
     render(config) {
@@ -73,9 +82,9 @@ class Paginator extends lx.Box {
 
         this.addClass('lx-Paginator');
 		this.firstSlotIndex = 0;
-        this.elementsCount = lx.getFirstDefined(config.elementsCount, 0);
-        this.elementsPerPage = config.elementsPerPage || lx.self(DEFAULT_ELEMENTS_PER_PAGE);
-        this.pagesCount = Math.ceil(this.elementsCount / this.elementsPerPage);
+        this._elementsCount = lx.getFirstDefined(config.elementsCount, 0);
+        this._elementsPerPage = config.elementsPerPage || lx.self(DEFAULT_ELEMENTS_PER_PAGE);
+        this._pagesCount = Math.ceil(this._elementsCount / this._elementsPerPage);
 
 		this.slotsCount = lx.getFirstDefined(config.slotsCount, lx.self(DEFAULT_SLOTS_COUNT));
         if (this.slotsCount <= 4) this.slotsCount = 1;
@@ -83,7 +92,7 @@ class Paginator extends lx.Box {
 		_normalizeSlotsCount(this);
 
         this.runBuild();
-        this.selectPage(lx.getFirstDefined(config.activePage, 0));
+        this.selectPage(lx.getFirstDefined(config.activePage, 1));
 	}
 
     // @lx:<context CLIENT:
@@ -103,7 +112,7 @@ class Paginator extends lx.Box {
     }
 
     static onSlotClick(event) {
-        this.ancestor({is:lx.Paginator}).selectPage(+(lx(this)>text.value()) - 1);
+        this.ancestor({is:lx.Paginator}).selectPage(+(lx(this)>text.value()));
     }
 
     static toPrevPage(e) {
@@ -128,7 +137,7 @@ class Paginator extends lx.Box {
         let p = this.parent;
         e = e || p.newEvent();
         e.previousPage = p.activePage;
-        p.selectPage(0);
+        p.selectPage(1);
         e.currentPage = p.activePage;
         p.trigger('change', e);
     }
@@ -137,20 +146,47 @@ class Paginator extends lx.Box {
         let p = this.parent;
         e = e || p.newEvent();
         e.previousPage = p.activePage;
-        p.selectPage(p.pagesCount - 1);
+        p.selectPage(p._pagesCount);
         e.currentPage = p.activePage;
         p.trigger('change', e);
     }
     // @lx:context>
 
-    setElementsCount(count) {
-        this.elementsCount = count;
-        this.pagesCount = Math.ceil(this.elementsCount / this.elementsPerPage);
+    elementsCount(cnt) {
+        if (cnt === undefined) return this._elementsCount;
+
+        this._elementsCount = cnt;
+        this._pagesCount = Math.ceil(this._elementsCount / this._elementsPerPage);
         _normalizeSlotsCount(this);
 
-        let number = this.activePage;
-        this.activePage = -1;
-        this.selectPage(number);
+        this.selectPage(this.activePage);
+    }
+
+    currentPage() {
+        return this.activePage;
+    }
+    
+    elementsPerPage() {
+        return this._elementsPerPage;
+
+        //TODO change this._elementsPerPage
+    }
+
+    pagesCount() {
+        return this._pagesCount;
+    }
+
+	selectPage(number) {
+        this.activePage = _validatePageNumber(this, number);
+
+	    if (this.slotsCount == 1) _fillMiddleSimple(this);
+        else if (this.slotsCount == 5 || this.slotsCount == 6) _fillMiddleMin(this);
+        else _fillMiddleMax(this);
+	}
+
+    value(val = null) {
+        if (val === null) return this.activePage;
+        this.selectPage(val);
     }
 
     runBuild() {
@@ -172,19 +208,6 @@ class Paginator extends lx.Box {
             minWidth: 0
         });
 	}
-
-	selectPage(number) {
-        this.activePage = _validatePageNumber(this, number);
-
-	    if (this.slotsCount == 1) _fillMiddleSimple(this);
-        else if (this.slotsCount == 5 || this.slotsCount == 6) _fillMiddleMin(this);
-        else _fillMiddleMax(this);
-	}
-
-    value(val = null) {
-        if (val === null) return this.activePage;
-        this.selectPage(val);
-    }
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -193,37 +216,37 @@ class Paginator extends lx.Box {
 
 function _normalizeSlotsCount(self) {
     self.slotsCount = self.slotsCountBase;
-    if (self.slotsCount == 1 || self.pagesCount >= 7) return;
+    if (self.slotsCount == 1 || self._pagesCount >= 7) return;
 
-    if (self.pagesCount == 6) {
+    if (self._pagesCount == 6) {
         self.slotsCount = 6;
         return;
     }
 
-    if (self.pagesCount == 5) {
+    if (self._pagesCount == 5) {
         self.slotsCount = 5;
         return;
     }
 
-    if (self.pagesCount < 5)
+    if (self._pagesCount < 5)
         self.slotsCount = 1;
 }
 
 function _validatePageNumber(self, number) {
-    if (number < 0) number = 0;
-    if (number > this.pagesCount - 1) number = self.pagesCount - 1;
+    if (number < 1) number = 1;
+    if (number > self._pagesCount) number = self._pagesCount;
 
     lx(self)>toStart.disabled(false);
     lx(self)>toLeft.disabled(false);
     lx(self)>toRight.disabled(false);
     lx(self)>toFinish.disabled(false);
 
-    if (number == 0) {
+    if (number == 1) {
         lx(self)>toStart.disabled(true);
         lx(self)>toLeft.disabled(true);
     }
 
-    if (number == self.pagesCount - 1) {
+    if (number == self._pagesCount) {
         lx(self)>toRight.disabled(true);
         lx(self)>toFinish.disabled(true);
     }
@@ -237,9 +260,9 @@ function _fillMiddleSimple(self) {
     if (middle.childrenCount() == 0) middle.align(lx.CENTER, lx.MIDDLE);
     middle.text(
         lx.i18n('Page') + ' '
-        + (self.activePage + 1) + ' '
+        + self.activePage + ' '
         + lx.i18n('of') + ' '
-        + self.pagesCount
+        + self._pagesCount
     );
 }
 
@@ -247,16 +270,16 @@ function _fillMiddleMin(self) {
     _rebuildMiddle(self);
     _applyMiddleSequence(
         self,
-        _calcSequence(self.activePage + 1, self.pagesCount, self.slotsCount)
+        _calcSequence(self.activePage, self._pagesCount, self.slotsCount)
     );
 }
 
 function _fillMiddleMax(self) {
     _rebuildMiddle(self);
-    let preseq = _calcSequence(self.activePage, self.pagesCount - 2, self.slotsCount - 2);
+    let preseq = _calcSequence(self.activePage - 1, self._pagesCount - 2, self.slotsCount - 2);
     seq = [1];
     preseq.forEach(a => seq.push((a === null) ? null : a + 1));
-    seq.push(self.pagesCount);
+    seq.push(self._pagesCount);
     _applyMiddleSequence(self, seq);
 }
 
@@ -276,7 +299,8 @@ function _applyMiddleSequence(self, seq) {
     let middle = lx(self)>middle;
     middle.getChildren().forEach((a, i)=>{
         a.text(seq[i] === null ? '...' : seq[i]);
-        a.toggleClassOnCondition(seq[i] - 1 == self.activePage, 'lx-Paginator-active');
+        if (seq[i] !== null)
+            a.toggleClassOnCondition(seq[i] == self.activePage, 'lx-Paginator-active', 'lx-Paginator-alt');
         // @lx:<context CLIENT:
         if (seq[i] === null) a.off('click');
         else a.click(lx.Paginator.onSlotClick);

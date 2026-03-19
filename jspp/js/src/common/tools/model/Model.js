@@ -132,14 +132,14 @@ class Model extends lx.Object {
 
 		let val;
 		switch (type) {
-			case 'int':
-				val = lx.getFirstDefined(dflt, lx.self(defaultIntegerFieldValue()));
+			case lx.ModelTypeEnum.NUMBER:
+				val = lx.getFirstDefined(+dflt, lx.self(defaultNumberFieldValue()));
 				break;
-			case 'string':
-				val = lx.getFirstDefined(dflt, lx.self(defaultStringFieldValue()));
+			case lx.ModelTypeEnum.STRING:
+				val = lx.getFirstDefined(''+dflt, lx.self(defaultStringFieldValue()));
 				break;
-			case 'bool':
-				val = lx.getFirstDefined(dflt, lx.self(defaultBooleanFieldValue()));
+			case lx.ModelTypeEnum.BOOLEAN:
+				val = lx.getFirstDefined(!!dflt, lx.self(defaultBooleanFieldValue()));
 				break;
 			case lx.ModelCollection:
 				val = lx.ModelCollection.create({
@@ -191,7 +191,7 @@ class Model extends lx.Object {
 		return this.__schema.getFieldTypes();
 	}
 
-	static defaultIntegerFieldValue() { return 0; }
+	static defaultNumberFieldValue() { return 0; }
 	static defaultStringFieldValue()  { return ''; }
 	static defaultBooleanFieldValue() { return false; }
 	static defaultUntypedFieldValue() { return 0; }
@@ -218,8 +218,21 @@ class Model extends lx.Object {
 		if (!schema) return;
 		schema.eachField((field, name)=>{
 			if (field.ref) return;
-			if (data[name] !== undefined) this[name] = data[name];
-			else this.resetField(name);
+			if (data[name] !== undefined) {
+				switch (field.type) {
+					case lx.ModelTypeEnum.NUMBER:
+						this[name] = +data[name];
+						break;
+					case lx.ModelTypeEnum.STRING:
+						this[name] = ''+data[name];
+						break;
+					case lx.ModelTypeEnum.BOOLEAN:
+						this[name] = !!data[name];
+						break;
+					default:
+						this[name] = data[name];
+				}
+			} else this.resetField(name);
 		});
 	}
 }

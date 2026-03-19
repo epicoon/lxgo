@@ -12,27 +12,32 @@ const HANDLE_CONTEXT_KEY = "lxgo_http_session"
 type IStorage interface {
 	kernel.IAppComponent
 	Scaner() IScaner
+	SessionCookieName() string
 	StartSession(ctx kernel.IHandleContext) ISession
 	DestroySession(ISession)
+	SessionByID(sid string) ISession
+	SetSessionID(sess ISession, sid string)
 	GC()
 	Provider() IProvider
 }
 
 type ISession interface {
+	ID() string
+	SetID(sid string)
 	Context() kernel.IHandleContext
 	Set(key any, value any) error
 	SetForce(key any, value any)
 	Get(key any) any
 	Has(key any) bool
 	Keys() []any
-	Delete(key any) error
-	SessionID() string
+	Remove(key any) error
 	CreatedAt() time.Time
 	LastAccessed() time.Time
 }
 
 type IProvider interface {
 	Clear()
+	AddSession(sess ISession, sid string)
 	SessionInit(sid string, ctx kernel.IHandleContext) (ISession, error)
 	SessionExists(sid string) bool
 	SessionRead(sid string) (ISession, error)
@@ -46,4 +51,5 @@ type IScaner interface {
 	Len() int
 	IsEmpty() bool
 	PrintContent() string
+	PrintContextContent(ctx kernel.IHandleContext) string
 }
