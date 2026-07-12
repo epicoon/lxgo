@@ -33,8 +33,9 @@
  * checkResizeChild(callback)
  *
  * * 3. Content navigation
- * get(path)
- * getAll(path)
+ * get(key)
+ * getAll(key)
+ * getOne(key)
  * find(key)
  * findAll(key)
  * findOne(key)
@@ -957,6 +958,10 @@ class Box extends lx.Rect {
                 } else {
                     if (notMatch) notMatch.add(child);
                 }
+
+				if (child.plugin || (child.lxHasMethod('getContainer') && child.getContainer().plugin))
+					return;
+
                 if (all) rec(child);
             }
         }

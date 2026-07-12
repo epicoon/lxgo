@@ -184,6 +184,13 @@ type IRouter interface {
 }
 
 type IHandleContext interface {
+	Init(
+		app IApp,
+		route string,
+		method string,
+		writer http.ResponseWriter,
+		request *http.Request,
+	)
 	App() IApp
 	Route() string
 	Method() string

@@ -37,61 +37,12 @@ func newSnippetRenderer(pr *pluginRenderer, hash, path string, params map[string
 }
 
 func (r *snippetRenderer) run() {
-	plugin := r.plugin
-
-	cacheType := plugin.Config().CacheType()
-	switch cacheType {
-	// 	case PluginCacheManager::CACHE_BUILD:
-	// 		return $this->buildProcess(true);
-	case CACHE_NONE:
-		r.buildProcess(false)
-		return
-
-		// 	case PluginCacheManager::CACHE_STRICT:
-		// 		$result = $this->getCache();
-		// 		if (!$result) {
-		// 			\lx::devLog(['_' => [__FILE__, __CLASS__, __METHOD__, __LINE__],
-		// 				'__trace__' => debug_backtrace(
-		// 					DEBUG_BACKTRACE_PROVIDE_OBJECT & DEBUG_BACKTRACE_IGNORE_ARGS
-		// 				),
-		// 				'msg' => 'There is the strict cache option for the plugin without cache',
-		// 				'plugin' => $this->getPlugin()->name,
-		// 				'snippet' => $this->snippet->getFile()->getName(),
-		// 			]);
-		// 			$result = '[]';
-		// 		}
-		// 		return $result;
-		// 	case PluginCacheManager::CACHE_ON:
-		// 		return $this->getCache() ?? $this->buildProcess(true);
-		// 	case PluginCacheManager::CACHE_SMART:
-		// 		return $this->getSmartCache();
-	}
-}
-
-func (r *snippetRenderer) buildProcess(renewCache bool) {
 	if !r.runSnippetCode() {
 		return
 	}
 
 	r.output = make(map[string]*snippetConf, 1)
 	collectSnippets(r, r.output, &r.html)
-
-	//TODO
-	_ = renewCache
-	// jsonData, err := json.Marshal(snippetsData)
-	// if err != nil {
-	// 	r.jspp.LogError("can not serialize snippets data for plugin %s: %v", r.plugin.Name(), err)
-	// 	return "[]"
-	// }
-	// cache := string(jsonData)
-	// if renewCache {
-	// 	// 	$this->cacheData->renew(
-	// 	// 		$this->getKey(),
-	// 	// 		$snippets,
-	// 	// 		$snippetsData,
-	// 	// 		$cache
-	// 	// 	);
-	// }
 }
 
 func (sr *snippetRenderer) runSnippetCode() bool {
@@ -114,7 +65,7 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 	}
 	sData, err := json.Marshal(sDataStruct)
 	if err != nil {
-		sr.pp.LogError("error white snippet '%s' data serialization for plugin '%s': %v", sr.path, plugin.Name(), err)
+		sr.pp.LogError("error while snippet '%s' data serialization for plugin '%s': %v", sr.path, plugin.Name(), err)
 		return false
 	}
 	snippetData := string(sData)
@@ -159,6 +110,12 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 		sr.pp.LogError("can not compile snippet code '%s': %s", sr.path, err)
 		return false
 	}
+
+	ff := compiler.CompiledFiles()
+	for _, fn := range ff {
+		sr.pr.depFiles[fn] = true
+	}
+
 	executor := sr.pr.pp.ExecutorBuilder().
 		SetCode(code).
 		Executor()

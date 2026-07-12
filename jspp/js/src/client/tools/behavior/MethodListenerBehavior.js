@@ -25,6 +25,14 @@ class MethodListenerBehavior extends lx.Behavior {
 			this.behaviorMap.set(behKey, 'methodEvents', {});
 		__setMethodEvent.call(this, funcName, func, 'after', duplicate);
 	}
+
+	lockMethodListener() {
+		this._methodListenerLocked = true;
+	}
+
+	unlockMethodListener() {
+		delete this._methodListenerLocked;
+	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -80,6 +88,9 @@ function __wrapMethod(methodName) {
 	Object.defineProperty(this, methodName, {
 		enumerable: false,
 		value: function() {
+			if (this._methodListenerLocked)
+				return funcClosure.apply(this, arguments);
+
 			var info = lx.self(behaviorMap.get(behKey, 'methodEvents')),
 				thisInfo = this.behaviorMap.get(behKey, 'methodEvents');
 

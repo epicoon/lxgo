@@ -60,6 +60,29 @@ class HttpRequest extends lx.Request {
 		return url;
 	}
 
+	promise() {
+		return new Promise((resolve, reject) => {
+			lx.app.dialog.request({
+				method: this.method,
+				url: this.getFullUrl(),
+				headers: this.headers,
+				data: this.params,
+
+				success: (res, req) => {
+					__onSuccess.call(this, res, req);
+					resolve(res);
+				},
+
+				error: (err, req) => {
+					__onError.call(this, err, req);
+					reject(err);
+				},
+
+				waiting: [this, __onWait]
+			});
+		});
+	}
+
 	send() {
 		lx.app.dialog.request({
 			method: this.method,

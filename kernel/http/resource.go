@@ -41,6 +41,9 @@ func NewResource(c ...kernel.HttpResourceConfig) *Resource {
 			r.cFailForm = conf.CFailForm
 		}
 	}
+
+	r.context = &HandleContext{resource: r}
+
 	return r
 }
 
@@ -151,7 +154,7 @@ func (r *Resource) LogWarning(msg string, category string) {
 }
 
 func (r *Resource) LogError(msg string, category string) {
-	r.App().Log(fmt.Sprintf("Error occured while '%s' handling: %s", r.Route(), msg), category)
+	r.App().Log(fmt.Sprintf("Error occurred while '%s' handling: %s", r.Route(), msg), category)
 }
 
 func (r *Resource) HtmlResponse(conf kernel.HtmlResponseConfig) kernel.IHttpResponse {

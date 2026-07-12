@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -19,6 +20,11 @@ import (
 type MapBuilderOptions struct {
 	Modules bool
 	Plugins bool
+}
+
+type pkg struct {
+	ImportPath string
+	Module     *goModule
 }
 
 type goModule struct {
@@ -50,7 +56,8 @@ func GetModulesSrcList(pp jspp.IPreprocessor) []string {
 		mmPaths = append(mmPaths, pp.App().Pathfinder().GetAbsPath(path))
 	}
 
-	goMm := getGoModules()
+	mm := getMainModule()
+	goMm := getDepModules(mm)
 	for _, goMod := range goMm {
 		if goMod.Dir != "" && !slices.Contains(pp.Config().ModulesIgnore, goMod.Dir) {
 			mmPaths = append(mmPaths, goMod.Dir)
@@ -67,7 +74,8 @@ func GetPluginsSrcList(pp jspp.IPreprocessor) []string {
 		ppPaths = append(ppPaths, pp.App().Pathfinder().GetAbsPath(path))
 	}
 
-	goMm := getGoModules()
+	mm := getMainModule()
+	goMm := getDepModules(mm)
 	for _, goMod := range goMm {
 		if goMod.Dir != "" {
 			ppPaths = append(ppPaths, goMod.Dir)
@@ -77,22 +85,40 @@ func GetPluginsSrcList(pp jspp.IPreprocessor) []string {
 	return ppPaths
 }
 
-func getGoModules() []goModule {
-	cmd := exec.Command("go", "list", "-m", "-json", "all")
+func getMainModule() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	return info.Main.Path
+}
+
+func getDepModules(mainModule string) []goModule {
+	cmd := exec.Command("go", "list", "-deps", "-json", mainModule)
+
 	output, err := cmd.Output()
 	if err != nil {
 		panic(err)
 	}
 
-	var modules []goModule
 	decoder := json.NewDecoder(strings.NewReader(string(output)))
 
+	modMap := map[string]goModule{}
+
 	for {
-		var mod goModule
-		if err := decoder.Decode(&mod); err != nil {
+		var p pkg
+		if err := decoder.Decode(&p); err != nil {
 			break
 		}
-		modules = append(modules, mod)
+
+		if p.Module != nil {
+			modMap[p.Module.Path] = *p.Module
+		}
+	}
+
+	var modules []goModule
+	for _, m := range modMap {
+		modules = append(modules, m)
 	}
 
 	return modules
@@ -142,7 +168,8 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 		}
 	}
 
-	goModules := getGoModules()
+	mm := getMainModule()
+	goModules := getDepModules(mm)
 	for _, goModule := range goModules {
 		if slices.Contains(pp.Config().ModulesIgnore, goModule.Dir) {
 			continue
@@ -371,27 +398,6 @@ func makeCopy(code *string, path, locPath string) (entryPath string, err error) 
 	return
 }
 
-func copyFile(src, dest string) error {
-	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
-		return err
-	}
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	destFile, err := os.Create(dest)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, srcFile)
-	return err
-}
-
 func copyDir(srcDir, destDir string) error {
 	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -411,4 +417,25 @@ func copyDir(srcDir, destDir string) error {
 			return copyFile(path, destPath)
 		}
 	})
+}
+
+func copyFile(src, dest string) error {
+	if err := os.MkdirAll(filepath.Dir(dest), os.ModePerm); err != nil {
+		return err
+	}
+
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	return err
 }

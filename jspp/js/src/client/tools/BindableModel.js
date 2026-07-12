@@ -41,6 +41,7 @@ class BindableModel extends lx.Model {
 
 	/**
 	 * Trigger refresh
+	 * @param {Array<String>|String|null} [fieldNames=null]
 	 */
 	bindRefresh(fieldNames = null) {
 		lx.app.binder.refresh(this, fieldNames);

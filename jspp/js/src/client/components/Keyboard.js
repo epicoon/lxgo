@@ -102,6 +102,9 @@ class Keyboard extends lx.AppComponent {
 				}
 
 			if (_keydownHandlers['c_' + _pressedChar])
+				try {
+					e.key = _pressedChar;
+				} catch (err) {}
 				for (let i in _keydownHandlers['c_' + _pressedChar]) {
 					let pare = _keydownHandlers['c_' + _pressedChar][i];
 					if (!_checkContext(pare.context)) continue;
@@ -130,6 +133,9 @@ class Keyboard extends lx.AppComponent {
 				}
 
 			if (_keyupHandlers['c_' + _pressedChar])
+				try {
+					e.key = _pressedChar;
+				} catch (err) {}
 				for (let i in _keyupHandlers['c_' + _pressedChar]) {
 					let pare = _keyupHandlers['c_' + _pressedChar][i];
 					if (!_checkContext(pare.context)) continue;
@@ -160,7 +166,9 @@ class Keyboard extends lx.AppComponent {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function _on(handlers, key, func, context) {
-	key = lx.isNumber(key) ? 'k_' + key : 'c_' + key;
+	if (lx.isString(key)) key = 'c_' + key;
+	else if (lx.isNumber(key)) key = 'k_' + key;
+	else return;
 	if (!handlers[key])
 		handlers[key] = [];
 	handlers[key].push({handler:func, context});
@@ -186,7 +194,9 @@ function _off(handlers, key, func, context) {
 		return;
 	}
 
-	key = lx.isNumber(key) ? 'k_' + key : 'c_' + key;
+	if (lx.isString(key)) key = 'c_' + key;
+	else if (lx.isNumber(key)) key = 'k_' + key;
+	else return;
 	if (!handlers[key]) return;
 
 	let index = -1;

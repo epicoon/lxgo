@@ -1198,33 +1198,47 @@ class Rect extends lx.Element {
 
         if (!step) step = 0;
         step = elem.geomPart(step, 'px', lx.Geom.directionByGeom(align));
-        let rect = elem.getGlobalRect();
+
+		let rect = elem.getGlobalRect(),
+			pRect = this.parent ? this.parent.getGlobalRect() : null,
+			val;
         switch (align) {
             case lx.TOP:
                 __setGeomPriorityV(this, lx.TOP, lx.MIDDLE);
-                this.top( rect.top+step+'px' );
-                break;
+				val = rect.top+step;
+				if (pRect) val -= pRect.top;
+				this.top(val+'px');
+				break;
             case lx.BOTTOM:
                 __setGeomPriorityV(this, lx.BOTTOM, lx.MIDDLE);
-                this.bottom( rect.bottom+step+'px' );
+				val = rect.bottom+step;
+				if (pRect) val -= pRect.bottom;
+                this.bottom(val+'px');
                 break;
             case lx.MIDDLE:
                 __setGeomPriorityV(this, lx.TOP, lx.MIDDLE);
-                this.top( rect.top + (elem.height('px') - this.height('px')) * 0.5 + step + 'px' );
+				val = rect.top + (elem.height('px') - this.height('px')) * 0.5 + step;
+				if (pRect) val -= pRect.top;
+                this.top(val+'px');
                 break;
-
             case lx.LEFT:
                 __setGeomPriorityH(this, lx.LEFT, lx.CENTER);
-                this.left( rect.left+step+'px' );
+				val = rect.left+step;
+				if (pRect) val -= pRect.left;
+                this.left(val+'px');
                 break;
             case lx.RIGHT:
                 __setGeomPriorityH(this, lx.RIGHT, lx.CENTER);
-                this.right( rect.right+step+'px' );
+				val = rect.right+step;
+				if (pRect) val -= pRect.right;
+                this.right(val+'px');
                 break;
             case lx.CENTER:
                 __setGeomPriorityH(this, lx.LEFT, lx.CENTER);
-                this.left( rect.left + (elem.width('px') - this.width('px')) * 0.5 + step + 'px' );
-                break;
+				val = rect.left + (elem.width('px') - this.width('px')) * 0.5 + step;
+				if (pRect) val -= pRect.left;
+				this.left(val + 'px');
+				break;
         };
         return this;
     }
@@ -1324,24 +1338,12 @@ class Rect extends lx.Element {
                 reg = new RegExp('if\\s*\\(\\s*' + argName + '\\s*===\\s*undefined'),
                 isCallable = (str.match(reg) !== null);
 
-            /* The method through which communication with the model is carried out:
-             * - the model reads the value from here when an event 'change' is triggered on the widget
-             * - the model writes the field value here when it changes via the setter
-             */
             this.value = function(val) {
                 if (val === undefined) {
                     if (isCallable) return func.call(this);
                     return this.innerValue();
                 }
                 let oldVal = isCallable ? func.call(this) : this.innerValue();
-                /* Algorithm:
-                 * 1. In user code, the .value(val) method was called, and some value was passed
-                 * 2. The value is new - it is assigned to the widget value, the 'change' event is triggered
-                 * 3. On 'change' event the model is updated - a new value is written into it via the setter
-                 * 4. The model setter also contains the actualization logic - this time for the widget, via the value(val) method
-                 * 5. This method will be called repeatedly, so to avoid recursion - when trying to assign a value identical to the current one,
-                 * we do nothing - if the value of x "changed" to the value of x, no changes occurred - the 'change' event should not be triggered
-                 */
                 if (lx.Comparator.deepCompare(val, oldVal)) return;
                 this.innerValue(val);
                 func.call(this, val, oldVal);
@@ -1349,6 +1351,11 @@ class Rect extends lx.Element {
                     oldValue: oldVal,
                     newValue: val
                 }));
+            };
+
+            this.__bindValue = function(val) {
+                this.innerValue(val);
+                func.call(this, val);
             };
         }
 

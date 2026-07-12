@@ -240,8 +240,8 @@ class Plugin extends lx.Element {
     /**
      * AJAX-request in the plugin context
      */
-    ajax(path, data=[]) {
-        return new lx.PluginRequest(this, path, data);
+    ajax(path, params={}) {
+        return new lx.PluginRequest(this, path, params);
     }
 
     /**

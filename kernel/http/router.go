@@ -134,19 +134,17 @@ func (router *Router) GetAssetRoute(path string) string {
 }
 
 func (router *Router) Handle(res kernel.IHttpResource, route string, w http.ResponseWriter, r *http.Request) kernel.IHttpResponse {
-	ctx := &HandleContext{
-		app:      router.app,
-		route:    route,
-		method:   r.Method,
-		writer:   w,
-		request:  r,
-		resource: res,
-	}
-	res.SetContext(ctx)
+	res.Context().Init(
+		router.app,
+		route,
+		r.Method,
+		w,
+		r,
+	)
 
 	if router.app != nil {
 		router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_HANDLE_REQUEST, kernel.NewData(map[string]any{
-			"context": ctx,
+			"context": res.Context(),
 		}))
 	}
 

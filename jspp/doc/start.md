@@ -24,6 +24,11 @@
       ModsPath: .sys/cmp/jspp/modules
       # Path to directory where the Preprocessor copies external plugins to lock it for the app
       PluginsPath: .sys/cmp/jspp/plugins
+      # The way to work with plugin cache, available values:
+      # on - use cache
+      # off - do not use cache
+      # dev - use cache but check plugin dependencies to rebuild if needed
+      PluginCacheType: on
       # Preprocessor automatically creates links to asset files
       #  to hide the real location on the server
       AssetLinksPath:

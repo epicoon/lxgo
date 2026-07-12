@@ -19,29 +19,25 @@ import (
 	"github.com/epicoon/lxgo/kernel/utils"
 )
 
-const (
-	CACHE_BUILD  = "build"
-	CACHE_NONE   = "none"
-	CACHE_STRICT = "strict"
-	CACHE_ON     = "on"
-	CACHE_SMART  = "smart"
-)
-
 type pluginRenderer struct {
 	*lxErrors.ErrorsCollector
 
-	pp       jspp.IPreprocessor
-	plugin   jspp.IPlugin
-	nested   []*pluginRenderer
-	rootSR   *snippetRenderer
-	key      string
-	compiled bool
+	pp     jspp.IPreprocessor
+	plugin jspp.IPlugin
+	conf   *pluginConf
+	lang   string
+	title  string
+	icon   string
 
-	conf  *pluginConf
-	lang  string
-	title string
-	icon  string
+	compiled   bool
+	key        string
+	rootSR     *snippetRenderer
+	nested     []*pluginRenderer
+	nestedConf []*nestedPluginConf
+	depFiles   map[string]bool
 
+	html            string
+	rootSnippetKey  string
 	serverCodeBlank string
 
 	assets jspp.IAssets
@@ -92,6 +88,8 @@ func newPluginRenderer(pp jspp.IPreprocessor, plugin jspp.IPlugin, hash, lang st
 		key:             hash,
 		assets:          &compiler.Assets{},
 		conf:            &pluginConf{},
+		nestedConf:      make([]*nestedPluginConf, 0),
+		depFiles:        make(map[string]bool),
 	}
 }
 
@@ -108,11 +106,11 @@ func (r *pluginRenderer) run() *jspp.PluginRenderInfo {
 		commonAssets.Merge(pr.assets)
 
 		if result.Html == "" {
-			result.Html = pr.rootSR.html
+			result.Html = pr.html
 		} else {
 			re := regexp.MustCompile(fmt.Sprintf(`lx-plugin="%s"[^>]*?>`, pr.key))
 			result.Html = re.ReplaceAllStringFunc(result.Html, func(match string) string {
-				return match + pr.rootSR.html
+				return match + pr.html
 			})
 		}
 
@@ -140,25 +138,70 @@ func (r *pluginRenderer) run() *jspp.PluginRenderInfo {
 	return result
 }
 
-func (r *pluginRenderer) compile() error {
+func (r *pluginRenderer) compileProcess() {
+	if r.compileMainJs(); r.HasErrors() {
+		r.pp.LogError("error while plugin '%s' JS-compile: %v", r.plugin.Name(), r.GetFirstError())
+	}
+	// Get: r.output.Js
+
+	r.compileSnippet()
+	// Get: r.output.Snippets
+	// Get: r.nestedConf
+}
+
+func (r *pluginRenderer) compile() {
 	if r.compiled {
-		return nil
+		return
 	}
 
 	r.preparePluginConf()
-	r.compileSnippet()
 
-	if r.compileMainJs(); r.HasErrors() {
-		return r.GetFirstError()
+	// Compile or load cache
+	cache := newPluginCache(r)
+	switch cache.Type() {
+	case CACHE_OFF:
+		r.compileProcess()
+	case CACHE_ON:
+		if !cache.Exists() {
+			r.compileProcess()
+			cache.Save()
+		} else {
+			cache.Load()
+		}
+	case CACHE_DEV:
+		if !cache.Exists() || cache.DepsChanged() {
+			r.compileProcess()
+			cache.Save()
+		} else {
+			cache.Load()
+		}
+	default:
+		r.compileProcess()
+	}
+
+	// Compile nested plugins
+	for _, conf := range r.nestedConf {
+		plugin := r.pp.PluginManager().Get(conf.Name)
+		if plugin == nil {
+			r.pp.LogError("plugin '%s' not found", conf.Name)
+			continue
+		}
+
+		nested := newPluginRenderer(r.pp, plugin, conf.Hash, r.lang)
+		nested.conf.cssScope = conf.CssScope
+		nested.conf.params = conf.Params
+		nested.conf.onLoad = []string{conf.OnLoad}
+
+		r.nested = append(r.nested, nested)
+		nested.compile()
 	}
 
 	r.compilePluginConf()
 	if r.HasErrors() {
-		return r.GetFirstError()
+		r.pp.LogError("error while plugin '%s' config compile: %v", r.plugin.Name(), r.GetFirstError())
 	}
 
 	r.compiled = true
-	return nil
 }
 
 func (r *pluginRenderer) compileSnippet() {
@@ -166,6 +209,8 @@ func (r *pluginRenderer) compileSnippet() {
 	snippetPath = r.plugin.Pathfinder().GetAbsPath(snippetPath)
 	r.rootSR = newSnippetRenderer(r, "root", snippetPath, map[string]any{})
 	r.rootSR.run()
+	r.rootSnippetKey = r.rootSR.snippet.key
+	r.html = r.rootSR.html
 	r.output.Snippets = r.rootSR.output
 }
 
@@ -183,6 +228,7 @@ func (r *pluginRenderer) compileMainJs() {
 			code = "class Plugin extends lx.Plugin {}"
 		} else {
 			code = string(d)
+			r.depFiles[filePath] = true
 		}
 	} else {
 		if errors.Is(err, os.ErrNotExist) {
@@ -264,7 +310,21 @@ func (r *pluginRenderer) compileMainJs() {
 		return
 	}
 
+	ff := compiler.CompiledFiles()
+	for _, fn := range ff {
+		r.depFiles[fn] = true
+	}
+
 	r.addAssets(compiler)
+
+	pattern = `if\('([^']+)' in ([^)]+)\)return`
+	re = regexp.MustCompile(pattern)
+	sub := re.FindStringSubmatch(pCode)
+	if len(sub) == 3 {
+		loc = re.FindStringIndex(pCode)
+		pCode = pCode[:loc[1]] + "}" + pCode[loc[1]:]
+		pCode = pCode[:loc[1]-6] + "{__plugin__=new " + sub[2] + "." + sub[1] + "(config); " + pCode[loc[1]-6:]
+	}
 
 	pattern = `Plugin\.__afterDefinition\(\);`
 	re = regexp.MustCompile(pattern)
@@ -290,7 +350,7 @@ func (r *pluginRenderer) compilePluginConf() {
 	conf["name"] = r.conf.name
 	conf["cssScope"] = r.conf.cssScope
 	conf["imagePaths"] = r.conf.imagePaths
-	conf["rsk"] = r.rootSR.snippet.key
+	conf["rsk"] = r.rootSnippetKey
 
 	if len(r.conf.data) > 0 {
 		conf["data"] = r.conf.data
@@ -305,19 +365,7 @@ func (r *pluginRenderer) compilePluginConf() {
 
 func (r *pluginRenderer) nestPlugins(list []nestedPluginConf) {
 	for _, conf := range list {
-		plugin := r.pp.PluginManager().Get(conf.Name)
-		if plugin == nil {
-			r.pp.LogError("plugin '%s' not found", conf.Name)
-			continue
-		}
-
-		nested := newPluginRenderer(r.pp, plugin, conf.Hash, r.lang)
-		nested.conf.cssScope = conf.CssScope
-		nested.conf.params = conf.Params
-		nested.conf.onLoad = []string{conf.OnLoad}
-
-		r.nested = append(r.nested, nested)
-		nested.compile()
+		r.nestedConf = append(r.nestedConf, &conf)
 	}
 }
 

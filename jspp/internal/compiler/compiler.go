@@ -109,6 +109,10 @@ func (c *Compiler) Assets() jspp.IAssets {
 	return c.assets
 }
 
+func (c *Compiler) CompiledFiles() []string {
+	return c.compiledFiles
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -117,6 +121,7 @@ func (c *Compiler) buildFile() (string, error) {
 	if err := c.getCode(); err != nil {
 		return "", fmt.Errorf("can not get code from file '%s': %v", c.filePath, err)
 	}
+	c.noteFileCompiled(c.filePath)
 	return c.buildCode()
 }
 
@@ -440,7 +445,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 				for _, m := range use {
 					mStr, ok := m.(string)
 					if !ok {
-						c.pp.LogError("invaliv format for 'use' element '%v' in JS-application config '%s': string require", m, cPath)
+						c.pp.LogError("invalid format for 'use' element '%v' in JS-application config '%s': string require", m, cPath)
 						continue
 					}
 					if !slices.Contains(c.useModules, mStr) {
@@ -448,7 +453,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 					}
 				}
 			} else {
-				c.pp.LogError("invaliv format for 'use' in JS-application config '%s': []string require", cPath)
+				c.pp.LogError("invalid format for 'use' in JS-application config '%s': []string require", cPath)
 			}
 		}
 

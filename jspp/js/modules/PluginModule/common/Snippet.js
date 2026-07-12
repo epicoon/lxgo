@@ -294,8 +294,9 @@ class PackData {
         if (!this.widget.forOnload) return;
 
         this.data.forOnload = [];
+        let strItem;
         for (let i=0, l=this.widget.forOnload.len; i<l; i++) {
-            let item = this.widget.forOnload[i], strItem;
+            let item = this.widget.forOnload[i];
             if (lx.isArray(item)) {
                 strItem = lx.app.functionHelper.functionToString(item[0]);
                 if (strItem) strItem = [strItem, item[1]];

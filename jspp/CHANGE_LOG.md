@@ -1,4 +1,18 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.12
+Version: v0.1.0-alpha.25
+Changes:
+- add: plugin cache
+- add widget: lx.Switch
+- optimization: js-models binding
+- fix: lx.Box.getChildren() now is scoped in a plugin
+- fix: lx.Checkbox.click()
+- add: lx.Collection.swap(i, j)
+- refactor and rename: lx.StreamItemRelocator -> lx.MatrixSwapper
+- internal fixes
+
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.03.19
 Version: v0.1.0-alpha.24
 Changes:

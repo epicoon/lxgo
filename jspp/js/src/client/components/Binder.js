@@ -213,19 +213,16 @@ function __bindMatrix(c, widget, type=BIND_TYPE_FULL) {
 	widget.applyRenderCache();
 
 	c.addBehavior(lx.MethodListenerBehavior);
-	c.afterMethod('add',       __matrixHandlerOnAdd   );
-	c.afterMethod('insert',    __matrixHandlerOnInsert);
-	c.beforeMethod('removeAt', __matrixHandlerOnRemove);
-	c.beforeMethod('clear',    __matrixHandlerOnClear );
-	c.afterMethod('set',       __matrixHandlerOnSet   );
+	c.afterMethod('add',       __collectionHandlerOnAdd   );
+	c.afterMethod('insert',    __collectionHandlerOnInsert);
+	c.beforeMethod('removeAt', __collectionHandlerOnRemove);
+	c.beforeMethod('clear',    __collectionHandlerOnClear );
+	c.afterMethod('set',       __collectionHandlerOnSet   );
 	if (c.lxHasMethod('reset')) {
 		c.beforeMethod('reset', ()=>widget.useRenderCache());
 		c.afterMethod('reset', ()=>widget.applyRenderCache());
 	}
-	if (widget.positioning().lxClassName() == 'StreamPositioningStrategy') {
-		widget.on('beforeStreamItemRelocation', __beforeStreamContentRelocation);
-		widget.on('afterStreamItemRelocation', __afterStreamContentRelocation);
-	}
+	widget.on('swapped', __matrixHandlerOnSwapped);
 }
 
 function __unbindMatrix(widget) {
@@ -423,7 +420,9 @@ function __valueToWidgetWithoutBind(widget, value) {
 
 // Method for directly placing a value into a widget
 function __valueToWidget(widget, value) {
-	if (widget.lxHasMethod('value'))
+	if (widget.lxHasMethod('__bindValue'))
+		widget.__bindValue(value);
+	else if (widget.lxHasMethod('value'))
 		widget.value(value);
 	else if (widget.lxHasMethod('text'))
 		widget.text(value);
@@ -506,19 +505,19 @@ function __matrixInsertNewBox(w, obj, index, type) {
 	__matrixNewBox(w, obj, type, rowConfig);
 }
 
-function __matrixHandlerOnAdd(obj = null) {
+function __collectionHandlerOnAdd(obj = null) {
 	if (this._lxMatrixBindId === undefined || this._lxMatrixBindLocked) return;
 	var widgets = __matrixBinds[this._lxMatrixBindId].widgets;
 	widgets.forEach(w=>__matrixNewBox(w, this.last(), __matrixBinds[this._lxMatrixBindId].type));
 }
 
-function __matrixHandlerOnInsert(i, obj = null) {
+function __collectionHandlerOnInsert(i, obj = null) {
 	if (this._lxMatrixBindId === undefined) return;
 	var widgets = __matrixBinds[this._lxMatrixBindId].widgets;
 	widgets.forEach(w=>__matrixInsertNewBox(w, this.at(i), i, __matrixBinds[this._lxMatrixBindId].type));
 }
 
-function __matrixHandlerOnRemove(i) {
+function __collectionHandlerOnRemove(i) {
 	if (this._lxMatrixBindId === undefined) return;
 	var widgets = __matrixBinds[this._lxMatrixBindId].widgets;
 	widgets.lxForEachRevert((w)=>{
@@ -527,7 +526,7 @@ function __matrixHandlerOnRemove(i) {
 	});
 }
 
-function __matrixHandlerOnClear() {
+function __collectionHandlerOnClear() {
 	if (this._lxMatrixBindId === undefined || this._lxMatrixBindLocked) return;
 
 	var widgets = __matrixBinds[this._lxMatrixBindId].widgets;
@@ -543,7 +542,7 @@ function __matrixHandlerOnClear() {
 	});
 }
 
-function __matrixHandlerOnSet(i, obj) {
+function __collectionHandlerOnSet(i, obj) {
 	if (this._lxMatrixBindId === undefined) return;
 	var widgets = __matrixBinds[this._lxMatrixBindId].widgets,
 		type = __matrixBinds[this._lxMatrixBindId].type;
@@ -552,20 +551,9 @@ function __matrixHandlerOnSet(i, obj) {
 	});
 }
 
-function __beforeStreamContentRelocation() {
-	let c = __getMatrixCollection(this);
-	c._lxMatrixBindLocked = true;
-	this.getChildren(child=>{
-		child._lxMatrixModel = child.matrixModel();
-	});
-}
-
-function __afterStreamContentRelocation() {
-	let c = __getMatrixCollection(this);
-	c.clear();
-	this.getChildren(child=>{
-		c.add(child._lxMatrixModel);
-		delete child._lxMatrixModel;
-	});
-	delete c._lxMatrixBindLocked;
+function __matrixHandlerOnSwapped(e) {
+	const c = __getMatrixCollection(this);
+	c.lockMethodListener();
+	c.swap(e.from, e.to);
+	c.unlockMethodListener();
 }

@@ -70,6 +70,8 @@ class Image extends lx.Rect {
 		}
 
 		function scale() {
+			if (!this.parent) return;
+
 			let container = this.parent.getContainer().getDomElem(),
 				sizes = lx.Geom.scaleBar(
 					container.offsetHeight,

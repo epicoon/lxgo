@@ -71,8 +71,8 @@ class Checkbox extends lx.Box {
 	}
 
 	static click(event) {
-		if (this.getAttribute('readonly') !== undefined)
-			return this;			
+		const free = this.getAttribute('readonly') === undefined || this.getAttribute('readonly') === null;
+		if (!free) return this;
 		this.value( !this.value() );
 		this.trigger('change', event);
 	}

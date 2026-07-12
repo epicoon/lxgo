@@ -22,7 +22,7 @@ type PluginRequest struct {
 	Plugin       string         `json:"plugin"`
 	Path         string         `json:"path"`
 	PluginParams map[string]any `json:"pluginParams"`
-	Data         map[string]any `json:"data"`
+	Params       map[string]any `json:"params"`
 }
 
 /** @constructor */
@@ -65,7 +65,6 @@ func (h *PluginHandler) Run() kernel.IHttpResponse {
 	if plugin == nil {
 		return errorResponse(h, fmt.Sprintf("Plugin '%s' not found", reqForm.Plugin))
 	}
-
 	m := plugin.AjaxHandlers()
 	cHandler, exists := m[reqForm.Path]
 	if !exists {
@@ -73,7 +72,7 @@ func (h *PluginHandler) Run() kernel.IHttpResponse {
 	}
 
 	// Change request body
-	bodyBytes, err := json.Marshal(reqForm.Data)
+	bodyBytes, err := json.Marshal(reqForm.Params)
 	if err != nil {
 		pp.LogError("Can not serialize request data: %v", err)
 		return serverErrorResponse(h)
@@ -84,6 +83,7 @@ func (h *PluginHandler) Run() kernel.IHttpResponse {
 	newReq.ContentLength = int64(len(bodyBytes))
 
 	handler := cHandler()
+	handler.Context().Set("plugin", plugin)
 	handler.Init()
 	return h.App().Router().Handle(handler, reqForm.Path, h.ResponseWriter(), newReq)
 }

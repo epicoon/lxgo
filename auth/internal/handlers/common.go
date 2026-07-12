@@ -87,11 +87,11 @@ func (f *FailResponse) Config() kernel.FormConfig {
 			Required:    true,
 		},
 		"error_code": kernel.FormFieldConfig{
-			Description: "number code of the issue occured",
+			Description: "number code of the issue occurred",
 			Required:    true,
 		},
 		"error_message": kernel.FormFieldConfig{
-			Description: "explanation of the issue occured",
+			Description: "explanation of the issue occurred",
 			Required:    true,
 		},
 	}

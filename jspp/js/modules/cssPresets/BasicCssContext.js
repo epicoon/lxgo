@@ -76,7 +76,7 @@ class BasicCssContext extends lx.CssContextExtender {
                 },
                 specification: {
                     'hover:not([disabled])': {
-                        marginTop: '-2px',
+                        marginTop: '-1px',
                         boxShadow: this.presetValue(
                             ['shadowSize', 'shadowSize'],
                             [10, 10],

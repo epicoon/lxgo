@@ -1,5 +1,7 @@
 # Authentication microservice
 
+> Actual version: `v0.1.0-alpha.2`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
+
 There are ways to use the service:
 * [Full ready-to-use solution for lxgo/kernel applications](#full-sol)
 * [Ready-to-use solution for browser](#browser-sol)

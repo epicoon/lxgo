@@ -59,7 +59,7 @@ func (repo *CodesRepo) FindByValue(value string) (*models.Code, error) {
 		return nil, ErrorCodeNotFound
 	}
 	if result.Error != nil {
-		errStr := fmt.Sprintf("error occured while finding code: %s", result.Error)
+		errStr := fmt.Sprintf("error occurred while finding code: %s", result.Error)
 		repo.app.LogError(errStr, "App")
 		return nil, errors.New(errStr)
 	}

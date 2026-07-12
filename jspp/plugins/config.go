@@ -186,7 +186,7 @@ func (c *Config) I18n() []string {
 }
 
 func (c *Config) CacheType() string {
-	return get[string](&c.absConfig, "cacheType", "on", "")
+	return get[string](&c.absConfig, "cacheType", "inherit", "")
 }
 
 func (c *Config) Require() []string {

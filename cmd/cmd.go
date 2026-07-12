@@ -67,13 +67,13 @@ func Run() {
 
 		err := action(command)
 		if err != nil {
-			fmt.Printf("Error occured white action executing: %s\n", err)
+			fmt.Printf("Error occurred while action executing: %s\n", err)
 			return
 		}
 		return
 	}
 	if err != nil {
-		fmt.Printf("Error occured white action executing: %s\n", err)
+		fmt.Printf("Error occurred while action executing: %s\n", err)
 	}
 }
 
@@ -127,7 +127,7 @@ func validate(c ICommand) error {
 				_, ok = val.(bool)
 			}
 			if !ok {
-				return fmt.Errorf("expected type for 'parameter' - %s, recieved - %T", pConf.Type, val)
+				return fmt.Errorf("expected type for 'parameter' - %s, received - %T", pConf.Type, val)
 			}
 		}
 

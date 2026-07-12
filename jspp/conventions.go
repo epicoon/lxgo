@@ -82,6 +82,7 @@ type ICompiler interface {
 	ModulesCode() string
 	CleanCode() string
 	Assets() IAssets
+	CompiledFiles() []string
 }
 
 type IAssets interface {

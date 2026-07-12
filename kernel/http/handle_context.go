@@ -28,6 +28,20 @@ func NewHandleContext(app kernel.IApp, route string, res kernel.IHttpResource) k
 	}
 }
 
+func (h *HandleContext) Init(
+	app kernel.IApp,
+	route string,
+	method string,
+	writer http.ResponseWriter,
+	request *http.Request,
+) {
+	h.app = app
+	h.route = route
+	h.method = method
+	h.writer = writer
+	h.request = request
+}
+
 func (h *HandleContext) App() kernel.IApp {
 	return h.app
 }

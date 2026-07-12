@@ -6,13 +6,13 @@
     at(k)
     to(k)
     set(i, val)
+	swap(i, j)
     contains(obj)
     first()
     last()
     current(value)
     next()
     prev()
-    toCopy()
     add(*arguments*)
     addCopy(*arguments*)
     addList(list)
@@ -128,14 +128,20 @@ class Collection extends lx.Object {
 		return this;
 	}
 
+	swap(i, j) {
+        let el = this.at(i);
+        this.set(i, this.at(j));
+        this.set(j, el);
+	}
+
 	contains(obj) {
-		this.cachePosition();
+		_cachePosition(this);
 		var match = false;
 		var curr = this.first();
 		while (curr && !match)
 			if (curr === obj) match = true;
 			else curr = this.next();
-		this.loadPosition();
+		_loadPosition(this);
 		return match;
 	}
 
@@ -166,25 +172,6 @@ class Collection extends lx.Object {
 	prev() {
 		if (this.reversIteration) return _next(this);
 		return _prev(this);
-	}
-
-	toCopy() {
-		if (this.isCopy) return this;
-		var iter = 0;
-		for (var i=0, l=this.map.len; i<l; i++) {
-			if (this.actPart && i < this.actI) iter += this.map[i].len;
-			else if (this.actPart && i == this.actI) iter += this.actPartI;
-			for (var j=0, ll=this.map[i].len; j<ll; j++) {
-				this.elements.push(this.map[i][j]);
-			}
-		}
-		this.map = [];
-		this.isCopy = true;
-		if (this.actPart) {
-			this.actPart = this.elements;
-			this.actPartI = iter;
-		}
-		return this;
 	}
 
 	add() {
@@ -218,7 +205,7 @@ class Collection extends lx.Object {
 	}
 
 	addCopy() {
-		this.toCopy();
+		_toCopy(this);
 		if ( arguments == undefined ) return this;
 
 		for (var i=0, l=arguments.length; i<l; i++) {
@@ -250,7 +237,7 @@ class Collection extends lx.Object {
 
 	flat(deep) {
 		// To change inner structure is available only for copy mode
-		this.toCopy();
+		_toCopy(this);
 		var arr = [];
 
 		function rec(tempArr, counter) {
@@ -273,19 +260,19 @@ class Collection extends lx.Object {
 	}
 
 	indexOf(el) {
-		this.toCopy();
+		_toCopy(this);
 		return this.elements.indexOf(el);
 	}
 
 	insert(index, value) {
 		// To change inner structure is available only for copy mode
-		this.toCopy();
+		_toCopy(this);
 		this.elements.splice(index, 0, value);
 	}
 
 	remove(el) {
 		// To change inner structure is available only for copy mode
-		this.toCopy();
+		_toCopy(this);
 		var index = this.elements.indexOf(el);
 		if (index == -1) return false;
 		return this.removeAt(index);
@@ -293,8 +280,7 @@ class Collection extends lx.Object {
 
 	removeAt(k) {
 		// To change inner structure is available only for copy mode
-		this.toCopy();
-		this.to(k);
+		_toCopy(this);
 		this.elements.splice(k, 1);
 		if (this.actPartI >= this.elements.length)
 			this.actPartI = this.elements.length - 1;
@@ -326,27 +312,24 @@ class Collection extends lx.Object {
 
 	forEach(func) {
 		this.stopFlag = false;
-		this.cachePosition();
+		_cachePosition(this);
 		let i = 0,
 			el = this.first();
 		while (el && !this.stopFlag) {
 			func.call( this, el, i++ );
 			el = this.next();
 		}
-		this.loadPosition();
+		_loadPosition(this);
 		return this;
 	}
 
 	forEachRevert(func) {
 		this.stopFlag = false;
-		this.cachePosition();
-		var i = this.len - 1,
-			el = this.last();
-		while (el && !this.stopFlag) {
-			func.call( this, el, i-- );
-			el = this.prev();
+		_toCopy(this);
+		for (let i = this.elements.length - 1; i >= 0; i--) {
+			if (this.stopFlag) break;
+			func.call(this, this.elements[i], i);
 		}
-		this.loadPosition();
 		return this;
 	}
 
@@ -355,12 +338,12 @@ class Collection extends lx.Object {
 	 */
 	eachToEach(func) {
 		this.stopFlag = false;
-		this.cachePosition();
+		_cachePosition(this);
 
 		var i = 0,
 			el0 = this.first();
 		while (el0 && !this.stopFlag) {
-			this.cachePosition();
+			_cachePosition(this);
 			var j = i+1,
 				el1 = this.next();
 
@@ -369,32 +352,23 @@ class Collection extends lx.Object {
 				el1 = this.next();
 			}
 
-			this.loadPosition();
+			_loadPosition(this);
 			el0 = this.next();
 			i++;
 		}
 
-		this.loadPosition();
+		_loadPosition(this);
+		return this;
+	}
+
+	filter(func) {
+		_toCopy(this);
+		this.elements = this.elements.filter(func);
 		return this;
 	}
 
 	stop() {
 		this.stopFlag = true;
-	}
-
-	cachePosition() {
-		if (!this.cachepos) this.cachepos = [];
-		this.cachepos.push([this.actPart, this.actI, this.actPartI]);
-	}
-
-	loadPosition() {
-		if (!this.cachepos) return false;
-		var cache = this.cachepos.pop();
-		this.actPart = cache[0];
-		this.actI = cache[1];
-		this.actPartI = cache[2];
-		if (!this.cachepos.len) delete this.cachepos;
-		return true;
 	}
 
 	toArray() {
@@ -407,6 +381,40 @@ class Collection extends lx.Object {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+function _cachePosition(self) {
+	if (!self.cachepos) self.cachepos = [];
+	self.cachepos.push([self.actPart, self.actI, self.actPartI]);
+}
+
+function _loadPosition(self) {
+	if (!self.cachepos) return false;
+	var cache = self.cachepos.pop();
+	self.actPart = cache[0];
+	self.actI = cache[1];
+	self.actPartI = cache[2];
+	if (!self.cachepos.len) delete self.cachepos;
+	return true;
+}
+
+function _toCopy(self) {
+	if (self.isCopy) return self;
+	var iter = 0;
+	for (var i=0, l=self.map.len; i<l; i++) {
+		if (self.actPart && i < self.actI) iter += self.map[i].len;
+		else if (self.actPart && i == self.actI) iter += self.actPartI;
+		for (var j=0, ll=self.map[i].len; j<ll; j++) {
+			self.elements.push(self.map[i][j]);
+		}
+	}
+	self.map = [];
+	self.isCopy = true;
+	if (self.actPart) {
+		self.actPart = self.elements;
+		self.actPartI = iter;
+	}
+	return self;
+}
 
 function _first(self, value) {
 	if (self.isCopy) {

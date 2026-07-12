@@ -7,12 +7,13 @@ import (
 
 type JSPreprocessorConfig struct {
 	*app.ComponentConfig
-	Mode           string
-	CorePath       string
-	MapsPath       string
-	ModsPath       string
-	PluginsPath    string
-	AssetLinksPath struct {
+	Mode            string
+	CorePath        string
+	MapsPath        string
+	ModsPath        string
+	PluginsPath     string
+	PluginCacheType string
+	AssetLinksPath  struct {
 		Inner string
 		Outer string
 	}

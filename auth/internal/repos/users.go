@@ -66,7 +66,7 @@ func (repo *UsersRepo) FindByID(id uint) (*models.User, error) {
 		return nil, ErrUserNotFound
 	}
 	if result.Error != nil {
-		return nil, fmt.Errorf("error occured while finding user with id=%d: %s", id, result.Error)
+		return nil, fmt.Errorf("error occurred while finding user with id=%d: %s", id, result.Error)
 	}
 
 	return user, nil
@@ -83,7 +83,7 @@ func (repo *UsersRepo) FindByLP(login string, password string) (*models.User, er
 		return nil, errors.New(errStr)
 	}
 	if result.Error != nil {
-		errStr := fmt.Sprintf("error occured while finding user '%s': %s", login, result.Error)
+		errStr := fmt.Sprintf("error occurred while finding user '%s': %s", login, result.Error)
 		repo.app.LogError(errStr, "App")
 		return nil, errors.New(errStr)
 	}
