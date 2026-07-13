@@ -90,6 +90,7 @@ func Up() {
 	mm, err := Check()
 	if err != nil {
 		fmt.Printf("Migrations up failed. Cause: %s\n", err)
+		return
 	}
 
 	if len(mm) == 0 {
@@ -100,6 +101,7 @@ func Up() {
 	err = m.createTable()
 	if err != nil {
 		fmt.Printf("Migrations up failed. Cause: %s\n", err)
+		return
 	}
 
 	tx, err := m.db.Begin()

@@ -121,13 +121,12 @@ func (pp *JSPreprocessor) AfterInit() {
 	pp.App().Events().Subscribe(kernel.EVENT_APP_BEFORE_SEND_ASSET, func(e kernel.IEvent) {
 		filePath := e.Payload().Get("file").(string)
 
-		lang, err := lxHttp.Lang(e.Payload().Get("request").(*http.Request))
-		if err != nil {
-			pp.LogError("Error while getting 'lxlang' cookie for EVENT_APP_BEFORE_SEND_ASSET: %v", err)
-		}
+		lang := lxHttp.Lang(pp.App(), e.Payload().Get("request").(*http.Request))
 
 		tb := utils.NewTargetBuilder(pp, filePath, lang)
-		tb.Build()
+		if err := tb.Build(); err != nil {
+			pp.LogError("can not build asset '%s': %v", filePath, err)
+		}
 	})
 }
 

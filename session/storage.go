@@ -82,7 +82,11 @@ func (s *Storage) Name() string {
 
 func (s *Storage) AfterInit() {
 	s.App().Router().AddMiddleware(func(ctx kernel.IHandleContext) error {
-		ctx.Set(HANDLE_CONTEXT_KEY, s.StartSession(ctx))
+		session, err := s.StartSession(ctx)
+		if err != nil {
+			return err
+		}
+		ctx.Set(HANDLE_CONTEXT_KEY, session)
 		return nil
 	})
 	s.GC()
@@ -107,23 +111,32 @@ func (s *Storage) SessionCookieName() string {
 	return s.Config().CookieName
 }
 
-func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession) {
+func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	cookie, err := ctx.Request().Cookie(s.SessionCookieName())
+	cookie, cookieErr := ctx.Request().Cookie(s.SessionCookieName())
 	provider := s.getProvider()
-	if err != nil || cookie.Value == "" {
+	if cookieErr != nil || cookie.Value == "" {
 		sid := s.sessionId()
-		session, _ = provider.SessionInit(sid, ctx)
-		cookie := http.Cookie{Name: s.Config().CookieName, Value: url.QueryEscape(sid), Path: "/", HttpOnly: true, MaxAge: int(s.Config().MaxLifeTime)}
-		http.SetCookie(ctx.ResponseWriter(), &cookie)
+		session, err = provider.SessionInit(sid, ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can not init session: %s", err)
+		}
+		newCookie := http.Cookie{Name: s.Config().CookieName, Value: url.QueryEscape(sid), Path: "/", HttpOnly: true, MaxAge: int(s.Config().MaxLifeTime)}
+		http.SetCookie(ctx.ResponseWriter(), &newCookie)
 	} else if sid, _ := url.QueryUnescape(cookie.Value); cookie.Value != "" && !provider.SessionExists(sid) {
-		session, _ = provider.SessionInit(sid, ctx)
+		session, err = provider.SessionInit(sid, ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can not init session: %s", err)
+		}
 	} else {
 		sid, _ := url.QueryUnescape(cookie.Value)
-		session, _ = provider.SessionRead(sid)
+		session, err = provider.SessionRead(sid)
+		if err != nil {
+			return nil, fmt.Errorf("can not read session: %s", err)
+		}
 	}
-	return
+	return session, nil
 }
 
 func (s *Storage) DestroySession(sess ISession) {
@@ -140,13 +153,16 @@ func (s *Storage) DestroySession(sess ISession) {
 	http.SetCookie(sess.Context().ResponseWriter(), &newCookie)
 }
 
-func (s *Storage) SessionByID(sid string) ISession {
+func (s *Storage) SessionByID(sid string) (ISession, error) {
 	provider := s.getProvider()
 	if !provider.SessionExists(sid) {
-		return nil
+		return nil, nil
 	}
-	session, _ := provider.SessionRead(sid)
-	return session
+	session, err := provider.SessionRead(sid)
+	if err != nil {
+		return nil, fmt.Errorf("can not read session: %s", err)
+	}
+	return session, nil
 }
 
 func (s *Storage) SetSessionID(sess ISession, sid string) {

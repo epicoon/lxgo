@@ -92,21 +92,13 @@ func (r *Resource) ProcessRequestErrors() kernel.IHttpResponse {
 	return nil
 }
 
-func (r *Resource) Lang() (res string) {
-	res = "en-EN"
-
+func (r *Resource) Lang() string {
 	req := r.Request()
 	if req == nil {
-		return
+		return "en-EN"
 	}
 
-	lang, err := Lang(req)
-	if err != nil {
-		r.LogError(fmt.Sprintf("Error while getting 'lxlang' cookie in service_handler: %v", err), "HttpHandling")
-		return
-	}
-
-	return lang
+	return Lang(r.App(), req)
 }
 
 func (r *Resource) SetContext(c kernel.IHandleContext) {

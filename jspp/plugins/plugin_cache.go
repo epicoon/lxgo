@@ -108,14 +108,22 @@ func (c *pluginCache) DepsChanged() bool {
 	return false
 }
 
-func (c *pluginCache) Save() {
+func (c *pluginCache) Save() error {
 	langRoot := c.langRoot()
 
-	_ = os.MkdirAll(langRoot, os.ModePerm)
+	if err := os.MkdirAll(langRoot, os.ModePerm); err != nil {
+		return fmt.Errorf("can not create cache dir '%s': %w", langRoot, err)
+	}
 
 	// Serialize
-	snippetsBytes, _ := json.Marshal(c.r.output.Snippets)
-	nestedBytes, _ := json.Marshal(c.r.nestedConf)
+	snippetsBytes, err := json.Marshal(c.r.output.Snippets)
+	if err != nil {
+		return fmt.Errorf("can not marshal snippets for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	nestedBytes, err := json.Marshal(c.r.nestedConf)
+	if err != nil {
+		return fmt.Errorf("can not marshal nested plugins config for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	// Data hash
 	hashMd5 := md5.New()
@@ -128,65 +136,110 @@ func (c *pluginCache) Save() {
 
 	cacheRoot := filepath.Join(langRoot, dataHash)
 
-	_ = os.RemoveAll(cacheRoot)
-	_ = os.MkdirAll(cacheRoot, os.ModePerm)
+	if err := os.RemoveAll(cacheRoot); err != nil {
+		return fmt.Errorf("can not clear cache dir '%s': %w", cacheRoot, err)
+	}
+	if err := os.MkdirAll(cacheRoot, os.ModePerm); err != nil {
+		return fmt.Errorf("can not create cache dir '%s': %w", cacheRoot, err)
+	}
 
 	// Params hash
 	paramsHash := c.paramsHash()
 
 	// Map
-	cacheMap, _ := c.readMap()
+	cacheMap, err := c.readMap()
+	if err != nil {
+		return fmt.Errorf("can not read cache map for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 	cacheMap[paramsHash] = dataHash
-	c.writeMap(cacheMap)
+	if err := c.writeMap(cacheMap); err != nil {
+		return fmt.Errorf("can not write cache map for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	// Deps
 	deps := c.collectDeps()
-	depsBytes, _ := json.MarshalIndent(deps, "", " ")
+	depsBytes, err := json.MarshalIndent(deps, "", " ")
+	if err != nil {
+		return fmt.Errorf("can not marshal deps for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	// Note root snippet key
 	js := c.r.rootSnippetKey + ":::" + c.r.output.Js
 
 	// Save files
-	_ = os.WriteFile(filepath.Join(cacheRoot, "js"), []byte(js), 0644)
-	_ = os.WriteFile(filepath.Join(cacheRoot, "html"), []byte(c.r.html), 0644)
-	_ = os.WriteFile(filepath.Join(cacheRoot, "snippets"), snippetsBytes, 0644)
-	_ = os.WriteFile(filepath.Join(cacheRoot, "nested"), nestedBytes, 0644)
-	_ = os.WriteFile(filepath.Join(cacheRoot, "deps.json"), depsBytes, 0644)
+	if err := os.WriteFile(filepath.Join(cacheRoot, "js"), []byte(js), 0644); err != nil {
+		return fmt.Errorf("can not write cache file 'js' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheRoot, "html"), []byte(c.r.html), 0644); err != nil {
+		return fmt.Errorf("can not write cache file 'html' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheRoot, "snippets"), snippetsBytes, 0644); err != nil {
+		return fmt.Errorf("can not write cache file 'snippets' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheRoot, "nested"), nestedBytes, 0644); err != nil {
+		return fmt.Errorf("can not write cache file 'nested' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	if err := os.WriteFile(filepath.Join(cacheRoot, "deps.json"), depsBytes, 0644); err != nil {
+		return fmt.Errorf("can not write cache file 'deps.json' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+
+	return nil
 }
 
-func (c *pluginCache) Load() {
+func (c *pluginCache) Load() error {
 	cacheMap, err := c.readMap()
 	if err != nil {
-		return
+		return fmt.Errorf("can not read cache map for plugin '%s': %w", c.r.plugin.Name(), err)
 	}
 
 	paramsHash := c.paramsHash()
 	dataHash, ok := cacheMap[paramsHash]
 	if !ok {
-		return
+		return fmt.Errorf("cache miss for plugin '%s': no entry for params hash '%s'", c.r.plugin.Name(), paramsHash)
 	}
 
 	langRoot := c.langRoot()
 	cacheRoot := filepath.Join(langRoot, dataHash)
 
-	js, err0 := os.ReadFile(filepath.Join(cacheRoot, "js"))
-	html, err1 := os.ReadFile(filepath.Join(cacheRoot, "html"))
-	snippets, err2 := os.ReadFile(filepath.Join(cacheRoot, "snippets"))
-	nested, err3 := os.ReadFile(filepath.Join(cacheRoot, "nested"))
-
-	if err0 != nil || err1 != nil || err2 != nil || err3 != nil {
-		return
+	js, err := os.ReadFile(filepath.Join(cacheRoot, "js"))
+	if err != nil {
+		return fmt.Errorf("can not read cache file 'js' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	html, err := os.ReadFile(filepath.Join(cacheRoot, "html"))
+	if err != nil {
+		return fmt.Errorf("can not read cache file 'html' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	snippets, err := os.ReadFile(filepath.Join(cacheRoot, "snippets"))
+	if err != nil {
+		return fmt.Errorf("can not read cache file 'snippets' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	nested, err := os.ReadFile(filepath.Join(cacheRoot, "nested"))
+	if err != nil {
+		return fmt.Errorf("can not read cache file 'nested' for plugin '%s': %w", c.r.plugin.Name(), err)
 	}
 
 	jsData := string(js)
 	parts := strings.SplitN(jsData, ":::", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("corrupted cache file 'js' for plugin '%s': missing ':::' separator", c.r.plugin.Name())
+	}
+
+	var snippetsConf map[string]*snippetConf
+	if err := json.Unmarshal(snippets, &snippetsConf); err != nil {
+		return fmt.Errorf("can not parse cache file 'snippets' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+	var nestedConf []*nestedPluginConf
+	if err := json.Unmarshal(nested, &nestedConf); err != nil {
+		return fmt.Errorf("can not parse cache file 'nested' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
+
 	c.r.rootSnippetKey = parts[0]
 	c.r.output.Js = parts[1]
-
 	c.r.html = string(html)
+	c.r.output.Snippets = snippetsConf
+	c.r.nestedConf = nestedConf
 
-	_ = json.Unmarshal(snippets, &c.r.output.Snippets)
-	_ = json.Unmarshal(nested, &c.r.nestedConf)
+	return nil
 }
 
 func (c *pluginCache) langRoot() string {
@@ -237,16 +290,27 @@ func (c *pluginCache) readMap() (map[string]string, error) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return result, err
+		if os.IsNotExist(err) {
+			return result, nil
+		}
+		return nil, fmt.Errorf("can not read cache map file '%s': %w", path, err)
 	}
 
-	err = json.Unmarshal(data, &result)
-	return result, err
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("can not parse cache map file '%s': %w", path, err)
+	}
+	return result, nil
 }
 
-func (c *pluginCache) writeMap(m map[string]string) {
-	data, _ := json.MarshalIndent(m, "", " ")
-	_ = os.WriteFile(c.mapPath(), data, 0644)
+func (c *pluginCache) writeMap(m map[string]string) error {
+	data, err := json.MarshalIndent(m, "", " ")
+	if err != nil {
+		return fmt.Errorf("can not marshal cache map: %w", err)
+	}
+	if err := os.WriteFile(c.mapPath(), data, 0644); err != nil {
+		return fmt.Errorf("can not write cache map file '%s': %w", c.mapPath(), err)
+	}
+	return nil
 }
 
 func (c *pluginCache) collectDeps() []string {

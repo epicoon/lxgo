@@ -16,10 +16,12 @@
     JSPreprocessor:
       # Provides you to get more information in built JS-code
       Mode: DEV
+      # Path to directory for system needs
+      SysPath: .sys/cmp/jspp
       # Path to directory where will be the core of JS-code
       CorePath: frontend/build/core.js
       # Path to directory where the Preprocessor keeps its maps files
-      MapsPath: .sys/cmp/jspp
+      MapsPath: .sys/cmp/jspp/maps
       # Path to directory where the Preprocessor copies JS-modules files to lock it for the app
       ModsPath: .sys/cmp/jspp/modules
       # Path to directory where the Preprocessor copies external plugins to lock it for the app

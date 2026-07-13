@@ -1,20 +1,21 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/epicoon/lxgo/kernel"
 )
 
-func Lang(req *http.Request) (string, error) {
+func Lang(app kernel.IApp, req *http.Request) string {
 	lc, err := req.Cookie("lxlang")
 	if err != nil {
-		if err == http.ErrNoCookie {
-			return "en-EN", nil
+		if err != http.ErrNoCookie {
+			app.LogError(fmt.Sprintf("Error occurred while parsing cookie for path '%s': %v", req.URL.Path, err), "HttpHandling")
 		}
-		return "en-EN", err
+		return "en-EN"
 	}
-	return lc.Value, nil
+	return lc.Value
 }
 
 func HtmlResponse(app kernel.IApp, conf kernel.HtmlResponseConfig) (kernel.IHttpResponse, error) {

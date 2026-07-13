@@ -1,4 +1,10 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.13
+Version: v0.1.0-alpha.3
+Changes:
+- fix: IStorage.StartSession()/SessionByID() now return an error and propagate session-provider failures instead of silently returning a nil session
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.03.19
 Version: v0.1.0-alpha.2
 Changes:

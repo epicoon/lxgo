@@ -1,4 +1,12 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.13
+Version: v0.1.0-alpha.23
+Changes:
+- fix: utils.GenRandomHash() now panics instead of silently returning a hash of zero bytes when crypto/rand fails
+- refactor: http.Lang(app, req) now logs cookie-parsing failures internally and no longer returns an error
+- fix: App.Final() now logs a connection.Close() error instead of ignoring it
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.12
 Version: v0.1.0-alpha.22
 Changes:

@@ -133,7 +133,9 @@ func (c *Connection) Handle() {
 		hsResp["reconnectionAllowed"] = true
 	}
 	c.server.Connections().Add(c)
-	c.Send(hsResp, "text", false)
+	if err := c.Send(hsResp, "text", false); err != nil {
+		c.server.LifecycleError("handshake response send error for %s: %v", c.id, err)
+	}
 
 	// Waiting for messages
 	for {
@@ -163,7 +165,9 @@ func (c *Connection) Handle() {
 			return
 		case 0x9:
 			// ping -> pong
-			_ = c.Send(payload, "pong", false)
+			if err := c.Send(payload, "pong", false); err != nil {
+				c.server.LifecycleError("pong send error for %s: %v", c.id, err)
+			}
 		case 0xA:
 			// pong
 		default:
@@ -244,13 +248,17 @@ func (c *Connection) Close() {
 
 	c.LeaveAllChannels()
 
-	_ = c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		c.server.LifecycleError("close error for %s: %v", c.id, err)
+	}
 	c.conn = nil
 	c.server.LifecycleLog("closed %s", c.id)
 }
 
 func (c *Connection) Break(msg string) {
-	_ = c.Send(map[string]any{"error": msg}, "close", false)
+	if err := c.Send(map[string]any{"error": msg}, "close", false); err != nil {
+		c.server.LifecycleError("break send error for %s: %v", c.id, err)
+	}
 	c.Close()
 }
 
@@ -467,10 +475,14 @@ func (c *Connection) processAction(message map[string]any) {
 
 	case "close":
 		c.isReadyToClose = true
-		c.Send(map[string]any{"__lxws_action__": "close"}, "text", false)
+		if err := c.Send(map[string]any{"__lxws_action__": "close"}, "text", false); err != nil {
+			c.server.LifecycleError("close action send error for %s: %v", c.id, err)
+		}
 
 	case "break":
-		c.Send(map[string]any{"__lxws_action__": "break"}, "text", false)
+		if err := c.Send(map[string]any{"__lxws_action__": "break"}, "text", false); err != nil {
+			c.server.LifecycleError("break action send error for %s: %v", c.id, err)
+		}
 	}
 }
 
@@ -495,7 +507,9 @@ func (c *Connection) connect() {
 	}
 
 	c.SetStatus(ws.ConnStatusActive)
-	c.Send(data, "text", false)
+	if err := c.Send(data, "text", false); err != nil {
+		c.server.LifecycleError("connect send error for %s: %v", c.id, err)
+	}
 }
 
 func (c *Connection) reconnect() {
@@ -518,7 +532,9 @@ func (c *Connection) reconnect() {
 	}
 
 	c.SetStatus(ws.ConnStatusActive)
-	c.Send(data, "text", false)
+	if err := c.Send(data, "text", false); err != nil {
+		c.server.LifecycleError("reconnect send error for %s: %v", c.id, err)
+	}
 }
 
 func (c *Connection) processRequest(message map[string]any) {
@@ -566,7 +582,9 @@ func (c *Connection) processRequest(message map[string]any) {
 		"headers":           resp.Headers(),
 		"body":              resp.Data(),
 	}
-	c.Send(msg, "text", false)
+	if err := c.Send(msg, "text", false); err != nil {
+		c.server.LifecycleError("response send error for %s: %v", c.id, err)
+	}
 }
 
 type chMsgOptions struct {
@@ -629,12 +647,14 @@ func (c *Connection) processChannelMsg(message map[string]any) {
 			if iConn == nil {
 				continue
 			}
-			iConn.Send(map[string]any{
+			if err := iConn.Send(map[string]any{
 				"__lxws_channel_event__": "mateUpdated",
 				"channel":                ch.Key(),
 				"id":                     c.ID(),
 				"data":                   c.SharedDataForChannel(ch),
-			}, "text", false)
+			}, "text", false); err != nil {
+				c.server.LifecycleError("mateUpdated send error for %s: %v", id, err)
+			}
 		}
 	}
 	//TODO event

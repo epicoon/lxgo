@@ -164,16 +164,22 @@ func (r *pluginRenderer) compile() {
 	case CACHE_ON:
 		if !cache.Exists() {
 			r.compileProcess()
-			cache.Save()
-		} else {
-			cache.Load()
+			if err := cache.Save(); err != nil {
+				r.pp.LogError("can not save cache for plugin '%s': %v", r.plugin.Name(), err)
+			}
+		} else if err := cache.Load(); err != nil {
+			r.pp.LogError("can not load cache for plugin '%s', recompiling: %v", r.plugin.Name(), err)
+			r.compileProcess()
 		}
 	case CACHE_DEV:
 		if !cache.Exists() || cache.DepsChanged() {
 			r.compileProcess()
-			cache.Save()
-		} else {
-			cache.Load()
+			if err := cache.Save(); err != nil {
+				r.pp.LogError("can not save cache for plugin '%s': %v", r.plugin.Name(), err)
+			}
+		} else if err := cache.Load(); err != nil {
+			r.pp.LogError("can not load cache for plugin '%s', recompiling: %v", r.plugin.Name(), err)
+			r.compileProcess()
 		}
 	default:
 		r.compileProcess()

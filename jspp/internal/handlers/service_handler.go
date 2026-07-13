@@ -118,6 +118,7 @@ func getModules(h *ServiceHandler, list map[string]any) kernel.IHttpResponse {
 	mCode, err := compiler.Run()
 	if err != nil {
 		pp.LogError("Can not compile modules '%s': %v", code, err)
+		return errorResponse(h, fmt.Sprintf("Can not compile modules: %v", err))
 	}
 
 	//TODO

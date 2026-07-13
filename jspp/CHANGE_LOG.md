@@ -1,4 +1,17 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.13
+Version: v0.1.0-alpha.26
+Changes:
+- add: JSPreprocessor config `SysPath` — directory for system needs
+- fix: failed JS-code execution is now dumped to `{SysPath}/js_fails` and logged instead of writing to a hardcoded dev-machine path and ignoring the write error
+- fix: plugin cache (Save/Load) now propagates file/serialization errors instead of silently ignoring them; a corrupted cache file no longer causes a panic
+- fix: unsafe type assertions in JS-executor response parsing replaced with checked ones (panic -> error)
+- fix: maps builder no longer panics on `go list` failure and no longer continues into a directory it failed to clear; errors are propagated
+- fix: format string mismatch in JS-application config compiler error log
+- fix: `/lx/service` handler no longer reports `"success": true` when module compilation fails
+- fix: target builder (JS-bundle writer) now propagates write errors instead of silently continuing
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.12
 Version: v0.1.0-alpha.25
 Changes:

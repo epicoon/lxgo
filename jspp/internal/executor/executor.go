@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/epicoon/lxgo/jspp"
+	"github.com/epicoon/lxgo/kernel/utils"
 )
 
 type executor struct {
@@ -122,25 +125,51 @@ func (e *executor) Exec() (jspp.IExecResult, error) {
 		return nil, err
 	}
 
-	dumps := make([]string, 0, len(data["dumps"].([]any)))
-	for _, v := range data["dumps"].([]any) {
+	dumpsRaw, ok := data["dumps"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("unexpected JS-executor response: 'dumps' is not an array")
+	}
+	dumps := make([]string, 0, len(dumpsRaw))
+	for _, v := range dumpsRaw {
 		if s, ok := v.(string); ok {
 			dumps = append(dumps, s)
 		}
 	}
 
-	res := &execResult{
-		log:    toStringSliceMap(data["log"].(map[string]any)),
-		errors: toStringSliceMap(data["errors"].(map[string]any)),
-		dumps:  dumps,
-		result: data["result"],
-		fatal:  data["fatal"].(string),
+	logMap, ok := data["log"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unexpected JS-executor response: 'log' is not an object")
+	}
+	errorsMap, ok := data["errors"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unexpected JS-executor response: 'errors' is not an object")
+	}
+	fatal, ok := data["fatal"].(string)
+	if !ok {
+		return nil, fmt.Errorf("unexpected JS-executor response: 'fatal' is not a string")
 	}
 
-	//TODO fmt
+	res := &execResult{
+		log:    toStringSliceMap(logMap),
+		errors: toStringSliceMap(errorsMap),
+		dumps:  dumps,
+		result: data["result"],
+		fatal:  fatal,
+	}
+
 	if len(res.Errors()) > 0 || res.Fatal() != "" {
-		destPath := "/home/lx/webprj/goprg/lxgo-mchat/frontend/plugins/test_plugin/temp.js"
-		_ = os.WriteFile(destPath, []byte(jsCode), 0644)
+		pp := e.pp
+		sysPath := pp.App().Pathfinder().GetAbsPath(pp.Config().SysPath)
+		failsDir := filepath.Join(sysPath, "js_fails")
+		fileName := filepath.Join(failsDir, fmt.Sprintf("%s_%s.js", time.Now().UTC().Format("2006_01_02_150405"), utils.GenRandomHash(8)))
+
+		if err := os.MkdirAll(failsDir, 0755); err != nil {
+			pp.LogError("can not execute JS-code. Can not save code example: %s", err)
+		} else if err := os.WriteFile(fileName, []byte(jsCode), 0644); err != nil {
+			pp.LogError("can not execute JS-code. Can not save code example: %s", err)
+		} else {
+			pp.LogError("can not execute JS-code. Code example: %s", fileName)
+		}
 	}
 
 	return res, nil

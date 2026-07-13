@@ -465,7 +465,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 
 		bConf, err := json.Marshal(conf)
 		if err != nil {
-			c.pp.LogError("can not marshal to json JS-application config '%s':", cPath, err)
+			c.pp.LogError("can not marshal to json JS-application config '%s': %v", cPath, err)
 		} else {
 			res = string(bConf)
 			re := regexp.MustCompile(`@config\(([^)]+)\)`)

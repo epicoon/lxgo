@@ -112,14 +112,20 @@ func buildMap(com cmd.ICommand, op utils.MapBuilderOptions) error {
 
 	if c.Flag("p") {
 		if op.Modules {
-			src := utils.GetModulesSrcList(pp)
+			src, err := utils.GetModulesSrcList(pp)
+			if err != nil {
+				return err
+			}
 			fmt.Println("Modules src directories:")
 			for _, val := range src {
 				fmt.Printf("- %s\n", val)
 			}
 		}
 		if op.Plugins {
-			src := utils.GetPluginsSrcList(pp)
+			src, err := utils.GetPluginsSrcList(pp)
+			if err != nil {
+				return err
+			}
 			fmt.Println("Plugins src directories:")
 			for _, val := range src {
 				fmt.Printf("- %s\n", val)

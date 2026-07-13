@@ -157,7 +157,9 @@ func (s *WSServer) Start() error {
 }
 
 func (s *WSServer) Stop() {
-	_ = s.listener.Close()
+	if err := s.listener.Close(); err != nil {
+		log.Printf("listener close error: %v", err)
+	}
 	s.wg.Wait()
 	s.conns.Close()
 }

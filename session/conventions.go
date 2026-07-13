@@ -13,9 +13,9 @@ type IStorage interface {
 	kernel.IAppComponent
 	Scaner() IScaner
 	SessionCookieName() string
-	StartSession(ctx kernel.IHandleContext) ISession
+	StartSession(ctx kernel.IHandleContext) (ISession, error)
 	DestroySession(ISession)
-	SessionByID(sid string) ISession
+	SessionByID(sid string) (ISession, error)
 	SetSessionID(sess ISession, sid string)
 	GC()
 	Provider() IProvider

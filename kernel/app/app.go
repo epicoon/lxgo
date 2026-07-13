@@ -326,7 +326,9 @@ func (app *App) Final() {
 	app.events.Trigger(kernel.EVENT_APP_BEFORE_FINAL)
 
 	if app.connection != nil {
-		app.connection.Close()
+		if err := app.connection.Close(); err != nil {
+			app.LogError(fmt.Sprintf("Could not close app connection: %v", err), "App")
+		}
 	}
 
 	if app.manageSocket != nil {

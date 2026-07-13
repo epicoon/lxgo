@@ -1,6 +1,6 @@
 # Package HTTP sessions in lxgo/kernel web-applications
 
-> Actual version: `v0.1.0-alpha.2`. [Details](https://github.com/epicoon/lxgo/tree/master/session/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.3`. [Details](https://github.com/epicoon/lxgo/tree/master/session/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 

@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -20,7 +19,7 @@ func Md5(s string) string {
 func GenRandomHash(n int) string {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
-		log.Printf("Failed to generate random bytes: %s", err)
+		panic(fmt.Sprintf("failed to generate random bytes: %s", err))
 	}
 	return base64.URLEncoding.EncodeToString(b)
 }

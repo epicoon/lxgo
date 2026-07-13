@@ -27,26 +27,26 @@ func NewTargetBuilder(pp jspp.IPreprocessor, path, lang string) *targetBuilder {
 	}
 }
 
-func (tb *targetBuilder) Build() {
+func (tb *targetBuilder) Build() error {
 	//TODO cache
 
 	tb.target = tb.defineTarget()
 	if tb.target == nil {
-		return
+		return nil
 	}
 
 	c := tb.prepareCompiler()
 	code, err := c.Run()
 	if err != nil {
 		tb.pp.LogError("Can not build js-bundle '%s' from js-file '%s': %v", tb.path, tb.target.EntryPoint, err)
-		return
+		return nil
 	}
 
 	if tb.target.Type == "app" && tb.pp.Config().CssScopeRenderSide == "server" {
 		code = tb.renderCss(c) + code
 	}
 
-	tb.genOutput(code)
+	return tb.genOutput(code)
 }
 
 func (tb *targetBuilder) renderCss(c jspp.ICompiler) string {
@@ -108,12 +108,12 @@ func (tb *targetBuilder) prepareCompiler() jspp.ICompiler {
 	return cb.Compiler()
 }
 
-func (tb *targetBuilder) genOutput(code string) {
+func (tb *targetBuilder) genOutput(code string) error {
 	dest := tb.pp.App().Pathfinder().GetAbsPath(tb.target.Output)
-	err := os.WriteFile(dest, []byte(code), 0644)
-	if err != nil {
-		tb.pp.LogError("Can not write js-bundle '%s' to js-file '%s': %v", tb.target.EntryPoint, dest, err)
+	if err := os.WriteFile(dest, []byte(code), 0644); err != nil {
+		return fmt.Errorf("can not write js-bundle '%s' to js-file '%s': %w", tb.target.EntryPoint, dest, err)
 	}
+	return nil
 }
 
 func (tb *targetBuilder) defineTarget() *base.Target {

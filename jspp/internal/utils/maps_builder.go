@@ -33,7 +33,10 @@ type goModule struct {
 }
 
 func BuildMaps(pp jspp.IPreprocessor, op MapBuilderOptions) error {
-	modulesMap, pluginsMap := getMaps(pp, op)
+	modulesMap, pluginsMap, err := getMaps(pp, op)
+	if err != nil {
+		return err
+	}
 
 	if op.Modules {
 		if err := pp.ModulesMap().Save(modulesMap); err != nil {
@@ -49,7 +52,7 @@ func BuildMaps(pp jspp.IPreprocessor, op MapBuilderOptions) error {
 	return nil
 }
 
-func GetModulesSrcList(pp jspp.IPreprocessor) []string {
+func GetModulesSrcList(pp jspp.IPreprocessor) ([]string, error) {
 	mmPaths := make([]string, 0, 1)
 
 	for _, path := range pp.Config().Modules {
@@ -57,17 +60,20 @@ func GetModulesSrcList(pp jspp.IPreprocessor) []string {
 	}
 
 	mm := getMainModule()
-	goMm := getDepModules(mm)
+	goMm, err := getDepModules(mm)
+	if err != nil {
+		return nil, err
+	}
 	for _, goMod := range goMm {
 		if goMod.Dir != "" && !slices.Contains(pp.Config().ModulesIgnore, goMod.Dir) {
 			mmPaths = append(mmPaths, goMod.Dir)
 		}
 	}
 
-	return mmPaths
+	return mmPaths, nil
 }
 
-func GetPluginsSrcList(pp jspp.IPreprocessor) []string {
+func GetPluginsSrcList(pp jspp.IPreprocessor) ([]string, error) {
 	ppPaths := make([]string, 0, 1)
 
 	for _, path := range pp.Config().Plugins {
@@ -75,14 +81,17 @@ func GetPluginsSrcList(pp jspp.IPreprocessor) []string {
 	}
 
 	mm := getMainModule()
-	goMm := getDepModules(mm)
+	goMm, err := getDepModules(mm)
+	if err != nil {
+		return nil, err
+	}
 	for _, goMod := range goMm {
 		if goMod.Dir != "" {
 			ppPaths = append(ppPaths, goMod.Dir)
 		}
 	}
 
-	return ppPaths
+	return ppPaths, nil
 }
 
 func getMainModule() string {
@@ -93,12 +102,12 @@ func getMainModule() string {
 	return info.Main.Path
 }
 
-func getDepModules(mainModule string) []goModule {
+func getDepModules(mainModule string) ([]goModule, error) {
 	cmd := exec.Command("go", "list", "-deps", "-json", mainModule)
 
 	output, err := cmd.Output()
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("can not list dependency modules for '%s': %w", mainModule, err)
 	}
 
 	decoder := json.NewDecoder(strings.NewReader(string(output)))
@@ -121,17 +130,17 @@ func getDepModules(mainModule string) []goModule {
 		modules = append(modules, m)
 	}
 
-	return modules
+	return modules, nil
 }
 
-func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData, []jspp.IPluginData) {
+func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData, []jspp.IPluginData, error) {
 	var mmMap []jspp.IJSModuleData
 	var ppMap []jspp.IPluginData
 
 	if op.Modules {
 		if modsPath := pp.Config().ModsPath; modsPath != "" {
 			if err := clearDir(modsPath); err != nil {
-				pp.LogError("failed to clear modules path %s: %v", modsPath, err)
+				return nil, nil, fmt.Errorf("failed to clear modules path '%s': %w", modsPath, err)
 			}
 		}
 		for _, p := range pp.Config().Modules {
@@ -151,7 +160,7 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 	if op.Plugins {
 		if pluginsPath := pp.Config().PluginsPath; pluginsPath != "" {
 			if err := clearDir(pluginsPath); err != nil {
-				pp.LogError("failed to clear plugins path %s: %v", pluginsPath, err)
+				return nil, nil, fmt.Errorf("failed to clear plugins path '%s': %w", pluginsPath, err)
 			}
 		}
 		for _, p := range pp.Config().Plugins {
@@ -169,7 +178,10 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 	}
 
 	mm := getMainModule()
-	goModules := getDepModules(mm)
+	goModules, err := getDepModules(mm)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, goModule := range goModules {
 		if slices.Contains(pp.Config().ModulesIgnore, goModule.Dir) {
 			continue
@@ -186,7 +198,7 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 		})
 	}
 
-	return mmMap, ppMap
+	return mmMap, ppMap, nil
 }
 
 func checkPath(
