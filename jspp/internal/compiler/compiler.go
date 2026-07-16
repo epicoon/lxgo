@@ -159,10 +159,6 @@ func (c *Compiler) buildCode() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	code, err = c.compileExtensions(code, filePath)
-	if err != nil {
-		return "", err
-	}
 
 	return code, nil
 }
@@ -180,32 +176,19 @@ func (c *Compiler) compileCodeInnerDirectives(code, path string) (string, error)
 	re := regexp.MustCompile(`// *?@lx:`)
 	code = re.ReplaceAllString(code, "@lx:")
 
-	//TODO
-	// $extensions = $this->getExtensions();
-	// foreach ($extensions as $extension) {
-	// 	$extension->setConductor($this->conductor);
-	// 	$code = $extension->beforeCutComments($code, $path);
-	// }
-
 	code = c.processLxml(code)
 
 	//TODO need leave comments for DEV ?
 	code = c.cutComments(code)
 
-	//TODO
-	// foreach ($extensions as $extension) {
-	// 	$code = $extension->afterCutComments($code, $path);
-	// }
-
 	code = c.cutCoordinationDirectives(code)
 
-	//TODO
-	// $code = $this->parseMd($code, $path);
-	// $code = $this->processMacroses($code);
+	code = c.applyMacros(code)
+	code = c.parseMd(code, path)
 
 	code = c.applyContext(code)
 	code = c.injectDatum(code)
-	code, err = applyExtendedSyntax(c, code, path)
+	code, err = applyExtendedSyntax(code, path)
 	if err != nil {
 		return "", err
 	}
@@ -216,8 +199,7 @@ func (c *Compiler) compileCodeInnerDirectives(code, path string) (string, error)
 }
 
 func (c *Compiler) compileCodeOuterDirectives(code, path string, wrapped bool) (string, error) {
-	//TODO
-	// $code = $this->markDev($code, $path);
+	code = c.markDev(code, path)
 
 	if wrapped {
 		code = `(()=>{` + code + `})();`
@@ -236,11 +218,18 @@ func (c *Compiler) compileCodeOuterDirectives(code, path string, wrapped bool) (
 	return code, nil
 }
 
-func (c *Compiler) compileExtensions(code, path string) (string, error) {
-	//TODO
-	_ = path
+func (c *Compiler) markDev(code, path string) string {
+	if c.Mode() != "DEV" || path == "" {
+		return code
+	}
+	return fmt.Sprintf("\n/* @lx-begin-js-file: %s */\n%s\n/* @lx-end-js-file: %s */\n", path, code, path)
+}
 
-	return code, nil
+func (c *Compiler) markDevInterrupting(code, path string) string {
+	if c.Mode() != "DEV" || path == "" {
+		return code
+	}
+	return fmt.Sprintf("\n/* @lx-interrupted-js-file: %s */\n%s\n/* @lx-continue-js-file: %s */\n", path, code, path)
 }
 
 func (c *Compiler) processLxml(code string) string {

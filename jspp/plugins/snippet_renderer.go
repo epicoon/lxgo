@@ -139,10 +139,6 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 	pr.addAssets(compiler)
 	pr.applyBuildData(res.Plugin)
 
-	//TODO
-	// // Зависимости сниппету запомнить для кэша?
-	// $snippet->setDependencies($dependencies, $compiler->getCompiledFiles());
-
 	// Process nested plugins
 	pr.nestPlugins(res.SubPlugins)
 

@@ -56,6 +56,9 @@
       # Optional: directories with plugins which are not in the Go modules
       Plugins:
         - /path/to/plugins
+      # Optional: substitute JS-module names by other module names when resolving @lx:use
+      ModuleInjector:
+        ModuleName: OtherModuleName
   ```
 
 - Plug in `JSPreprocessor` component in `go` code:

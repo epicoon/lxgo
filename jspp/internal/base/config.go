@@ -24,6 +24,7 @@ type JSPreprocessorConfig struct {
 	ModulesIgnore      []string
 	Plugins            []string
 	Targets            []Target
+	ModuleInjector     map[string]string
 }
 
 /** @constructor kernel.CAppComponentConfig */
@@ -35,6 +36,7 @@ func NewJSPreprocessorConfig() kernel.IAppComponentConfig {
 		ModulesIgnore:      []string{},
 		Plugins:            []string{},
 		Targets:            []Target{},
+		ModuleInjector:     map[string]string{},
 	}
 }
 

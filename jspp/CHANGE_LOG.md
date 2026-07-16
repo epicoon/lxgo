@@ -1,4 +1,19 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.16
+Version: v0.1.0-alpha.27
+Changes:
+- add: `@lx:md('path.md')` directive — renders a markdown file to HTML via a built-in converter (own markdown engine, not a third-party library)
+- add: `@lx:macros NAME { ... }` directive and `lx>>>NAME` expansion syntax
+- add: JSPreprocessor config `ModuleInjector` — substitute JS-module names when resolving `@lx:use`
+- add: dev-mode source markers around compiled JS files/fragments (`Mode: DEV`)
+- add: `lx.MdHighlighter` now actually highlights typed markdown code blocks (js/go) instead of being a no-op stub
+- fix: markdown code blocks no longer leak unescaped HTML and are no longer corrupted by inline-formatting rules (links/bold/etc.) meant for surrounding text
+- fix: a blank line inside a fenced markdown code block no longer prematurely closes the block
+- fix: markdown default text color (code blocks, blockquotes) now follows the active CSS preset instead of relying on inheritance
+- rename: markdown CSS classes from bare `md-*` to `lx-md-*`, matching the rest of the framework's naming convention
+- refactor: removed dead/never-finished compiler extension-hook code and other leftover artifacts
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.13
 Version: v0.1.0-alpha.26
 Changes:

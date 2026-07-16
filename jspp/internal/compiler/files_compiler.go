@@ -76,9 +76,6 @@ func (c *Compiler) plugRequire(requireName string, flags Flags, parentDir string
 }
 
 func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath string) (string, error) {
-	//TODO
-	_ = rootPath
-
 	type fileInfo struct {
 		Path         string
 		Code         string
@@ -188,8 +185,7 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 			return "", err
 		}
 
-		//TODO
-		// $code = $this->markDevInterrupting($code, $rootPath);
+		code = c.markDevInterrupting(code, rootPath)
 
 		result.WriteString(code)
 	}

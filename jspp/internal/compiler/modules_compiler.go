@@ -49,8 +49,9 @@ func (c *Compiler) plugAllModules(code, rootPath string) (string, error) {
 }
 
 func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, filePaths *[]string) {
-	//TODO
-	// $moduleName = $this->moduleInjector->resolveModuleName($moduleName);
+	if resolved, ok := c.pp.Config().ModuleInjector[moduleName]; ok {
+		moduleName = resolved
+	}
 
 	if slices.Contains(c.ignoredModules, moduleName) ||
 		slices.Contains(c.compiledModules, moduleName) ||

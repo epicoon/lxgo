@@ -9,7 +9,7 @@ import (
 	"github.com/epicoon/lxgo/jspp/internal/utils"
 )
 
-func applyExtendedSyntax(c *Compiler, code, path string) (string, error) {
+func applyExtendedSyntax(code, path string) (string, error) {
 	// lx.self(KEY). => this.constructor.KEY
 	re := regexp.MustCompile(`lx\.self\(`)
 	do := true
@@ -53,43 +53,13 @@ func applyExtendedSyntax(c *Compiler, code, path string) (string, error) {
 		return str
 	})
 
-	// // element~>key => element.neighbor('key')
-	// $code = preg_replace_callback('/([\w\d_])~>([\w_][\w\d_]*?\b)/', function($matches) {
-	// 	return $matches[1] . '.neighbor(\'' . $matches[2] . '\')';
-	// }, $code);
-
-	//===
-	//===
-	//===
-
-	// ^self::method(arg1, arg2) => this.constructor.ajax('method', [arg1, arg2]).send()
-	//TODO
-
-	// ^Resp.method(arg1, arg2) => $plugin.ajax('Resp.method', [arg1, arg2]).send()
-	//TODO
-
-	// #lx:model <ModelName>
-	// =>
-	// (function(){ class _am_ extends lx.BindableModel { #lx:schema <ModelName>; } return new _am_; })()
-	// #lx:model { a, b }
-	// =>
-	// (function(){ class _am_ extends lx.BindableModel { #lx:schema a, b; } return new _am_; })()
-	//TODO
-
-	// #lx:modelSchema <Car>  =>  {/* schema */}
-	//TODO ??????????????????
-
-	return applyExtendedSyntaxForClasses(c, code, path)
+	return applyExtendedSyntaxForClasses(code, path)
 }
 
-func applyExtendedSyntaxForClasses(c *Compiler, code, path string) (string, error) {
-	//TODO
-	_ = c
-	_ = path
-
+func applyExtendedSyntaxForClasses(code, path string) (string, error) {
 	classesInfo, err := findClasses(code)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("can not parse classes in '%s': %w", path, err)
 	}
 	if classesInfo == nil {
 		return code, nil
@@ -124,9 +94,6 @@ func applyExtendedSyntaxForClasses(c *Compiler, code, path string) (string, erro
 		code = strings.Replace(code, info.fullCode, classCode, 1)
 	}
 
-	a := 1
-	_ = a
-
 	return code, nil
 }
 
@@ -134,8 +101,7 @@ type classInfo struct {
 	namespace string
 	name      string
 	extends   string
-	// implementation string
-	fullCode string
+	fullCode  string
 }
 
 func findClasses(code string) ([]classInfo, error) {
@@ -154,8 +120,6 @@ func findClasses(code string) ([]classInfo, error) {
 			return nil, errors.New("wrong braces matching")
 		}
 
-		//TODO do we need it?
-		// info.implementation = code[finish:end]
 		info.fullCode = code[start : end+1]
 		re := regexp.MustCompile(`(?:@lx:namespace\s+([\w_][\w\d_.]*?);)?\s*class\s+\b(.+?)\b\s+(?:extends\s+([\w_][\w\d_.]*?))?`)
 		matches := re.FindAllStringSubmatch(info.fullCode, -1)
