@@ -1,5 +1,3 @@
-#lx:public;
-
 class Line {
     constructor(context, span) {
         if (span.span !== undefined) span = span.span;

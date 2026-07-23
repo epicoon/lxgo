@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/epicoon/lxgo/kernel"
 )
 
@@ -15,6 +17,22 @@ func NewDIConteiner(app kernel.IApp) kernel.IDIContainer {
 
 func (c *DIContainer) Init(list kernel.CAnyList) {
 	c.list = list
+}
+
+func (c *DIContainer) Register(list kernel.CAnyList) error {
+	if c.list == nil {
+		c.list = make(kernel.CAnyList, len(list))
+	}
+
+	for key, constructor := range list {
+		_, exists := c.list[key]
+		if exists {
+			return fmt.Errorf("DI-key '%s' already initialized", key)
+		}
+		c.list[key] = constructor
+	}
+
+	return nil
 }
 
 func (c *DIContainer) Get(key string) any {

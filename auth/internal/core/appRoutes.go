@@ -14,11 +14,16 @@ func InitRoutes(router kernel.IRouter) {
 		"/return[GET]":  handlers.NewReturnHandler,
 
 		// API
-		"/auth[POST]":     handlers.NewPostAuthHandler,
-		"/tokens[POST]":   handlers.NewTokensHandler,
-		"/refresh[POST]":  handlers.NewRefreshHandler,
-		"/logout[POST]":   handlers.NewLogoutHandler,
-		"/user-data[GET]": handlers.NewGetUserHandler,
+		"/auth[POST]":      handlers.NewPostAuthHandler,
+		"/tokens[POST]":    handlers.NewTokensHandler,
+		"/refresh[POST]":   handlers.NewRefreshHandler,
+		"/logout[POST]":    handlers.NewLogoutHandler,
+		"/user-data[GET]":  handlers.NewGetUserHandler,
+		"/user-data[POST]": handlers.NewSetUserDataHandler,
+		"/clients[POST]":   handlers.NewCreateClientHandler,
+
+		// Admin API
+		"/admin/clients[DELETE]": handlers.NewDeleteClientHandler,
 	})
 	router.RegisterFileAssets(map[string]string{
 		"/js-form/":   "client/js/apps/form/dist",

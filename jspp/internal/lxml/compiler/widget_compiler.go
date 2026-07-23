@@ -71,6 +71,8 @@ func (c *widgetCompiler) run() string {
 		conf := cElem.getConfigCode()
 		if conf == "" {
 			conf = "{}"
+		} else {
+			conf = "{" + conf + "}"
 		}
 		nodeCode += varName + ".setMatrixItemBox([" + elem.Widget + "," + conf + "]);"
 
@@ -166,16 +168,22 @@ func (c *widgetCompiler) getConfigCode() string {
 	}
 
 	if n.Text != "" {
-		config = append(config, "text:\""+n.Text+"\"")
+		config = append(config, "text:\""+escapeJSDoubleQuoted(n.Text)+"\"")
 	}
 
 	if len(n.Geom) > 0 {
-		geom := make([]string, 0, 4)
-		for i, item := range n.Geom {
+		// right/bottom (index > 3) are only meaningful as a trailing run: drop
+		// them from the end while they're "null", but keep a "null" placeholder
+		// for right if bottom is actually set, so bottom doesn't shift into
+		// right's array slot.
+		end := len(n.Geom)
+		for end > 4 && n.Geom[end-1] == "null" {
+			end--
+		}
+
+		geom := make([]string, 0, end)
+		for _, item := range n.Geom[:end] {
 			if item == "null" {
-				if i > 3 {
-					continue
-				}
 				geom = append(geom, "null")
 			} else if isNum(item) {
 				geom = append(geom, item)
@@ -219,6 +227,19 @@ func (c *widgetCompiler) getActionsCode(varName string) string {
 		code += varName + "." + method + "(" + args + ");"
 	}
 	return code
+}
+
+// escapeJSDoubleQuoted makes s safe to place inside a double-quoted JS string
+// literal: backslashes and quotes are escaped, and any raw line break becomes
+// `\n` (backtick text is allowed to span multiple physical lines, but the
+// compiled output wraps it in double quotes, not backticks).
+func escapeJSDoubleQuoted(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "\"", "\\\"")
+	s = strings.ReplaceAll(s, "\r\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\n")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	return s
 }
 
 func isNum(s string) bool {

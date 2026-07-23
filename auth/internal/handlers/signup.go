@@ -18,15 +18,26 @@ import (
 /** @interface kernel.IForm */
 type SignupRequest struct {
 	*lxHttp.Form
-	Login    string `dict:"login"`
-	Password string `dict:"password"`
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+func (f *SignupRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"login": kernel.FormFieldConfig{
+			Description: "new user's login",
+			Required:    true,
+		},
+		"password": kernel.FormFieldConfig{
+			Description: "new user's password",
+			Required:    true,
+		},
+	}
 }
 
 /** @constructor */
-func NewSignupRequest() *SignupRequest {
-	req := &SignupRequest{Form: lxHttp.NewForm()}
-	req.SetRequired([]string{"login", "password"})
-	return req
+func NewSignupRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&SignupRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -34,12 +45,18 @@ func NewSignupRequest() *SignupRequest {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /** @interface kernel.IHttpResource */
 type SignupHandler struct {
-	*lxHttp.Resource
+	*BaseHandler
 }
 
 /** @type kernel.CHttpResource */
 func NewSignupHandler() kernel.IHttpResource {
-	return &SignupHandler{Resource: lxHttp.NewResource()}
+	return &SignupHandler{BaseHandler: NewBaseHandler(kernel.HttpResourceConfig{
+		CRequestForm: NewSignupRequest,
+	})}
+}
+
+func (handler *SignupHandler) ProcessRequestErrors() kernel.IHttpResponse {
+	return errorResponse(handler, http.StatusBadRequest, ERR_NO_LOGIN_PWD, "Missing login or password")
 }
 
 func (handler *SignupHandler) Run() kernel.IHttpResponse {
@@ -48,12 +65,7 @@ func (handler *SignupHandler) Run() kernel.IHttpResponse {
 		panic("app does not implement core.IApp")
 	}
 
-	// Checking Login and Password
-	req := NewSignupRequest()
-	lxHttp.FormFiller().SetContext(handler.Context()).SetForm(req).Fill()
-	if req.HasErrors() {
-		return errorResponse(handler, http.StatusBadRequest, ERR_NO_LOGIN_PWD, "Missing login or password")
-	}
+	req := handler.RequestForm().(*SignupRequest)
 
 	if !validateLogin(req.Login) {
 		return errorResponse(handler, http.StatusBadRequest, ERR_INVAL_LOGIN, "Invalid login format")

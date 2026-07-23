@@ -1,5 +1,15 @@
 // @lx:module lx.BasicCssContext;
 
+/**
+ * Uses preset values:
+ * - borderRadius
+ * - shadowSize
+ * - bodyBackgroundColor
+ * - textColor
+ * - widgetBackgroundColor
+ * - widgetBorderColor
+ * - textBackgroundColor
+ */
 // @lx:namespace lx;
 class BasicCssContext extends lx.CssContextExtender {
     static init(css) {
@@ -28,17 +38,17 @@ class BasicCssContext extends lx.CssContextExtender {
          *     [fontFamily = 'inherit'] {String}
          * }}
          * Examples:
-         * '@icon': {'\\2297', 16}
-         * '@icon': {'\\21BB', {fontWeight: 300, fontSize: 16}}
+         * '@icon': ['\\2297', 16]
+         * '@icon': ['\\21BB', {fontWeight: 300, fontSize: 16}]
          */
         css.registerMixin('icon', (iconCode, config = null) => {
-            var iconFlex = {
+            let iconFlex = {
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center'
             };
-            var iconStyle = {
+            let iconStyle = {
                 fontSize: 'calc(30px + 1.0vh)',
                 fontWeight: '500',
                 color: 'inherit',

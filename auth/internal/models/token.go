@@ -11,6 +11,7 @@ type Token struct {
 	ClientID  uint      `gorm:"not null"`
 	UserID    uint      `gorm:"not null"`
 	Value     string    `gorm:"not null"`
+	Scope     string    `gorm:"not null"`
 	IsRefresh bool      `gorm:"not null"`
 	ExpiredAt time.Time `gorm:"not null"`
 	CreatedAt time.Time

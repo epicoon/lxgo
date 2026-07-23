@@ -1,6 +1,6 @@
 // @lx:module lx.LanguageSwitcher;
 
-// @lx:use lx.Dropbox;
+lx.import(lx.Dropbox);
 
 /**
  * Language switcher based on lx.Dropbox, keeps language option in Cookies

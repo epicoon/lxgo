@@ -1,5 +1,7 @@
-// @lx:require -R positioningStrategies/;
-// @lx:require -U tools;
+lx.import(
+    '-R positioningStrategies/',
+    '-U tools'
+);
 
 /* * 1. Constructor
  * render(config)
@@ -861,6 +863,7 @@ class Box extends lx.Rect {
     find(key) {
         let c = this.getChildren({hasProperties:{key}, all:true});
         if (c.len == 1) return c.at(0);
+        if (c.isEmpty()) return null;
         return c;
     }
 

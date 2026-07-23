@@ -1,6 +1,6 @@
 // @lx:module lx.TestModule;
 
-// @lx:require classes/;
+lx.import('classes/');
 
 // @lx:namespace lx;
 class TestModule {

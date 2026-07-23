@@ -6,13 +6,17 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	DefaultAccessTokenLifetime  = 900
+	DefaultRefreshTokenLifetime = 604800
+)
+
 type Client struct {
 	gorm.Model
-	Secret               string `gorm:"not null"`
-	RoleID               uint   `gorm:"not null"`
-	AccessTokenLifetime  uint   `gorm:"not null"`
-	RefreshTokenLifetime uint   `gorm:"not null"`
-	Role                 Role
+	Secret               string  `gorm:"not null"`
+	AccessTokenLifetime  uint    `gorm:"not null"`
+	RefreshTokenLifetime uint    `gorm:"not null"`
+	RedirectUri          string  `gorm:"not null"`
 	Tokens               []Token `gorm:"foreignKey:ClientID;"`
 }
 

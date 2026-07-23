@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.24
+Version: v0.1.0-alpha.6
+Changes:
+- docs: README's example command typos fixed (`anonimus`→`anonymous`, `by`/`By`→`bye`/`Bye`)
+- docs: new "cmd.ICommandOptions" section explaining the existing options-passing mechanism, with a real lxgo-jspp example
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.12
 Version: v0.1.0-alpha.5
 Changes:

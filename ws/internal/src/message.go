@@ -43,6 +43,10 @@ func (m *Message) SetData(d any) ws.IMessage {
 	return m
 }
 
+func (m *Message) Data() any {
+	return m.data
+}
+
 func (m *Message) AddData(d map[string]any) ws.IMessage {
 	currD, ok := m.data.(map[string]any)
 	if ok {

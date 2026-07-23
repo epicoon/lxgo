@@ -1,6 +1,11 @@
 // @lx:namespace lx;
 class ElementRequest extends lx.HttpRequest {
-	constructor(elemName, methodName, params = {}) {
-		super('/lx/elem', {elemName, methodName, params});
+	/**
+	 * @param {String} elem
+	 * @param {String} path
+	 * @param {Object} params
+	 */
+	constructor(elem, path, params = {}) {
+		super('/lx/elem', {elem, path, params});
 	}
 }

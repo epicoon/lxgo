@@ -6,18 +6,18 @@ class FunctionHelper extends lx.AppComponent {
     }
 
     // Create func by args string and code and run
-    createAndCallFunction(args, code, context=null, params=[]) {
-        let f = this.createFunction(args, code);
-        return f.apply(context, params);
+    createAndCallFunction(argNames, code, context=null, args=[]) {
+        let f = this.createFunction(argNames, code);
+        return f.apply(context, args);
     }
 
-    createAndCallFunctionWithArguments(args, code, context=null) {
+    createAndCallFunctionWithArguments(namedArgs, code, context=null) {
         code = code.replace(/(^[^{]+?{|}\s*$)/g, '');
         let kstl = '}',
             argsArr = [],
             argNamesArr = [];
-        for (let name in args) {
-            argsArr.push(args[name]);
+        for (let name in namedArgs) {
+            argsArr.push(namedArgs[name]);
             argNamesArr.push(name);
         }
         return this.createAndCallFunction(argNamesArr.join(','), code, null, argsArr);

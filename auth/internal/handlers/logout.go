@@ -21,11 +21,18 @@ type LogoutRequest struct {
 	ClientID uint `json:"client_id"`
 }
 
+func (f *LogoutRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"client_id": kernel.FormFieldConfig{
+			Description: "client application identifier",
+			Required:    true,
+		},
+	}
+}
+
 /** @constructor */
-func NewLogoutRequest() *LogoutRequest {
-	form := &LogoutRequest{Form: lxHttp.NewForm()}
-	form.SetRequired([]string{"client_id"})
-	return form
+func NewLogoutRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&LogoutRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -33,12 +40,23 @@ func NewLogoutRequest() *LogoutRequest {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /** @interface kernel.IHttpResource */
 type LogoutHandler struct {
-	*lxHttp.Resource
+	*BaseHandler
 }
 
 /** @type kernel.CHttpResource */
 func NewLogoutHandler() kernel.IHttpResource {
-	return &LogoutHandler{Resource: &lxHttp.Resource{}}
+	return &LogoutHandler{BaseHandler: NewBaseHandler(kernel.HttpResourceConfig{
+		CRequestForm: NewLogoutRequest,
+	})}
+}
+
+func (handler *LogoutHandler) ProcessRequestErrors() kernel.IHttpResponse {
+	return errorResponse(
+	    handler,
+	    http.StatusBadRequest,
+	    ERR_NO_CLIENT_ID,
+	    fmt.Sprintf("Invalid request: %v", handler.RequestForm().GetFirstError()),
+    )
 }
 
 func (handler *LogoutHandler) Run() kernel.IHttpResponse {
@@ -47,12 +65,7 @@ func (handler *LogoutHandler) Run() kernel.IHttpResponse {
 		panic("app does not implement core.IApp")
 	}
 
-	// Get Client ID from Request
-	reqForm := NewLogoutRequest()
-	lxHttp.FormFiller().SetContext(handler.Context()).SetForm(reqForm).Fill()
-	if reqForm.HasErrors() {
-		return errorResponse(handler, http.StatusBadRequest, ERR_NO_CLIENT_ID, fmt.Sprintf("Invalid request: %v", reqForm.GetFirstError()))
-	}
+	reqForm := handler.RequestForm().(*LogoutRequest)
 
 	// Check Client
 	client, err := coreApp.ClientsRepo().FindByID(reqForm.ClientID)

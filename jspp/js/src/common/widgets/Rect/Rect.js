@@ -1,6 +1,8 @@
-// @lx:require Geom;
-// @lx:require DepthClusterMap;
-// @lx:require -U tools;
+lx.import(
+    'Geom',
+    'DepthClusterMap',
+    '-U tools'
+);
 
 /**
  * @widget lx.Rect

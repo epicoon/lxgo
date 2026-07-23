@@ -21,7 +21,7 @@ class Events extends lx.AppComponent {
      * @param {Function} callback 
      * @returns 
      */
-    deny(eventName, callback) {
+    off(eventName, callback) {
         if (!(eventName in callbacks)) return;
         callbacks[eventName].lxRemove(callback);
     }

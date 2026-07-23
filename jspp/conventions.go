@@ -124,6 +124,17 @@ type IExecResult interface {
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * ELEMENT
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+type IElement interface {
+	Init(pp IPreprocessor)
+	App() kernel.IApp
+	Preprocessor() IPreprocessor
+	AjaxHandlers() kernel.HttpResourcesList
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * PLUGIN
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -159,17 +170,16 @@ type IPluginData interface {
 }
 
 type IPlugin interface {
-	Init(pp IPreprocessor, name, path string)
+	IElement
+	SetName(name string)
+	SetPath(path string)
 	SetConfig(c IPluginConfig)
 	CConfig() CPluginConfig
 	Name() string
 	Path() string
-	Preprocessor() IPreprocessor
-	App() kernel.IApp
 	Config() IPluginConfig
 	Pathfinder() kernel.IPathfinder
 	I18n() II18nMap
-	AjaxHandlers() kernel.HttpResourcesList
 	BeforeRender()
 	AfterRender(info *PluginRenderInfo)
 }

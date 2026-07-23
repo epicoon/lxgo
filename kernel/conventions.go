@@ -90,6 +90,7 @@ type CAnyList map[string]func(...any) any
 
 type IDIContainer interface {
 	Init(list CAnyList)
+	Register(list CAnyList) error
 	Get(key string) any
 }
 

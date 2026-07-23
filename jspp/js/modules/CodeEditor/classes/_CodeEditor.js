@@ -1,6 +1,4 @@
-#lx:public;
-
-#lx:use lx.Textarea;
+lx.import(lx.Textarea);
 
 
 const _CodeEditor = {};

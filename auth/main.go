@@ -9,6 +9,7 @@ func main() {
 	cmd.Init(cmd.CommandsList{
 		"":         authcmd.NewMainCommand,
 		"client":   authcmd.NewClientCommand,
+		"admin":    authcmd.NewAdminCommand,
 		"migrator": authcmd.NewMigratorCommand,
 		"apidoc":   authcmd.NewApiDocCommand,
 	})

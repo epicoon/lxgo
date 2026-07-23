@@ -18,11 +18,22 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+func (f *LoginRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"login": kernel.FormFieldConfig{
+			Description: "user's login",
+			Required:    true,
+		},
+		"password": kernel.FormFieldConfig{
+			Description: "user's password",
+			Required:    true,
+		},
+	}
+}
+
 /** @constructor */
-func NewLoginRequest() *LoginRequest {
-	req := &LoginRequest{Form: lxHttp.NewForm()}
-	req.SetRequired([]string{"login", "password"})
-	return req
+func NewLoginRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&LoginRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -30,12 +41,18 @@ func NewLoginRequest() *LoginRequest {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /** @interface kernel.IHttpResource */
 type LoginHandler struct {
-	*lxHttp.Resource
+	*BaseHandler
 }
 
 /** @constructor kernel.CHttpResource */
 func NewLoginHandler() kernel.IHttpResource {
-	return &LoginHandler{Resource: lxHttp.NewResource()}
+	return &LoginHandler{BaseHandler: NewBaseHandler(kernel.HttpResourceConfig{
+		CRequestForm: NewLoginRequest,
+	})}
+}
+
+func (handler *LoginHandler) ProcessRequestErrors() kernel.IHttpResponse {
+	return errorResponse(handler, http.StatusBadRequest, ERR_NO_LOGIN_PWD, "Missing login or password")
 }
 
 func (handler *LoginHandler) Run() kernel.IHttpResponse {
@@ -44,12 +61,7 @@ func (handler *LoginHandler) Run() kernel.IHttpResponse {
 		panic("app does not implement core.IApp")
 	}
 
-	// Checking Login and Password
-	req := NewLoginRequest()
-	lxHttp.FormFiller().SetContext(handler.Context()).SetForm(req).Fill()
-	if req.HasErrors() {
-		return errorResponse(handler, http.StatusBadRequest, ERR_NO_LOGIN_PWD, "Missing login or password")
-	}
+	req := handler.RequestForm().(*LoginRequest)
 
 	// Find User
 	user, err := coreApp.UsersRepo().FindByLP(req.Login, req.Password)

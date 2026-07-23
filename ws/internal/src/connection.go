@@ -34,14 +34,15 @@ const (
 
 /** @interface ws.IConnection */
 type Connection struct {
-	server         ws.IWSServer
-	conn           net.Conn
-	id             string
-	ip             string
-	status         int
-	sharedData     map[string]any
-	channels       map[string]map[string]any
-	isReadyToClose bool
+	server          ws.IWSServer
+	conn            net.Conn
+	id              string
+	ip              string
+	status          int
+	sharedData      map[string]any
+	channels        map[string]map[string]any
+	isReadyToClose  bool
+	createdChannels int
 }
 
 var _ ws.IConnection = (*Connection)(nil)
@@ -95,6 +96,24 @@ func (c *Connection) SharedData() map[string]any {
 	return c.sharedData
 }
 
+func (c *Connection) CreatedChannelsCount() int {
+	return c.createdChannels
+}
+
+func (c *Connection) IncrementCreatedChannels() {
+	c.createdChannels++
+}
+
+func (c *Connection) DecrementCreatedChannels() {
+	if c.createdChannels > 0 {
+		c.createdChannels--
+	}
+}
+
+func (c *Connection) SetCreatedChannelsCount(n int) {
+	c.createdChannels = n
+}
+
 func (c *Connection) SharedDataForChannel(ch ws.IChannel) map[string]any {
 	if _, exists := c.channels[ch.Key()]; !exists {
 		return c.sharedData
@@ -119,7 +138,7 @@ func (c *Connection) Handle() {
 	}
 
 	// Handshake
-	reader, err := c.handshake()
+	reader, origin, err := c.handshake()
 	if err != nil {
 		c.server.LifecycleError("handshake failed: %v", err)
 		return
@@ -127,6 +146,16 @@ func (c *Connection) Handle() {
 
 	// Successful handshake
 	c.server.LifecycleLog("handshake done for %s", c.id)
+
+	// Origin check - runs right after the WS upgrade so a real close code
+	// (1002) can be delivered to the client; a raw HTTP-level rejection
+	// wouldn't carry a meaningful CloseEvent.code in a browser.
+	if !c.checkOrigin(origin) {
+		c.server.LifecycleLog("access denied for %s: origin %q not allowed", c.id, origin)
+		c.sendCloseFrame(CloseCodeAccessError, "origin not allowed")
+		return
+	}
+
 	c.SetStatus(ws.ConnStatusConnecting)
 	hsResp := map[string]any{"id": c.ID()}
 	if c.server.ReconnectionAllowed() {
@@ -266,10 +295,10 @@ func (c *Connection) IsChannelMate(ch ws.IChannel) bool {
 	return ch.Has(c)
 }
 
-func (c *Connection) EnterChannel(ch ws.IChannel, message map[string]any) bool {
-	res := ch.Enter(c, message)
-	if !res {
-		return false
+func (c *Connection) EnterChannel(ch ws.IChannel, message map[string]any) (bool, string) {
+	ok, reason := ch.Enter(c, message)
+	if !ok {
+		return false, reason
 	}
 
 	c.channels[ch.Key()] = map[string]any{}
@@ -278,7 +307,7 @@ func (c *Connection) EnterChannel(ch ws.IChannel, message map[string]any) bool {
 			c.channels[ch.Key()] = m
 		}
 	}
-	return true
+	return true, ""
 }
 
 func (c *Connection) LeaveChannel(ch ws.IChannel) {
@@ -301,7 +330,7 @@ func (c *Connection) LeaveAllChannels() {
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-func (c *Connection) handshake() (*bufio.Reader, error) {
+func (c *Connection) handshake() (*bufio.Reader, string, error) {
 	reader := bufio.NewReader(c.conn)
 
 	var lines []string
@@ -309,10 +338,10 @@ func (c *Connection) handshake() (*bufio.Reader, error) {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF && len(line) == 0 {
-				return nil, errors.New("client closed before handshake")
+				return nil, "", errors.New("client closed before handshake")
 			}
 			if err != io.EOF {
-				return nil, fmt.Errorf("reading handshake: %w", err)
+				return nil, "", fmt.Errorf("reading handshake: %w", err)
 			}
 		}
 		line = strings.TrimRight(line, "\r\n")
@@ -323,17 +352,17 @@ func (c *Connection) handshake() (*bufio.Reader, error) {
 
 		// Skip too long header
 		if len(lines) > 1000 {
-			return nil, errors.New("handshake header too large")
+			return nil, "", errors.New("handshake header too large")
 		}
 	}
 
 	if len(lines) == 0 {
-		return nil, errors.New("empty handshake")
+		return nil, "", errors.New("empty handshake")
 	}
 
 	// Check first line: "GET /path HTTP/1.1"
 	if !strings.HasPrefix(lines[0], "GET ") || !strings.Contains(lines[0], "HTTP/1.1") {
-		return nil, fmt.Errorf("invalid request line: %q", lines[0])
+		return nil, "", fmt.Errorf("invalid request line: %q", lines[0])
 	}
 
 	// Build headers map
@@ -349,7 +378,7 @@ func (c *Connection) handshake() (*bufio.Reader, error) {
 
 	secKey, ok := headers["sec-websocket-key"]
 	if !ok || secKey == "" {
-		return nil, errors.New("missing Sec-WebSocket-Key")
+		return nil, "", errors.New("missing Sec-WebSocket-Key")
 	}
 
 	verStr := headers["sec-websocket-version"]
@@ -359,7 +388,7 @@ func (c *Connection) handshake() (*bufio.Reader, error) {
 	}
 	ver, err := strconv.Atoi(verStr)
 	if err != nil || ver < 6 {
-		return nil, fmt.Errorf("unsupported websocket version: %s", verStr)
+		return nil, "", fmt.Errorf("unsupported websocket version: %s", verStr)
 	}
 
 	// Compute Sec-WebSocket-Accept
@@ -380,10 +409,47 @@ func (c *Connection) handshake() (*bufio.Reader, error) {
 
 	_, err = c.conn.Write([]byte(resp))
 	if err != nil {
-		return nil, fmt.Errorf("write handshake response: %w", err)
+		return nil, "", fmt.Errorf("write handshake response: %w", err)
 	}
 
-	return reader, nil
+	return reader, headers["origin"], nil
+}
+
+// checkOrigin reports whether origin is acceptable given the configured
+// AllowedOrigins list - an empty/unset list means "allow all" (no
+// restriction), matching the pre-existing behavior of not checking Origin
+// at all; a non-empty list restricts to exactly those origins.
+func (c *Connection) checkOrigin(origin string) bool {
+	allowed := c.server.AllowedOrigins()
+	if len(allowed) == 0 {
+		return true
+	}
+	for _, o := range allowed {
+		if o == origin {
+			return true
+		}
+	}
+	return false
+}
+
+// sendCloseFrame sends a WS-spec-compliant close frame - a 2-byte
+// big-endian status code followed by an optional UTF-8 reason - so the
+// numeric code actually reaches the client as CloseEvent.code (unlike
+// Break(), which sends a JSON body under a close opcode and carries no
+// real status code).
+func (c *Connection) sendCloseFrame(code uint16, reason string) {
+	payload := make([]byte, 2+len(reason))
+	binary.BigEndian.PutUint16(payload, code)
+	copy(payload[2:], reason)
+
+	frame, err := hybi10Encode(payload, 0x8, false)
+	if err != nil {
+		c.server.LifecycleError("close frame encode error for %s: %v", c.id, err)
+		return
+	}
+	if _, err := c.conn.Write(frame); err != nil {
+		c.server.LifecycleError("close frame send error for %s: %v", c.id, err)
+	}
 }
 
 func computeAcceptKey(secKey string) string {
@@ -439,14 +505,18 @@ func (c *Connection) processMessageMap(message map[string]any) {
 
 func (c *Connection) processAction(message map[string]any) {
 	// Action: message
-	// 	["__lxws_action__"] string ("connect", "reconnect", "addSharedData", "close", "break")
-	//  ["oldConnectionId"] string
-	// 	["auth"] object
-	// 	["shared"] object
+	// 	["__lxws_action__"] string ("connect", "reconnect", "enterChannel", "leaveChannel", "createChannel", "close", "break")
+	//  ["oldConnectionId"] string (for "reconnect")
+	//  ["channelKey"] string (for "enterChannel"/"leaveChannel")
+	//  ["public"] bool, ["proprietary"] bool, ["initData"] object, ["sharedData"] object (for "createChannel")
+	// 	["shared"]
+	//
+	// Any malformed/unknown action gets an explicit error response (sendActionError)
 
 	action, ok := message["__lxws_action__"].(string)
 	if !ok {
 		c.server.LifecycleError("invalid __lxws_action__ format")
+		c.sendActionError("", "invalid __lxws_action__ format")
 		return
 	}
 
@@ -463,6 +533,7 @@ func (c *Connection) processAction(message map[string]any) {
 		oldID, ok := message["oldConnectionId"].(string)
 		if !ok {
 			c.server.LifecycleError("invalid oldConnectionId format")
+			c.sendActionError("reconnect", "invalid oldConnectionId format")
 			c.connect()
 			return
 		}
@@ -472,6 +543,15 @@ func (c *Connection) processAction(message map[string]any) {
 		} else {
 			c.connect()
 		}
+
+	case "enterChannel":
+		c.enterChannel(message)
+
+	case "leaveChannel":
+		c.leaveChannel(message)
+
+	case "createChannel":
+		c.createChannel(message)
 
 	case "close":
 		c.isReadyToClose = true
@@ -483,6 +563,24 @@ func (c *Connection) processAction(message map[string]any) {
 		if err := c.Send(map[string]any{"__lxws_action__": "break"}, "text", false); err != nil {
 			c.server.LifecycleError("break action send error for %s: %v", c.id, err)
 		}
+
+	default:
+		c.server.LifecycleError("unknown __lxws_action__: %s", action)
+		c.sendActionError(action, fmt.Sprintf("unknown action '%s'", action))
+	}
+}
+
+// sendActionError responds to a malformed/unknown __lxws_action__ with an
+// explicit error; action is echoed back as-is - it may be "" if the
+// action name itself couldn't be determined (e.g. wrong __lxws_action__
+// type).
+func (c *Connection) sendActionError(action, message string) {
+	data := map[string]any{
+		"__lxws_action__": action,
+		"error":           message,
+	}
+	if err := c.Send(data, "text", false); err != nil {
+		c.server.LifecycleError("action error send error for %s: %v", c.id, err)
 	}
 }
 
@@ -498,12 +596,12 @@ func (c *Connection) connect() {
 
 	if c.server.DefaultChannelKey() != "" {
 		defaultChannel := c.server.Channels().Get(c.server.DefaultChannelKey())
-		c.EnterChannel(defaultChannel, map[string]any{})
-		data["channel"] = map[string]any{
-			"key":         defaultChannel.Key(),
-			"data":        defaultChannel.SharedData(),
-			"connections": defaultChannel.MatesData(),
+		if ok, reason := c.EnterChannel(defaultChannel, map[string]any{}); !ok {
+			c.server.LifecycleLog("connect: default channel entry denied for %s: %s", c.id, reason)
 		}
+	}
+	if channels := availableChannelsData(c.server, c); len(channels) > 0 {
+		data["channels"] = channels
 	}
 
 	c.SetStatus(ws.ConnStatusActive)
@@ -512,28 +610,203 @@ func (c *Connection) connect() {
 	}
 }
 
+// availableChannelsData builds the connect()/reconnect() "channels" payload -
+// every public channel (key + shared data, enough to render a joinable-
+// channels list) plus any private channel conn is a member of (not
+// otherwise discoverable - e.g. shared out of band). "connections" (full
+// membership, via MatesData) is included only for entries conn is actually
+// a member of - never for a merely-public-but-not-joined one. conn must be
+// non-nil - both current callers (connect()/reconnect()) always have a real
+// connection in hand.
+func availableChannelsData(s ws.IWSServer, conn ws.IConnection) []map[string]any {
+	result := make([]map[string]any, 0)
+	for _, ch := range s.Channels().Channels() {
+		_, isMember := conn.Channels()[ch.Key()]
+		if !ch.IsPublic() && !isMember {
+			continue
+		}
+
+		entry := map[string]any{
+			"key":  ch.Key(),
+			"data": ch.SharedData(),
+		}
+		if isMember {
+			entry["connections"] = ch.MatesData()
+		}
+
+		result = append(result, entry)
+	}
+	return result
+}
+
 func (c *Connection) reconnect() {
 	data := map[string]any{
 		"__lxws_action__": "reconnect",
 		"idRestored":      c.ID(),
 	}
 
-	chs := []map[string]any{}
-	for key := range c.Channels() {
-		ch := c.server.Channels().Get(key)
-		chs = append(chs, map[string]any{
-			"key":         ch.Key(),
-			"data":        ch.SharedData(),
-			"connections": ch.MatesData(),
-		})
-	}
-	if len(chs) > 0 {
-		data["channels"] = chs
+	if channels := availableChannelsData(c.server, c); len(channels) > 0 {
+		data["channels"] = channels
 	}
 
 	c.SetStatus(ws.ConnStatusActive)
 	if err := c.Send(data, "text", false); err != nil {
 		c.server.LifecycleError("reconnect send error for %s: %v", c.id, err)
+	}
+}
+
+// enterChannel handles a client-initiated "enterChannel" action - unlike
+// the automatic DefaultChannel join in connect(), this lets a connection
+// join any channel the application already created via
+// ws.Channels().CreateChannel()
+func (c *Connection) enterChannel(message map[string]any) {
+	channelKey, ok := message["channelKey"].(string)
+	if !ok {
+		c.server.LifecycleError("invalid channelKey format")
+		c.sendActionError("enterChannel", "invalid channelKey format")
+		return
+	}
+
+	ch := c.server.Channels().Get(channelKey)
+	if ch == nil {
+		c.server.LifecycleLog("enterChannel: unknown channel '%s'", channelKey)
+		c.sendActionError("enterChannel", fmt.Sprintf("unknown channel '%s'", channelKey))
+		return
+	}
+
+	if ok, reason := c.EnterChannel(ch, message); !ok {
+		c.server.LifecycleLog("enterChannel: denied for %s on '%s': %s", c.id, channelKey, reason)
+		c.sendActionError("enterChannel", reason)
+		return
+	}
+
+	// Same response shape as connect()/reconnect() use for channel data -
+	// the mateEntered broadcast to other mates (Channel.AddConnection) is
+	// untouched, this is a separate, direct reply to the requester only.
+	data := map[string]any{
+		"__lxws_action__": "enterChannel",
+		"channel": map[string]any{
+			"key":         ch.Key(),
+			"data":        ch.SharedData(),
+			"connections": ch.MatesData(),
+		},
+	}
+	if err := c.Send(data, "text", false); err != nil {
+		c.server.LifecycleError("enterChannel send error for %s: %v", c.id, err)
+	}
+}
+
+// createChannel handles a client-initiated "createChannel" action - the
+// server always generates the channel key (see IChannelRepo.CreateChannel),
+// so there's no collision to worry about between different clients. Subject
+// to ChannelValidator (if set) and MaxChannelsPerConnection; the creator is
+// auto-entered on success, same as enterChannel's response shape.
+func (c *Connection) createChannel(message map[string]any) {
+	var public bool
+	if raw, ok := message["public"]; ok {
+		b, ok := raw.(bool)
+		if !ok {
+			c.server.LifecycleError("invalid public format")
+			c.sendActionError("createChannel", "invalid public format")
+			return
+		}
+		public = b
+	}
+
+	var proprietary bool
+	if raw, ok := message["proprietary"]; ok {
+		b, ok := raw.(bool)
+		if !ok {
+			c.server.LifecycleError("invalid proprietary format")
+			c.sendActionError("createChannel", "invalid proprietary format")
+			return
+		}
+		proprietary = b
+	}
+
+	var sharedData map[string]any
+	if raw, ok := message["sharedData"]; ok {
+		m, ok := raw.(map[string]any)
+		if !ok {
+			c.server.LifecycleError("invalid sharedData format")
+			c.sendActionError("createChannel", "invalid sharedData format")
+			return
+		}
+		sharedData = m
+	}
+
+	var initData map[string]any
+	if raw, ok := message["initData"]; ok {
+		m, ok := raw.(map[string]any)
+		if !ok {
+			c.server.LifecycleError("invalid initData format")
+			c.sendActionError("createChannel", "invalid initData format")
+			return
+		}
+		initData = m
+	}
+
+	builder := ws.NewChannelBuilder().
+		SetCreator(c).
+		SetPublic(public).
+		SetProprietary(proprietary).
+		SetSharedData(sharedData).
+		SetInitData(initData)
+
+	ch, reason := c.server.Channels().CreateChannel(builder)
+	if ch == nil {
+		c.server.LifecycleLog("createChannel: denied for %s: %s", c.id, reason)
+		c.sendActionError("createChannel", reason)
+		return
+	}
+
+	if ok, reason := c.EnterChannel(ch, message); !ok {
+		c.server.LifecycleLog("createChannel: entry denied for creator %s on '%s': %s", c.id, ch.Key(), reason)
+		c.sendActionError("createChannel", reason)
+		return
+	}
+
+	data := map[string]any{
+		"__lxws_action__": "createChannel",
+		"channel": map[string]any{
+			"key":         ch.Key(),
+			"data":        ch.SharedData(),
+			"connections": ch.MatesData(),
+		},
+	}
+	if err := c.Send(data, "text", false); err != nil {
+		c.server.LifecycleError("createChannel send error for %s: %v", c.id, err)
+	}
+}
+
+// leaveChannel handles a client-initiated "leaveChannel" action. Unlike
+// enterChannel, it always acknowledges (even though LeaveChannel is a no-op
+// for a channel the connection isn't in) - the client relies on this ack to
+// update its local channel list, so silence here would risk the client
+// believing it left a channel it's actually still a member of.
+func (c *Connection) leaveChannel(message map[string]any) {
+	channelKey, ok := message["channelKey"].(string)
+	if !ok {
+		c.server.LifecycleError("invalid channelKey format")
+		c.sendActionError("leaveChannel", "invalid channelKey format")
+		return
+	}
+
+	ch := c.server.Channels().Get(channelKey)
+	if ch == nil {
+		c.server.LifecycleLog("leaveChannel: unknown channel '%s'", channelKey)
+		c.sendActionError("leaveChannel", fmt.Sprintf("unknown channel '%s'", channelKey))
+		return
+	}
+
+	c.LeaveChannel(ch)
+
+	data := map[string]any{
+		"__lxws_action__": "leaveChannel",
+		"channelKey":      channelKey,
+	}
+	if err := c.Send(data, "text", false); err != nil {
+		c.server.LifecycleError("leaveChannel send error for %s: %v", c.id, err)
 	}
 }
 
@@ -648,19 +921,35 @@ func (c *Connection) processChannelMsg(message map[string]any) {
 				continue
 			}
 			if err := iConn.Send(map[string]any{
-				"__lxws_channel_event__": "mateUpdated",
-				"channel":                ch.Key(),
-				"id":                     c.ID(),
-				"data":                   c.SharedDataForChannel(ch),
+				"__lxws_channel__": "mateUpdated",
+				"channel":          ch.Key(),
+				"id":               c.ID(),
+				"data":             c.SharedDataForChannel(ch),
 			}, "text", false); err != nil {
 				c.server.LifecycleError("mateUpdated send error for %s: %v", id, err)
 			}
 		}
-	}
-	//TODO event
 
-	//TODO fmt
-	fmt.Printf("OP %v\n", op)
+	case "event":
+		event := NewChannelEvent(op.Meta.Event, ch, c)
+		if len(op.Meta.Receivers) > 0 {
+			event.SetReceiverIds(op.Meta.Receivers)
+		}
+		event.ReturnToSender(op.Meta.Re).
+			SetPrivate(op.Meta.Private).
+			SetData(op.Data)
+
+		// Application code may have registered a handler (see
+		// IChannel.SetEventHandler) to validate/mutate the event, narrow its
+		// receivers, or stop it from being relayed at all - a nil handler
+		// means "just relay it", same as a plain channel message.
+		if handler := ch.EventHandler(); handler != nil {
+			handler(event)
+		}
+		if !event.IsStopped() {
+			ws.SendMessage(event)
+		}
+	}
 }
 
 func hybi10Encode(payload []byte, opcode byte, masked bool) ([]byte, error) {

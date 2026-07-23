@@ -1,8 +1,10 @@
 // @lx:module lx.InputPopup;
 // @lx:module-data: i18n = i18n.yaml;
 
-// @lx:use lx.Button;
-// @lx:use lx.Input;
+lx.import(
+	lx.Button,
+	lx.Input
+);
 
 // @lx:<context CLIENT:
 let __instance = null,

@@ -1,4 +1,4 @@
-#lx:namespace lx;
+// @lx:namespace lx;
 class TestObjectChecker {
     constructor(test, object, objectName) {
         this.test = test;

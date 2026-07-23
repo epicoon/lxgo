@@ -1,7 +1,9 @@
 // @lx:module lx.Radio;
 
-// @lx:use lx.Checkbox;
-// @lx:use lx.BasicCssContext;
+lx.import(
+	lx.Checkbox,
+	lx.BasicCssContext
+);
 
 /**
  * @widget lx.Radio

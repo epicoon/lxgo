@@ -13,4 +13,5 @@ type IApp interface {
 	UsersRepo() IUsersRepo
 	CodesRepo() ICodesRepo
 	TokensRepo() ITokensRepo
+	AdminsRepo() IAdminsRepo
 }

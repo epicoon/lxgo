@@ -10,66 +10,20 @@ import (
 	"strings"
 )
 
-func (c *Compiler) plugAllRequires(code, path string) (string, error) {
-	parentDir := ""
-	if path != "" {
-		parentDir = filepath.Dir(path) + "/"
-	}
-
-	pattern := `@lx:require(\s+-[\S]+)?\s+[\'"]?([^;]+?)[\'"]?;`
-	re := regexp.MustCompile(pattern)
-
-	processedCode := re.ReplaceAllStringFunc(code, func(match string) string {
-		matches := re.FindStringSubmatch(match)
-		if len(matches) < 3 {
-			return match
-		}
-
-		ff := matches[1]
-		requireName := matches[2]
-
-		flags := Flags{
-			Recursive: strings.Contains(ff, "R"),
-			Force:     strings.Contains(ff, "F"),
-			Unwrapped: strings.Contains(ff, "U"),
-		}
-
-		includedCode, err := c.plugRequire(requireName, flags, parentDir, path)
-		if err != nil {
-			fmt.Printf("Warning: could not process require %s: %v\n", requireName, err)
-			return match
-		}
-
-		return includedCode
-	})
-
-	return processedCode, nil
-}
-
 func (c *Compiler) plugRequire(requireName string, flags Flags, parentDir string, rootPath string) (string, error) {
 	var filePaths []string
 
-	// Files list
-	if strings.HasPrefix(requireName, "{") && strings.HasSuffix(requireName, "}") {
-		entries := strings.Split(strings.Trim(requireName, "{}"), ",")
-		for _, entry := range entries {
-			entry = strings.TrimSpace(entry)
-			filePaths = append(filePaths, filepath.Join(parentDir, entry))
+	if !strings.HasSuffix(requireName, "/") {
+		if !strings.HasSuffix(requireName, ".js") {
+			requireName += ".js"
 		}
+		filePaths = append(filePaths, filepath.Join(parentDir, requireName))
 	} else {
-		// Single file or directory
-		if !strings.HasSuffix(requireName, "/") {
-			if !strings.HasSuffix(requireName, ".js") {
-				requireName += ".js"
-			}
-			filePaths = append(filePaths, filepath.Join(parentDir, requireName))
-		} else {
-			dirFiles, err := listFilesInDir(requireName, parentDir, flags.Recursive)
-			if err != nil {
-				return "", err
-			}
-			filePaths = append(filePaths, dirFiles...)
+		dirFiles, err := listFilesInDir(requireName, parentDir, flags.Recursive)
+		if err != nil {
+			return "", err
 		}
+		filePaths = append(filePaths, dirFiles...)
 	}
 
 	return c.compileFileGroup(filePaths, flags, rootPath)

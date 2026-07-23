@@ -1,7 +1,29 @@
+# Authentication client for lxgo/kernel applications
 
-//TODO write descriptions
+> Actual version: `v0.1.0-alpha.2`. [Details](https://github.com/epicoon/lxgo/tree/master/auth_client/CHANGE_LOG.md)
 
-App config:
+This package is the client-side counterpart of the
+[lxgo/auth](https://github.com/epicoon/lxgo/tree/master/auth) authentication microservice — it wires an
+[lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)-based application into the OAuth2-like flow that
+microservice implements (see its README, ["Full ready-to-use solution for lxgo/kernel
+applications"](https://github.com/epicoon/lxgo/tree/master/auth/README.md#full-sol)), so you don't have to write the
+integration by hand.
+
+Concretely, it gives you:
+* an app component (`AuthClient`) that talks to the authorization service's API (exchanging a code for tokens,
+  refreshing them, logging out, fetching user data) — see `auth_client.go`. The `Tokens` it returns
+  (`ExchangeCodeForTokens`/`RefreshTokens`, `tokens.go`) carry a `Scope` field with the access level the server
+  actually granted (`profile` or `profile:data`) — read it if your app needs to know which one it got;
+* ready-made HTTP handlers for four of the five endpoints your application needs to expose to the browser (the
+  auth-callback redirect target, CSRF state generation, and the `/logout`/`/refresh` proxies) — see
+  `auth_callback_handler.go`/`state_handler.go`/`logout_handler.go`/`refresh_handler.go`;
+* a small helper (`GetBearer`) for reading the `Authorization: Bearer <token>` header off an incoming request.
+
+Use it if your application is based on `lxgo/kernel` and you want to authenticate its users against an `lxgo/auth`
+instance; if it isn't, see `lxgo/auth`'s README sections on reimplementing the client/server-side integration
+yourself instead.
+
+1. Add the app component to your app config file:
 ```yaml
 Components:
   # ...
@@ -16,24 +38,37 @@ Components:
     UserDataPath: /get-user
 ```
 
-Init routes:
+2. Plug the application component:
 ```go
 import (
-	client "github.com/epicoon/lxgo/auth_client"
+	github.com/epicoon/lxgo/auth_client
+)
+
+// app implements kernel.IApp
+if err := auth_client.SetAppComponent(app, "Components.Auth"); err != nil {
+    // process err
+}
+```
+
+3. Register the ready-made handlers under the same paths you configured above:
+```go
+import (
+	github.com/epicoon/lxgo/auth_client
     // ...
 )
 
 app.Router().RegisterResources(kernel.HttpResourcesList{
-    "/auth-callback": client.NewAuthCallbackHandler,
-    "/gen-state":     client.NewStateHandler,
-    "/logout":        client.NewLogoutHandler,
-    "/auth-refresh":  client.NewRefreshHandler,
+    "/auth-callback": auth_client.NewAuthCallbackHandler,
+    "/gen-state":     auth_client.NewStateHandler,
+    "/logout":        auth_client.NewLogoutHandler,
+    "/auth-refresh":  auth_client.NewRefreshHandler,
     "/get-user":      NewGetUserHandler,
     // ...
 })
 ```
 
-"Get-user" handler:
+4. The fifth endpoint (`/get-user`, proxying the authorization service's `/user-data`) doesn't have a ready-made
+   handler — write a thin one yourself on top of `AuthClient.GetUserData`:
 ```go
 import (
 	"fmt"
@@ -81,3 +116,8 @@ func (handler *GetUserHandler) Run() kernel.IHttpResponse {
 	})
 }
 ```
+
+
+## License
+
+Apache License 2.0 — see [LICENSE](./LICENSE).

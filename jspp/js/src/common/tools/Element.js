@@ -9,19 +9,19 @@ class Element {
 
     // @lx:<context CLIENT:
     /**
-     * @param {String} method - called method name
-     * @param {Array} params - parameters to call method
-     */
-    static ajax(method, params = []) {
-        return new lx.ElementRequest(this.getKey(), method, params);
-    }
-
-    /**
      * @abstract
      * @param {lx.CssContext} css
      */
     static initCss(css) {
         // pass
+    }
+
+    /**
+     * @param {String} path - called path
+     * @param {Object} params - parameters to call procedure
+     */
+    ajax(path, params = {}) {
+        return new lx.ElementRequest(this.constructor.getKey(), path, params);
     }
 
     newEvent(params = {}) {

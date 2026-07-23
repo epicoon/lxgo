@@ -14,12 +14,13 @@ type iNodeCompiler interface {
 
 /** @interface cvt.INodeCompiler */
 type treeCompiler struct {
-	parser   cvt.IParser
-	output   string
-	fCounter int
-	fMap     map[string]string
-	widgets  []string
-	wCounter int
+	parser        cvt.IParser
+	output        string
+	outputKeyword string
+	fCounter      int
+	fMap          map[string]string
+	widgets       []string
+	wCounter      int
 }
 
 var _ cvt.ITreeCompiler = (*treeCompiler)(nil)
@@ -38,6 +39,11 @@ func (c *treeCompiler) SetOutput(out string) cvt.ITreeCompiler {
 	return c
 }
 
+func (c *treeCompiler) SetOutputKeyword(kw string) cvt.ITreeCompiler {
+	c.outputKeyword = kw
+	return c
+}
+
 func (c *treeCompiler) Run() string {
 	tree := c.parser.Tree()
 	if tree == nil {
@@ -47,10 +53,14 @@ func (c *treeCompiler) Run() string {
 
 	var codeStart string
 	if c.output != "" {
+		kw := c.outputKeyword
+		if kw == "" {
+			kw = "const"
+		}
 		f := "function _out(key,name){if(!(key in __out__)){__out__[key]=name;}else{" +
 			"if(!lx.isArray(__out__[key]))__out__[key]=[__out__[key]];" +
 			"__out__[key].push(name)}}"
-		codeStart = fmt.Sprintf("const %s=(()=>{let __out__={};%s", c.output, f)
+		codeStart = fmt.Sprintf("%s %s=(()=>{let __out__={};%s", kw, c.output, f)
 	} else {
 		codeStart = "(()=>{"
 	}
@@ -92,8 +102,8 @@ func (c *treeCompiler) Run() string {
 	}
 
 	widgets := ""
-	for _, w := range c.widgets {
-		widgets += "@lx:use " + w + ";"
+	if len(c.widgets) > 0 {
+		widgets = "lx.import(" + strings.Join(c.widgets, ",") + ");"
 	}
 
 	return widgets + code

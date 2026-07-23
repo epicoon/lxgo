@@ -31,7 +31,7 @@ func NewPluginRequest() *PluginRequest {
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * ServiceHandler
+ * PluginHandler
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /** @interface kernel.IHttpResource */
@@ -68,7 +68,7 @@ func (h *PluginHandler) Run() kernel.IHttpResponse {
 	m := plugin.AjaxHandlers()
 	cHandler, exists := m[reqForm.Path]
 	if !exists {
-		return errorResponse(h, fmt.Sprintf("Handler '%s' not found", reqForm.Path))
+		return errorResponse(h, fmt.Sprintf("Plugin handler '%s' not found", reqForm.Path))
 	}
 
 	// Change request body

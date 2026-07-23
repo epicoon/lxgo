@@ -109,11 +109,19 @@ func (pp *JSPreprocessor) ExecutorBuilder() cnv.IExecutorBuilder {
 func (pp *JSPreprocessor) AfterInit() {
 	pp.App().Router().RegisterResources(kernel.HttpResourcesList{
 		"/lx/service[POST]": handlers.NewServiceHandler,
+		"/lx/elem[POST]":    handlers.NewElemHandler,
 		"/lx/plugin[POST]":  handlers.NewPluginHandler,
 	})
 	pp.App().Router().AddMiddleware(func(ctx kernel.IHandleContext) error {
-		if ctx.Route() == "/lx/service" || ctx.Route() == "/lx/plugin" {
-			ctx.Set("jspp", pp)
+		list := []string{
+			"/lx/service",
+			"/lx/elem",
+			"/lx/plugin",
+		}
+		for _, route := range list {
+			if ctx.Route() == route {
+				ctx.Set("jspp", pp)
+			}
 		}
 		return nil
 	})

@@ -19,8 +19,8 @@ class ModelSchema {
 	}
 
 	getPkName() {
-		for (var i in this.fields)
-			if (this.fields[i].type == 'pk') return i;
+		for (let i in this.fields)
+			if (this.fields[i].type == lx.ModelTypeEnum.PK) return i;
 		return null;
 	}
 
@@ -46,9 +46,9 @@ class ModelSchema {
 	}
 
 	getFieldTypes() {
-		var result = {};
-		for (var name in this.fields) {
-			var type = lx.isObject(this.fields[name]) 
+		let result = {};
+		for (let name in this.fields) {
+			let type = lx.isObject(this.fields[name])
 				? this.fields[name].type
 				: this.fields[name];
 			result[name] = type;
@@ -57,14 +57,14 @@ class ModelSchema {
 	}
 
 	eachField(func) {
-		for (var name in this.fields)
+		for (let name in this.fields)
 			func(this.fields[name], name);
 	}
 
 	getFieldsExportDefinition() {
-		var result = [];
-		for (var name in this.fields) {
-			var def = this.fields[name];
+		let result = [];
+		for (let name in this.fields) {
+			let def = this.fields[name];
 			if (def.ref) result.push(name + ' << ' + def.ref);
 			else result.push(name);
 		}

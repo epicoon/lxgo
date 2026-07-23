@@ -1,5 +1,3 @@
-#lx:public;
-
 /*
 для события ввода текста надо сохранять
 	- позицию, с которой добавлялись символы
@@ -35,12 +33,11 @@
 */
 
 class History {
-    #lx:const
-        EVENT_INPUT = 0,
-        EVENT_DELETE = 1,
-        EVENT_EXTRACT = 2,
-        EVENT_PASTE = 3,
-        EVENT_MASS_DELETE = 4;
+    // @lx:const EVENT_INPUT = 0;
+    // @lx:const EVENT_DELETE = 1;
+    // @lx:const EVENT_EXTRACT = 2;
+    // @lx:const EVENT_PASTE = 3;
+    // @lx:const EVENT_MASS_DELETE = 4;
 
     constructor(context) {
         this.context = context;

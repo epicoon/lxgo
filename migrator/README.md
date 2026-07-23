@@ -1,6 +1,6 @@
 # Package for manage migrations
 
-> Actual version: `v0.1.0-alpha.4`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.5`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -60,8 +60,6 @@ func NewMigratorCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	}
 
     // Init migrator and return original command:
-    // First arg - connection
-    // Second arg - directory for migrations
 	migrator.Init(migrator.Config{
 		DB: connection.DB(),
 
@@ -96,13 +94,14 @@ func main() {
     - `go run . migrator:check`
     - `go run . migrator:show`
     - `go run . migrator:show --count=2`
-    - `go run . migrator:create --name="my_migration.yaml"`
+    - `go run . migrator:create --name="my_migration"` (no `.yaml` — it's appended automatically, along with a timestamp prefix)
     - `go run . migrator:up`
     - `go run . migrator:down`
     - `go run . migrator:down --count=2`
 	- `go run . migrator:up-seeds`
 
-5. An example of migration:
+5. An example of migration (`migrator:create` generates a skeleton with this
+   shape, named `<timestamp>_<name>.yaml`):
 ```yaml
 name: create_tables
 type: query
@@ -119,6 +118,16 @@ down:
   - DROP INDEX IF EXISTS my_table_name_idx;
   - DROP TABLE IF EXISTS my_table;
 ```
+   `up`/`down` accept either a single SQL string or (as above) a list of
+   statements, run in order inside one transaction. `name`/`type` aren't
+   actually read by the migrator (only the filename matters for tracking
+   which migrations ran) — `type: query` is currently just a placeholder the
+   generated skeleton includes, reserved for possibly distinguishing other
+   kinds of migrations later.
+
+   Only PostgreSQL is supported for now (migrations run through
+   `database/sql` with the `lib/pq` driver, same as [`lxgo/kernel`'s DB
+   connection](https://github.com/epicoon/lxgo/tree/master/kernel#db)).
 
 6. An example of seeds:
 ```yaml
@@ -128,3 +137,8 @@ down:
 - id: 2
   field: "value for 2"
 ```
+
+
+## License
+
+Apache License 2.0 — see [LICENSE](./LICENSE).

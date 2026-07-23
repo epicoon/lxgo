@@ -1,8 +1,10 @@
 // @lx:module lx.Calendar;
 // @lx:module-data: i18n = i18n.yaml;
 
-// @lx:use lx.Input;
-// @lx:use lx.BasicCssContext;
+lx.import(
+    lx.Input,
+    lx.BasicCssContext
+);
 
 // @lx:<context CLIENT:
 /*

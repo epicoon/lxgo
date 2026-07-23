@@ -43,7 +43,7 @@ func TestAuthHandler_GetAuth_Success(t *testing.T) {
 		sess.SetForce("lxgo_auth_params", &handlers.AuthParams{
 			ResponseType: "code",
 			ClientID:     testutils.TestClientID,
-			RedirectUri:  "/test_redirect",
+			RedirectUri:  testutils.TestClientRedirectUri,
 			State:        "test_state",
 		})
 	})
@@ -103,7 +103,7 @@ func TestAuthHandler_GetAuth_InvalidClientID(t *testing.T) {
 		sess.SetForce("lxgo_auth_params", &handlers.AuthParams{
 			ResponseType: "code",
 			ClientID:     testutils.TestClientID + 999,
-			RedirectUri:  "/test_redirect",
+			RedirectUri:  testutils.TestClientRedirectUri,
 			State:        "test_state",
 		})
 	})

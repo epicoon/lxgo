@@ -12,23 +12,23 @@ import (
 
 var ErrClientNotFound = errors.New("client not found")
 
-/** @interface cvn.ITokensRepo */
-type ClietnsRepo struct {
+/** @interface cvn.IClientsRepo */
+type ClientsRepo struct {
 	*AbstractRepo
 }
 
 /** @constructor */
-func NewClientsRepo(app cvn.IApp) *ClietnsRepo {
-	return &ClietnsRepo{AbstractRepo: &AbstractRepo{app: app}}
+func NewClientsRepo(app cvn.IApp) *ClientsRepo {
+	return &ClientsRepo{AbstractRepo: &AbstractRepo{app: app}}
 }
 
-func (repo *ClietnsRepo) CheckIDExists(id uint) bool {
+func (repo *ClientsRepo) CheckIDExists(id uint) bool {
 	var count int64
 	repo.DB().Model(&models.Client{}).Where("id = ?", id).Count(&count)
 	return count > 0
 }
 
-func (repo *ClietnsRepo) CheckExists(id uint, secret string) bool {
+func (repo *ClientsRepo) CheckExists(id uint, secret string) bool {
 	var client models.Client
 
 	result := repo.DB().Where("id = ?", id).First(&client)
@@ -39,7 +39,7 @@ func (repo *ClietnsRepo) CheckExists(id uint, secret string) bool {
 	return utils.CheckHash(secret, client.Secret)
 }
 
-func (repo *ClietnsRepo) Create(client *models.Client) (string, error) {
+func (repo *ClientsRepo) Create(client *models.Client) (string, error) {
 	secret := client.Secret
 	if secret == "" {
 		secret = client.GenSecret(16)
@@ -57,7 +57,7 @@ func (repo *ClietnsRepo) Create(client *models.Client) (string, error) {
 	return secret, nil
 }
 
-func (repo *ClietnsRepo) FindByID(id uint) (*models.Client, error) {
+func (repo *ClientsRepo) FindByID(id uint) (*models.Client, error) {
 	client := models.Client{Model: gorm.Model{ID: id}}
 
 	result := repo.DB().First(&client)
@@ -71,10 +71,21 @@ func (repo *ClietnsRepo) FindByID(id uint) (*models.Client, error) {
 	return &client, nil
 }
 
-func (repo *ClietnsRepo) FindOne(id uint, secret string) (*models.Client, error) {
+func (repo *ClientsRepo) Delete(id uint) error {
+	result := repo.DB().Delete(&models.Client{}, id)
+	if result.Error != nil {
+		return fmt.Errorf("can not delete client id=%d: %s", id, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return ErrClientNotFound
+	}
+	return nil
+}
+
+func (repo *ClientsRepo) FindOne(id uint, secret string) (*models.Client, error) {
 	var clients []models.Client
 
-	result := repo.DB().Preload("Role").Where("id = ?", id).Find(&clients)
+	result := repo.DB().Where("id = ?", id).Find(&clients)
 	if result.Error != nil {
 		return nil, fmt.Errorf("can not find client id=%d: %s", id, result.Error)
 	}

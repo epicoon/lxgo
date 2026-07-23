@@ -37,7 +37,7 @@ func (c *MigratorCommand) Config() *cmd.Config {
 				Executor:    show,
 				Params: cmd.ParamsConfig{
 					"count": cmd.ParamConfig{
-						Description: "Migrations count to show. If not defined all migartions will be shown",
+						Description: "Migrations count to show. If not defined all migrations will be shown",
 						Type:        cmd.ParamTypeInt,
 						Required:    false,
 						Default:     0,
@@ -58,7 +58,7 @@ func (c *MigratorCommand) Config() *cmd.Config {
 				Executor:    down,
 				Params: cmd.ParamsConfig{
 					"count": cmd.ParamConfig{
-						Description: "Migrations count to cancel. If not defined the last migartion will be cancelled",
+						Description: "Migrations count to cancel. If not defined the last migration will be cancelled",
 						Type:        cmd.ParamTypeInt,
 						Required:    false,
 						Default:     0,
@@ -146,7 +146,7 @@ func check(c cmd.ICommand) error {
 	}
 
 	if len(mm) == 0 {
-		fmt.Println("All migrations are allied")
+		fmt.Println("All migrations are applied")
 		return nil
 	}
 

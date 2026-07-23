@@ -1,7 +1,7 @@
-#lx:namespace lx;
+// @lx:namespace lx;
 class AbstractTest {
-    #lx:const NAME = '',
-        DESCRIPTION = '';
+    // @lx:const NAME = '';
+    // @lx:const DESCRIPTION = '';
 
     constructor(testModule) {
         this.testModule = testModule;

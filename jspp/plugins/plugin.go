@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/epicoon/lxgo/jspp"
+	"github.com/epicoon/lxgo/jspp/elems"
 	"github.com/epicoon/lxgo/jspp/internal/i18n"
 	"github.com/epicoon/lxgo/kernel"
 	"gopkg.in/yaml.v3"
@@ -12,11 +13,10 @@ import (
 
 /** @interface conventions.IPlugin */
 type Plugin struct {
-	name string
-	path string
+	*elems.Element
 
-	pp         jspp.IPreprocessor
-	app        kernel.IApp
+	name       string
+	path       string
 	config     jspp.IPluginConfig
 	pathfinder kernel.IPathfinder
 	i18n       jspp.II18nMap
@@ -26,14 +26,15 @@ var _ jspp.IPlugin = (*Plugin)(nil)
 
 /** @constructor */
 func NewPlugin() *Plugin {
-	return &Plugin{}
+	return &Plugin{Element: elems.NewElement()}
 }
 
-func (p *Plugin) Init(pp jspp.IPreprocessor, name, path string) {
-	p.pp = pp
-	p.app = pp.App()
+func (p *Plugin) SetName(name string) {
 	p.name = name
-	p.path = p.app.Pathfinder().GetAbsPath(path)
+}
+
+func (p *Plugin) SetPath(path string) {
+	p.path = p.App().Pathfinder().GetAbsPath(path)
 	p.pathfinder = newPluginPathfinder(p)
 }
 
@@ -51,14 +52,6 @@ func (p *Plugin) Path() string {
 
 func (p *Plugin) CConfig() jspp.CPluginConfig {
 	return NewConfig
-}
-
-func (p *Plugin) Preprocessor() jspp.IPreprocessor {
-	return p.pp
-}
-
-func (p *Plugin) App() kernel.IApp {
-	return p.app
 }
 
 func (p *Plugin) Config() jspp.IPluginConfig {
@@ -80,7 +73,7 @@ func (p *Plugin) I18n() jspp.II18nMap {
 		fullPath := p.Pathfinder().GetAbsPath(path)
 		file, err := os.Open(fullPath)
 		if err != nil {
-			p.pp.LogError("Can not read i18n file '%s' for plugin '%s': %s", fullPath, p.Name(), err)
+			p.Preprocessor().LogError("Can not read i18n file '%s' for plugin '%s': %s", fullPath, p.Name(), err)
 			continue
 		}
 		defer file.Close()
@@ -88,7 +81,7 @@ func (p *Plugin) I18n() jspp.II18nMap {
 		decoder := yaml.NewDecoder(file)
 		trI := make(map[string]map[string]string)
 		if err := decoder.Decode(trI); err != nil {
-			p.pp.LogError("Can not decode i18n file '%s' for plugin '%s': %s", fullPath, p.Name(), err)
+			p.Preprocessor().LogError("Can not decode i18n file '%s' for plugin '%s': %s", fullPath, p.Name(), err)
 			continue
 		}
 
@@ -100,7 +93,7 @@ func (p *Plugin) I18n() jspp.II18nMap {
 			for key, tr := range trI[lang] {
 				_, exists := trMap[lang][key]
 				if exists {
-					p.pp.LogError("Duplicate translation in i18n files for plugin '%s': key - %s", p.Name(), key)
+					p.Preprocessor().LogError("Duplicate translation in i18n files for plugin '%s': key - %s", p.Name(), key)
 					continue
 				}
 				trMap[lang][key] = tr
@@ -110,10 +103,6 @@ func (p *Plugin) I18n() jspp.II18nMap {
 
 	p.i18n = i18n.NewI18nMap(trMap)
 	return p.i18n
-}
-
-func (p *Plugin) AjaxHandlers() kernel.HttpResourcesList {
-	return make(kernel.HttpResourcesList, 0)
 }
 
 /** @abstract */
@@ -135,7 +124,9 @@ func initPlugin(plugin jspp.IPlugin, pp jspp.IPreprocessor, name, path string) e
 		return nil
 	}
 
-	plugin.Init(pp, name, path)
+	plugin.Init(pp)
+	plugin.SetName(name)
+	plugin.SetPath(path)
 
 	cConf := plugin.CConfig()
 	conf := cConf()

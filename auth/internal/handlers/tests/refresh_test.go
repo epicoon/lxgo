@@ -37,12 +37,12 @@ func TestRefreshHandler_Success(t *testing.T) {
 	password := "Password123!"
 	user, err := app.UsersRepo().Create(login, password)
 	assert.NoError(t, err, "Failed to create test user")
-	accessToken, err := app.TokensRepo().CreateAccessToken(client, user)
+	accessToken, err := app.TokensRepo().CreateAccessToken(client, user, models.SCOPE_PROFILE_DATA)
 	if err != nil {
 		log.Fatalf("Can not create access token: %s", err)
 	}
 	_ = accessToken
-	refreshToken, err := app.TokensRepo().CreateRefreshToken(client, user)
+	refreshToken, err := app.TokensRepo().CreateRefreshToken(client, user, models.SCOPE_PROFILE_DATA)
 	if err != nil {
 		log.Fatalf("Can not create refresh token: %s", err)
 	}
@@ -191,12 +191,12 @@ func TestRefreshHandler_TokenExpired(t *testing.T) {
 	password := "Password123!"
 	user, err := app.UsersRepo().Create(login, password)
 	assert.NoError(t, err, "Failed to create test user")
-	accessToken, err := app.TokensRepo().CreateAccessToken(client, user)
+	accessToken, err := app.TokensRepo().CreateAccessToken(client, user, models.SCOPE_PROFILE_DATA)
 	if err != nil {
 		log.Fatalf("Can not create access token: %s", err)
 	}
 	_ = accessToken
-	refreshToken, err := app.TokensRepo().CreateRefreshToken(client, user)
+	refreshToken, err := app.TokensRepo().CreateRefreshToken(client, user, models.SCOPE_PROFILE_DATA)
 	if err != nil {
 		log.Fatalf("Can not create refresh token: %s", err)
 	}

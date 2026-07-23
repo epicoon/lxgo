@@ -18,9 +18,18 @@ type StateRequest struct {
 	URI string `json:"uri"`
 }
 
+func (f *StateRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"uri": kernel.FormFieldConfig{
+			Description: "the page to return to once authentication completes; defaults to '/' if not given",
+			Required:    false,
+		},
+	}
+}
+
 /** @constructor */
-func NewStateRequest() *StateRequest {
-	return &StateRequest{Form: lxHttp.NewForm()}
+func NewStateRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&StateRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -33,7 +42,9 @@ type StateHandler struct {
 
 /** @kernel.CHttpResource */
 func NewStateHandler() kernel.IHttpResource {
-	return &StateHandler{Resource: lxHttp.NewResource()}
+	return &StateHandler{Resource: lxHttp.NewResource(kernel.HttpResourceConfig{
+		CRequestForm: NewStateRequest,
+	})}
 }
 
 func (handler *StateHandler) Run() kernel.IHttpResponse {
@@ -44,9 +55,7 @@ func (handler *StateHandler) Run() kernel.IHttpResponse {
 		return handler.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
 	}
 
-	// Get URI
-	req := NewStateRequest()
-	lxHttp.FormFiller().SetContext(handler.Context()).SetForm(req).Fill()
+	req := handler.RequestForm().(*StateRequest)
 	var URI string
 	if req.URI == "" {
 		URI = "/"

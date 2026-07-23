@@ -5,20 +5,20 @@ let _tosts = null;
  * - message - CSS-class for messages box
  * - warning - CSS-class for warning box
  * - error - CSS-class for error box
- * - lifetime - tost display duration in milliseconds
+ * - lifetime - toast display duration in milliseconds
  * - defaultType - 'message', 'warning' or 'error'
- * - width - tost width
+ * - width - toast width
  */
 // @lx:namespace lx;
-class Tost extends lx.AppComponentSettable {
+class Toast extends lx.AppComponentSettable {
 	// @lx:const TYPE_MESSAGE = 'message';
 	// @lx:const TYPE_WARNING = 'warning';
 	// @lx:const TYPE_ERROR = 'error';
 
 	init() {
-		lx.tostMessage = msg => this.message(msg);
-		lx.tostWarning = msg => this.warning(msg);
-		lx.tostError = msg => this.error(msg);
+		lx.toastMessage = msg => this.message(msg);
+		lx.toastWarning = msg => this.warning(msg);
+		lx.toastError = msg => this.error(msg);
 	}
 
 	lifetime() {
@@ -30,7 +30,7 @@ class Tost extends lx.AppComponentSettable {
 	defaultType() {
 		if ('defaultType' in this.settings)
 			return this.settings.defaultType;
-		return lx.Tost.TYPE_MESSAGE;
+		return lx.Toast.TYPE_MESSAGE;
 	}
 
 	widthLimit() {
@@ -40,15 +40,15 @@ class Tost extends lx.AppComponentSettable {
 	}
 
 	message(msg) {
-		_print(this, msg, lx.Tost.TYPE_MESSAGE);
+		_print(this, msg, lx.Toast.TYPE_MESSAGE);
 	}
 
 	warning(msg) {
-		_print(this, msg, lx.Tost.TYPE_WARNING);
+		_print(this, msg, lx.Toast.TYPE_WARNING);
 	}
 
 	error(msg) {
-		_print(this, msg, lx.Tost.TYPE_ERROR);
+		_print(this, msg, lx.Toast.TYPE_ERROR);
 	}
 
 	align(h, v) {
@@ -88,7 +88,7 @@ function _print(self, config, typeArg) {
 
 	if (!message
 		|| !lx.isString(message)
-		|| (type != lx.Tost.TYPE_MESSAGE && type != lx.Tost.TYPE_WARNING && type != lx.Tost.TYPE_ERROR)
+		|| (type != lx.Toast.TYPE_MESSAGE && type != lx.Toast.TYPE_WARNING && type != lx.Toast.TYPE_ERROR)
 	) return;
 
 	const el = new lx.Box({
@@ -108,36 +108,36 @@ function _print(self, config, typeArg) {
 	});
 }
 
-function _decorate(self, tost, type) {
+function _decorate(self, toast, type) {
 	if (type in self.settings) {
-		tost.addClass(self.settings[type]);
+		toast.addClass(self.settings[type]);
 		return;
 	}
 
 	let color, borderColor;
 	switch (type) {
-		case lx.Tost.TYPE_MESSAGE:
+		case lx.Toast.TYPE_MESSAGE:
 			color = 'lightgreen';
 			borderColor = 'green';
 			break;
-		case lx.Tost.TYPE_WARNING:
+		case lx.Toast.TYPE_WARNING:
 			color = 'orange';
 			borderColor = 'lightcoral';
 			break;
-		case lx.Tost.TYPE_ERROR:
+		case lx.Toast.TYPE_ERROR:
 			color = 'lightcoral';
 			borderColor = 'red';
 			break;
 	}
-	tost.roundCorners('8px');
-	tost.border({color: borderColor});
-	tost.fill(color);
-	tost.style('color', 'black');
+	toast.roundCorners('8px');
+	toast.border({color: borderColor});
+	toast.fill(color);
+	toast.style('color', 'black');
 
-	tost.width(self.widthLimit());
-	tost.width( tost.get('text').width('px') + 20 + 'px' );
-	tost.height( tost.get('text').height('px') + 20 + 'px' );
-	tost.align(lx.CENTER, lx.MIDDLE);
+	toast.width(self.widthLimit());
+	toast.width( toast.get('text').width('px') + 20 + 'px' );
+	toast.height( toast.get('text').height('px') + 20 + 'px' );
+	toast.align(lx.CENTER, lx.MIDDLE);
 }
 
 function _getTosts() {

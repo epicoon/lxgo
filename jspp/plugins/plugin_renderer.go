@@ -295,7 +295,7 @@ func (r *pluginRenderer) compileMainJs() {
 	if len(require) > 0 {
 		requireStr := ""
 		for _, req := range require {
-			requireStr += fmt.Sprintf("@lx:require %s;\n", req)
+			requireStr += fmt.Sprintf("lx.import('%s');\n", req)
 		}
 		code = requireStr + code
 	}
@@ -474,7 +474,7 @@ func (r *pluginRenderer) getServerCodeBlank() string {
 		pattern := `Plugin\.__afterDefinition\(\);`
 		re := regexp.MustCompile(pattern)
 		loc := re.FindStringIndex(pCode)
-		r.serverCodeBlank = "@lx:use lx.Plugin; (()=>{" +
+		r.serverCodeBlank = "lx.import(lx.Plugin); (()=>{" +
 			pCode[:loc[1]] +
 			"lx.globalContext.$plugin=new Plugin(%s);" +
 			pCode[loc[1]:] +
@@ -487,7 +487,7 @@ func (r *pluginRenderer) getServerCodeBlank() string {
 func (r *pluginRenderer) defaultServerCodeBlank() string {
 	if r.serverCodeBlank == "" {
 		r.serverCodeBlank = `
-			@lx:use lx.Plugin;
+			lx.import(lx.Plugin);
 			const $plugin = new lx.Plugin(%s);
 			lx.globalContext.$plugin = $plugin;
 		`

@@ -1,5 +1,3 @@
-#lx:public;
-
 class HistoryRecord {
     constructor(context, type, info, name) {
         this.context = context;

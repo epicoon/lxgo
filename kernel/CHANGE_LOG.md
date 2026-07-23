@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.24
+Version: v0.1.0-alpha.24
+Changes:
+- add: IDIContainer.Register(list) - register additional DI entries after Init(), erroring on a duplicate key instead of silently overwriting
+- docs: documented the existing database connection setup (config.yaml's Database section, Connection.Connect()/DB()) and the manage:inject-config command, both previously undocumented; assorted typo fixes
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.13
 Version: v0.1.0-alpha.23
 Changes:

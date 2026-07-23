@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.23`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.24`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -23,6 +23,7 @@ You can create your own web-server - an application with components, routing and
 * [Components](#components)
 * [Events](#events)
 * [Proxy API](#proxy)
+* [Database connection](#db)
 * [Local config](#lconfig)
 * [Local managing](#lmanaging)
 
@@ -68,7 +69,7 @@ param2 := app.ConfigParam("Object.ParamKey")
 
 
 ### <a name="link4">4. Lets create the app instance and run it. Change your `main.go` file:</a>
-- use this code for yout `main.go` file:
+- use this code for your `main.go` file:
     ```go
     package main
 
@@ -249,9 +250,9 @@ func InitRoutes(router kernel.IRouter) {
 
     // ...
 ```
-- create pare of templates:
+- create a pair of templates:
     * `tpl1.html`
-    ```htlm
+    ```html
     {{ define "title" }}
         Template 1
     {{ end }}
@@ -261,7 +262,7 @@ func InitRoutes(router kernel.IRouter) {
     {{ end }}
     ```
     * `tpl2.html`
-    ```htlm
+    ```html
     {{ define "title" }}
         Template 2
     {{ end }}
@@ -281,6 +282,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/epicoon/lxgo/kernel"
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
@@ -580,7 +582,7 @@ There are several events of application lifecycle:
         | context | kernel.IHandleContext |
 
 * `kernel.EVENT_APP_BEFORE_SEND_RESPONSE`
-    - **trigger**: before sending responce after the method `kernel.IHttpResource.Run()`
+    - **trigger**: before sending response after the method `kernel.IHttpResource.Run()`
     - **payload**:
         | key      | type                  |
         | -------- | --------------------- |
@@ -599,7 +601,7 @@ There are several events of application lifecycle:
         | --------- | ------------------------ |
         | renderer  | kernel.ITemplateRenderer |
 * `kernel.EVENT_CONFIG_REFRESHED`
-    - **trigger**: after successful applying the applicaion config in runtime. See [local managing](#lmanaging)
+    - **trigger**: after successful applying the application config in runtime. See [local managing](#lmanaging)
     - **payload**: `NONE`
 
 Example of events using:
@@ -629,6 +631,40 @@ app.Router().RegisterProxy(kernel.HttpProxyConfig{
     },
 })
 ```
+
+
+### <a name="db">Database connection</a>
+If your app needs a database, add a `Database` section to `config.yaml`:
+```yaml
+Database:
+  Host: localhost
+  Port: 5432
+  User: postgres
+  Password: secret
+  DBName: my_app
+  # Optional, defaults to "disable"
+  SSLMode: disable
+  # Optional, defaults to 10
+  ConnectAttempts: 10
+  # Optional, seconds between attempts, defaults to 2
+  ConnectAttemptDelay: 2
+```
+Applying the app config (`lxApp.Configurate(app)`) prepares a `kernel.IConnection`
+from this section, but does **not** connect automatically - call `Connect()`
+yourself once, right after configuring the app:
+```go
+if err := lxApp.Configurate(app); err != nil {
+    panic(err)
+}
+if err := app.Connection().Connect(); err != nil {
+    panic(err)
+}
+```
+Then use the underlying `*sql.DB` anywhere in your app:
+```go
+db := app.Connection().DB()
+```
+Currently only PostgreSQL is supported (via `github.com/lib/pq`).
 
 
 ### <a name="lconfig">Local config</a>
@@ -674,7 +710,20 @@ func main() {
 ```
 
 3. Call commands:
-    * `go run . manage:status`
-    * `go run . manage:refresh-config -t`
-    * `go run . manage:refresh-config`
-    * `go run . manage:trigger --event=NAME`
+    * `go run . manage:status` - check the socket is alive, answers `ok`.
+    * `go run . manage:refresh-config` - reread `config.yaml` (and the local
+      config, see [local config](#lconfig)) without restarting the app.
+      Add `-t` to only validate the config first without applying it.
+    * `go run . manage:inject-config` - change config params in runtime without
+      restarting, without touching the config files:
+        * `--params="number:123,name:'some string'"` - set/replace params.
+        * `--add="arrayName:[newElem1,newElem2]"` - append elements to an array param.
+        * `--remove="arrayName:[newElem1,newElem2]"` - remove elements from an array param.
+        * add `-t` to only validate the resulting config first without applying it.
+    * `go run . manage:trigger --event=NAME` - **not implemented yet**, currently
+      only prints "Not implemented yet".
+
+
+## License
+
+Apache License 2.0 — see [LICENSE](./LICENSE).

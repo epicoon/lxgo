@@ -56,7 +56,7 @@
       # Optional: directories with plugins which are not in the Go modules
       Plugins:
         - /path/to/plugins
-      # Optional: substitute JS-module names by other module names when resolving @lx:use
+      # Optional: substitute JS-module names by other module names when resolving lx.import(...)
       ModuleInjector:
         ModuleName: OtherModuleName
   ```
@@ -155,7 +155,7 @@ You'll need it to build `code.js` and modules and plugins maps
 - Direct way to create an application is to make file `frontend/src/App.js` according to the `Components.JSPreprocessor.Targets` application configuration parameter:
   ```js
   // Include JS-module
-  // @lx:use lx.CssPresetDark;
+  lx.import(lx.CssPresetDark);
 
   // Init and start the application
   lx.app.start({

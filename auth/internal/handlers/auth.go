@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	cvn "github.com/epicoon/lxgo/auth/internal/conventions"
+	"github.com/epicoon/lxgo/auth/internal/models"
 	"github.com/epicoon/lxgo/kernel"
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
 	"github.com/epicoon/lxgo/session"
@@ -16,17 +17,41 @@ import (
 /** @interface kernel.IForm */
 type AuthRequest struct {
 	*lxHttp.Form
-	ResponseType string `dict:"response_type"`
-	ClientID     uint   `dict:"client_id"`
-	RedirectUri  string `dict:"redirect_uri"`
-	State        string `dict:"state"`
+	ResponseType string `json:"response_type"`
+	ClientID     uint   `json:"client_id"`
+	RedirectUri  string `json:"redirect_uri"`
+	State        string `json:"state"`
+	Scope        string `json:"scope"`
+}
+
+func (f *AuthRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"response_type": kernel.FormFieldConfig{
+			Description: "authentication type, available values: 'code'",
+			Required:    true,
+		},
+		"client_id": kernel.FormFieldConfig{
+			Description: "client application identifier",
+			Required:    true,
+		},
+		"redirect_uri": kernel.FormFieldConfig{
+			Description: "where to redirect the user after authorization; must exactly match the URI registered for this client, otherwise the request is rejected with 400 Bad Request",
+			Required:    true,
+		},
+		"state": kernel.FormFieldConfig{
+			Description: "unique string for protection against CSRF - generated and saved (in the session) by the state-generation endpoint, checked here when returning from the authorization form",
+			Required:    true,
+		},
+		"scope": kernel.FormFieldConfig{
+			Description: "requested access level: 'profile' or 'profile:data' (see README for the current fixed set); optional, defaults to the narrowest one ('profile') if omitted",
+			Required:    false,
+		},
+	}
 }
 
 /** @constructor */
-func NewAuthRequest() *AuthRequest {
-	req := &AuthRequest{Form: lxHttp.NewForm()}
-	req.SetRequired([]string{"response_type", "client_id", "redirect_uri", "state"})
-	return req
+func NewAuthRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&AuthRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -47,9 +72,20 @@ func NewGetAuthHandler() kernel.IHttpResource {
 
 /** @constructor kernel.CHttpResource */
 func NewPostAuthHandler() kernel.IHttpResource {
-	h := &AuthHandler{Resource: lxHttp.NewResource()}
+	h := &AuthHandler{Resource: lxHttp.NewResource(kernel.HttpResourceConfig{
+		CRequestForm: NewAuthRequest,
+	})}
 	h.Receiver = true
 	return h
+}
+
+// ProcessRequestErrors only ever fires for the POST/Receiver path - GET
+// doesn't have CRequestForm set, so the router never calls this for it.
+func (handler *AuthHandler) ProcessRequestErrors() kernel.IHttpResponse {
+	return handler.ErrorResponse(
+	    http.StatusBadRequest,
+	    fmt.Sprintf("Invalid request: %s", handler.RequestForm().GetFirstError()),
+    )
 }
 
 func (handler *AuthHandler) Run() kernel.IHttpResponse {
@@ -63,10 +99,13 @@ func (handler *AuthHandler) Run() kernel.IHttpResponse {
 
 	var params *AuthParams
 	if handler.Receiver {
-		req := NewAuthRequest()
-		lxHttp.FormFiller().SetContext(handler.Context()).SetForm(req).Fill()
-		if req.HasErrors() {
-			http.Error(w, fmt.Sprintf("Invalid request: %s", req.GetFirstError()), http.StatusBadRequest)
+		req := handler.RequestForm().(*AuthRequest)
+
+		scope := req.Scope
+		if scope == "" {
+			scope = models.DefaultScope
+		} else if !models.ValidateScope(scope) {
+			http.Error(w, "Invalid scope", http.StatusBadRequest)
 			return nil
 		}
 
@@ -75,6 +114,7 @@ func (handler *AuthHandler) Run() kernel.IHttpResponse {
 			ClientID:     req.ClientID,
 			RedirectUri:  req.RedirectUri,
 			State:        req.State,
+			Scope:        scope,
 		}
 
 		sess, err := session.ExtractSession(ctx)
@@ -102,14 +142,17 @@ func (handler *AuthHandler) Run() kernel.IHttpResponse {
 		params = ap
 	}
 
-	//TODO check params.RedirectUri
-	// --- client must have field ~ 'domain', for example:
-	// --- --- domain == "http://localhost:8081"
-	// --- --- params.RedirectUri == "http://localhost:8081/auth-callback"
-	// --- --- --- need compare them
-
-	if !coreApp.ClientsRepo().CheckIDExists(params.ClientID) {
+	client, err := coreApp.ClientsRepo().FindByID(params.ClientID)
+	if err != nil {
 		http.Error(w, "Client does not exist", http.StatusBadRequest)
+		return nil
+	}
+
+	// Exact match against the client's registered redirect_uri - the safer
+	// of the two per RFC 6749, and avoids bypasses via path traversal/extra
+	// segments on an allowed domain.
+	if params.RedirectUri != client.RedirectUri {
+		http.Error(w, "Invalid redirect_uri", http.StatusBadRequest)
 		return nil
 	}
 

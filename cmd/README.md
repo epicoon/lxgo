@@ -1,6 +1,6 @@
 # Package for console commands creating in lxgo/kernel applications
 
-> Actual version: `v0.1.0-alpha.5`. [Details](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.6`. [Details](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -73,7 +73,7 @@ func NewMyCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 
 func (c *MyCommand) Config() *cmd.Config {
 	return &cmd.Config{
-		Description: "My command to say hi and by :)",
+		Description: "My command to say hi and bye :)",
 		Actions: cmd.ActionsConfig{
 			"hi": cmd.ActionConfig{
 				Description: "Say hi!",
@@ -83,13 +83,13 @@ func (c *MyCommand) Config() *cmd.Config {
 						Description: "The name of the one we greet",
 						Type:        cmd.ParamTypeString,
 						Required:    false,
-						Default:     "anonimus",
+						Default:     "anonymous",
 					},
 				},
 			},
-			"by": cmd.ActionConfig{
-				Description: "Say by",
-				Executor:    actionBy,
+			"bye": cmd.ActionConfig{
+				Description: "Say bye",
+				Executor:    actionBye,
 			},
 		},
 	}
@@ -102,9 +102,9 @@ func actionHi(c cmd.ICommand) error {
 	return nil
 }
 
-// Corresponds to `go run . {command_key}:by` call
-func actionBy(c cmd.ICommand) error {
-	fmt.Println("By")
+// Corresponds to `go run . {command_key}:bye` call
+func actionBye(c cmd.ICommand) error {
+	fmt.Println("Bye")
 	return nil
 }
 ```
@@ -129,7 +129,7 @@ func main() {
 3. After that you can call:
     - `go run . my-command:hi`
     - `go run . my-command:hi --name="Al"`
-    - `go run . my-command:by`
+    - `go run . my-command:bye`
     - `go run . my-command --help`
     - `go run . my-command:hi --help`
 
@@ -139,6 +139,7 @@ func main() {
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/epicoon/lxgo/cmd"
@@ -152,14 +153,14 @@ func NewMyCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	c := &MyCommand{Command: cmd.NewCommand()}
 	c.RegisterActions(cmd.ActionsList{
 		"hi": actionHi,
-		"by": actionBy,
+		"bye": actionBye,
 	})
 	return c
 }
 
 // Corresponds to `go run . {command_key}:hi --name="Al"` call
 func actionHi(c cmd.ICommand) error {
-	name := "anonimus"
+	name := "anonymous"
 	if c.HasParam("name") {
 		param, ok := c.Param("name").(string)
 		if !ok {
@@ -171,13 +172,64 @@ func actionHi(c cmd.ICommand) error {
 	return nil
 }
 
-// Corresponds to `go run . {command_key}:by` call
-func actionBy(c cmd.ICommand) error {
-	fmt.Println("By")
+// Corresponds to `go run . {command_key}:bye` call
+func actionBye(c cmd.ICommand) error {
+	fmt.Println("Bye")
 	return nil
 }
 ```
 
 
-//TODO:
-    - Explain cmd.ICommandOptions
+## `cmd.ICommandOptions`
+
+Every command constructor has the same signature —
+`func(opt ...cmd.ICommandOptions) cmd.ICommand` — so that any of them can be
+plugged into `cmd.CommandsList` uniformly. But different commands often need
+different construction-time data (e.g. a reference to the app instance), and
+Go doesn't let `CommandsList`'s constructor type vary per entry. `ICommandOptions`
+is how this package works around that: it's just `interface{}` — any struct
+automatically satisfies it — used purely as a generic "some options, typed
+by whoever's constructing this specific command" placeholder.
+
+To use it:
+1. Define your own options struct — no need to implement anything, any type
+   satisfies `ICommandOptions`.
+2. In your command's constructor, pull it out with the generic helper
+   `cmd.GetOptions[YourOptions](opt)`, which type-asserts the first passed
+   option to `YourOptions` (returning the zero value if none was passed or
+   it's the wrong type).
+
+A real example — `lxgo-jspp`'s compile command needs the app instance to do
+anything useful:
+```go
+// lxgo-jspp/cmd/compile_command.go
+type CompileCommandOptions struct {
+	App kernel.IApp
+}
+
+func NewCompileCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
+	options := cmd.GetOptions[CompileCommandOptions](opt)
+	if options.App == nil {
+		panic("CompileCommand option 'App' is not defined")
+	}
+	// ...
+}
+```
+and the caller passes the options explicitly when wrapping it into their own
+constructor (see [Start using `lxgo-jspp`](https://github.com/epicoon/lxgo/tree/master/jspp/doc/start.md)
+for the full context):
+```go
+func NewJSPPCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
+	// Create your app ...
+	return jsppCmd.NewCompileCommand(jsppCmd.CompileCommandOptions{
+		App: app,
+	})
+}
+```
+A command that doesn't need any construction-time data (like every example
+above in this README) simply ignores the parameter (`_ ...cmd.ICommandOptions`).
+
+
+## License
+
+Apache License 2.0 — see [LICENSE](./LICENSE).

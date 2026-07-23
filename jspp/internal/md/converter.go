@@ -1,5 +1,5 @@
 // Package md is the platform's own markdown-to-HTML converter, used by the
-// `@lx:md(...)` preprocessor directive
+// `lx.md(...)` preprocessor directive
 package md
 
 import "os"

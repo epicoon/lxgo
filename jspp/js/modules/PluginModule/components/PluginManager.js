@@ -1,5 +1,5 @@
 // @lx:<context CLIENT:
-// @lx:require -U unpacker/;
+lx.import('-U unpacker/');
 let _plugin = null;
 // @lx:context>
 

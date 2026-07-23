@@ -12,7 +12,8 @@ class AlignPositioningStrategy extends lx.PositioningStrategy {
 	 *     {Number&Enum(
 	 *         lx.LEFT,
 	 *         lx.CENTER,
-	 *         lx.RIGHT
+	 *         lx.RIGHT,
+	 *         lx.JUSTIFY
 	 *     )} [horizontal = lx.CENTER],
 	 *     {Number&Enum(
 	 *         lx.TOP,

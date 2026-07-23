@@ -1,7 +1,9 @@
 // @lx:module lx.RadioGroup;
 
-// @lx:use lx.Radio;
-// @lx:use lx.LabeledGroup;
+lx.import(
+	lx.Radio,
+	lx.LabeledGroup
+);
 
 /**
  * @widget lx.RadioGroup

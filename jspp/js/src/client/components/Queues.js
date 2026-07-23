@@ -1,4 +1,4 @@
-// @lx:require queues/;
+lx.import('queues/');
 
 // @lx:namespace lx;
 class Queues extends lx.AppComponent {

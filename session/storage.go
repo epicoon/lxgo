@@ -175,7 +175,7 @@ func (s *Storage) GC() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.getProvider().SessionGC(s.Config().MaxLifeTime)
-	time.AfterFunc(time.Duration(s.Config().MaxLifeTime), func() { s.GC() })
+	time.AfterFunc(time.Duration(s.Config().MaxLifeTime)*time.Second, func() { s.GC() })
 }
 
 func (s *Storage) Provider() IProvider {

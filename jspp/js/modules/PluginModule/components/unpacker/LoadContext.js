@@ -24,7 +24,7 @@ class LoadContext {
 
 		this.pluginsInfo[this.rootKey].conf.dep = info.assets;
 
-		// Syncronize assets loading and plugin start
+		// Synchronize assets loading and plugin start
 		let synchronizer = new lx.RequestSynchronizer();
 
 		// Register modules load request

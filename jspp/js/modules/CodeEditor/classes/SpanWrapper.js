@@ -1,5 +1,3 @@
-#lx:public;
-
 class SpanWrapper {
     constructor(context, span) {
         this.context = context;

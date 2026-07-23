@@ -1,7 +1,9 @@
 // @lx:module lx.CheckboxGroup;
 
-// @lx:use lx.Checkbox;
-// @lx:use lx.LabeledGroup;
+lx.import(
+	lx.Checkbox,
+	lx.LabeledGroup
+);
 
 /**
  * @widget lx.CheckboxGroup

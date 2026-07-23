@@ -17,11 +17,18 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+func (f *RefreshRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"refresh_token": kernel.FormFieldConfig{
+			Description: "token for refresh of a pair of tokens",
+			Required:    true,
+		},
+	}
+}
+
 /** @constructor */
-func NewRefreshRequest() *RefreshRequest {
-	form := &RefreshRequest{Form: lxHttp.NewForm()}
-	form.SetRequired([]string{"refresh_token"})
-	return form
+func NewRefreshRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&RefreshRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -34,7 +41,13 @@ type RefreshHandler struct {
 
 /** @constructor */
 func NewRefreshHandler() kernel.IHttpResource {
-	return &RefreshHandler{Resource: lxHttp.NewResource()}
+	return &RefreshHandler{Resource: lxHttp.NewResource(kernel.HttpResourceConfig{
+		CRequestForm: NewRefreshRequest,
+	})}
+}
+
+func (handler *RefreshHandler) ProcessRequestErrors() kernel.IHttpResponse {
+	return handler.ErrorResponse(http.StatusBadRequest, "Wrong params")
 }
 
 func (handler *RefreshHandler) Run() kernel.IHttpResponse {
@@ -44,11 +57,7 @@ func (handler *RefreshHandler) Run() kernel.IHttpResponse {
 		return handler.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
 	}
 
-	req := NewRefreshRequest()
-	lxHttp.FormFiller().SetContext(handler.Context()).SetForm(req).Fill()
-	if req.HasErrors() {
-		return handler.ErrorResponse(http.StatusBadRequest, "Wrong params")
-	}
+	req := handler.RequestForm().(*RefreshRequest)
 
 	tokens, err := authClient.RefreshTokens(req.RefreshToken)
 	if err != nil {

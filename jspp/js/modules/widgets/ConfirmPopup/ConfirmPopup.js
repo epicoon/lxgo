@@ -1,7 +1,7 @@
 // @lx:module lx.ConfirmPopup;
 // @lx:module-data: i18n = i18n.yaml;
 
-// @lx:use lx.Button;
+lx.import(lx.Button);
 
 // @lx:<context CLIENT:
 let __instance = null,

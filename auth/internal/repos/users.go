@@ -114,7 +114,46 @@ func (repo *UsersRepo) FindByToken(accessToken *models.Token) (*models.User, err
 	return &user, nil
 }
 
-func (repo *UsersRepo) FindData(user *models.User) (*models.UserData, error) {
-	//TODO
-	return nil, nil
+func (repo *UsersRepo) FindData(user *models.User, client *models.Client) (*models.UserData, error) {
+	db := repo.DB()
+	var data models.UserData
+
+	result := db.Where("user_id = ? AND client_id = ?", user.ID, client.ID).First(&data)
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+	if result.Error != nil {
+		return nil, fmt.Errorf("error occurred while finding user data for user_id=%d, client_id=%d: %s", user.ID, client.ID, result.Error)
+	}
+
+	return &data, nil
+}
+
+func (repo *UsersRepo) SetData(user *models.User, client *models.Client, data models.JSONB) (*models.UserData, error) {
+	db := repo.DB()
+	var existing models.UserData
+
+	result := db.Where("user_id = ? AND client_id = ?", user.ID, client.ID).First(&existing)
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("error occurred while finding user data for user_id=%d, client_id=%d: %s", user.ID, client.ID, result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		existing = models.UserData{
+			UserID:   user.ID,
+			ClientID: client.ID,
+			Data:     data,
+		}
+		if err := db.Create(&existing).Error; err != nil {
+			return nil, fmt.Errorf("can not create user data for user_id=%d, client_id=%d: %s", user.ID, client.ID, err)
+		}
+		return &existing, nil
+	}
+
+	existing.Data = data
+	if err := db.Save(&existing).Error; err != nil {
+		return nil, fmt.Errorf("can not update user data for user_id=%d, client_id=%d: %s", user.ID, client.ID, err)
+	}
+
+	return &existing, nil
 }

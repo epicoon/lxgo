@@ -1,8 +1,10 @@
 // @lx:module lx.MultiBox;
 
-// @lx:use lx.Marks;
-// @lx:use lx.JointMover;
-// @lx:use lx.BasicCssContext;
+lx.import(
+	lx.Marks,
+	lx.JointMover,
+	lx.BasicCssContext
+);
 
 /**
  * @widget lx.MultiBox

@@ -23,10 +23,11 @@ func NewTokensRepo(app cvn.IApp) *TokensRepo {
 	return &TokensRepo{AbstractRepo: &AbstractRepo{app: app}}
 }
 
-func (repo *TokensRepo) CreateAccessToken(client *models.Client, user *models.User) (*models.Token, error) {
+func (repo *TokensRepo) CreateAccessToken(client *models.Client, user *models.User, scope string) (*models.Token, error) {
 	token := &models.Token{
 		ClientID:  client.ID,
 		UserID:    user.ID,
+		Scope:     scope,
 		IsRefresh: false,
 	}
 	token.Refresh(client)
@@ -38,10 +39,11 @@ func (repo *TokensRepo) CreateAccessToken(client *models.Client, user *models.Us
 	return token, nil
 }
 
-func (repo *TokensRepo) CreateRefreshToken(client *models.Client, user *models.User) (*models.Token, error) {
+func (repo *TokensRepo) CreateRefreshToken(client *models.Client, user *models.User, scope string) (*models.Token, error) {
 	token := &models.Token{
 		ClientID:  client.ID,
 		UserID:    user.ID,
+		Scope:     scope,
 		IsRefresh: true,
 	}
 	token.Refresh(client)

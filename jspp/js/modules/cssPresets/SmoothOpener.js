@@ -1,6 +1,6 @@
-// #lx:module lx.SmoothOpener;
+// @lx:module lx.SmoothOpener;
 
-// #lx:namespace lx;
+// @lx:namespace lx;
 class SmoothOpener extends lx.Element {
     static initCss(css) {
         css.addClass('lx-smooth-open', {

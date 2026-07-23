@@ -1,6 +1,6 @@
 // @lx:module lx.Input;
 
-// @lx:use lx.BasicCssContext;
+lx.import(lx.BasicCssContext);
 
 /**
  * @widget lx.Input

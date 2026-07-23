@@ -24,6 +24,7 @@ import (
 
 const TestClientID = 2
 const TestClientSecret = "testsecret"
+const TestClientRedirectUri = "test_redirect"
 
 // Test application
 var app cvn.IApp
@@ -165,9 +166,9 @@ func prepareTestClient(app cvn.IApp) {
 		testClient := &models.Client{
 			Model:                gorm.Model{ID: TestClientID},
 			Secret:               TestClientSecret,
-			RoleID:               4,
-			AccessTokenLifetime:  900,
-			RefreshTokenLifetime: 604800,
+			AccessTokenLifetime:  models.DefaultAccessTokenLifetime,
+			RefreshTokenLifetime: models.DefaultRefreshTokenLifetime,
+			RedirectUri:          TestClientRedirectUri,
 		}
 		db := app.Gorm().Session(&gorm.Session{AllowGlobalUpdate: true})
 		repo := app.ClientsRepo()

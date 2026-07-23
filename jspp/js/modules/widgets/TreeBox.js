@@ -1,7 +1,9 @@
 // @lx:module lx.TreeBox;
 
-// @lx:use lx.Input;
-// @lx:use lx.BasicCssContext;
+lx.import(
+	lx.Input,
+	lx.BasicCssContext
+);
 
 /**
  * @widget lx.TreeBox

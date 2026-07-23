@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.24
+Version: v0.1.0-alpha.4
+Changes:
+- fix: Storage.GC()'s self-rescheduling treated MaxLifeTime as nanoseconds instead of seconds, so garbage collection ran in a tight loop instead of every MaxLifeTime seconds
+- docs: README caught up to the actual Set()/SetForce()/Remove() API (Set errors on an already-set key, "Delete" is now "Remove") - previously described a stale API
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.13
 Version: v0.1.0-alpha.3
 Changes:

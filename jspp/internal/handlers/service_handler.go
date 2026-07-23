@@ -50,13 +50,13 @@ func (h *ServiceHandler) Run() kernel.IHttpResponse {
 	}
 
 	if req.Action == "get-modules" {
-		return getModules(h, req.Params)
+		return modulesCodeResponse(h, req.Params)
 	}
 
 	return errorResponse(h, "Unknown action")
 }
 
-func getModules(h *ServiceHandler, list map[string]any) kernel.IHttpResponse {
+func modulesCodeResponse(h *ServiceHandler, list map[string]any) kernel.IHttpResponse {
 	haveAny, exists := list["have"]
 	if !exists {
 		return errorResponse(h, "'have' parameter required")
@@ -88,7 +88,7 @@ func getModules(h *ServiceHandler, list map[string]any) kernel.IHttpResponse {
 		if !ok {
 			return errorResponse(h, "Wrong 'need' module name type")
 		}
-		code += fmt.Sprintf("@lx:use %s;", name)
+		code += fmt.Sprintf("lx.import(%s);", name)
 		if !pp.ModulesMap().Has(name) {
 			needReset = true
 		}

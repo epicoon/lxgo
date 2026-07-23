@@ -1,4 +1,4 @@
-#lx:namespace lx;
+// @lx:namespace lx;
 class TestReport {
     constructor(test) {
         this.testName = test.name;

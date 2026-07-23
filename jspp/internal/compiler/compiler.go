@@ -164,11 +164,10 @@ func (c *Compiler) buildCode() (string, error) {
 }
 
 func (c *Compiler) applyUsedModules(code string) string {
-	mm := ""
-	for _, m := range c.useModules {
-		mm += "@lx:use " + m + ";"
+	if len(c.useModules) == 0 {
+		return code
 	}
-	return mm + code
+	return "lx.import(" + strings.Join(c.useModules, ",") + ");" + code
 }
 
 func (c *Compiler) compileCodeInnerDirectives(code, path string) (string, error) {
@@ -205,12 +204,7 @@ func (c *Compiler) compileCodeOuterDirectives(code, path string, wrapped bool) (
 		code = `(()=>{` + code + `})();`
 	}
 
-	code, err := c.plugAllRequires(code, path)
-	if err != nil {
-		return "", err
-	}
-
-	code, err = c.plugAllModules(code, path)
+	code, err := c.processImport(code, path)
 	if err != nil {
 		return "", err
 	}
@@ -232,27 +226,124 @@ func (c *Compiler) markDevInterrupting(code, path string) string {
 	return fmt.Sprintf("\n/* @lx-interrupted-js-file: %s */\n%s\n/* @lx-continue-js-file: %s */\n", path, code, path)
 }
 
+// processLxml finds lx.ml(`...`) calls and replaces them with the compiled
+// LXML tree. A backtick inside the template can be escaped as \` (e.g. for a
+// real nested JS template literal inside a raw (...) attribute). If the call
+// is immediately preceded by `const NAME = ` / `let NAME = ` / `var NAME = `,
+// that assignment is absorbed into the generated output (keeping whichever
+// keyword the author used) instead of being left as a separate statement.
 func (c *Compiler) processLxml(code string) string {
-	re := regexp.MustCompile(`(?:/\*\s*)?@lx:<ml(?::|\s+([\w\d_]+?)?:)([\w\W]+?)@lx:ml>(?:\s*\*/)?`)
-	return re.ReplaceAllStringFunc(code, func(s string) string {
-		match := re.FindStringSubmatch(s)
-		if len(match) != 3 {
-			return ""
+	const marker = "lx.ml("
+	reAssign := regexp.MustCompile(`(?:^|[\s;{}])(const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$`)
+
+	var out strings.Builder
+	n := len(code)
+	i := 0
+	for i < n {
+		rel := strings.Index(code[i:], marker)
+		if rel == -1 {
+			out.WriteString(code[i:])
+			break
+		}
+		idx := i + rel
+
+		if idx > 0 && isLxmlIdentByte(code[idx-1]) {
+			out.WriteString(code[i : idx+1])
+			i = idx + 1
+			continue
 		}
 
-		out := match[1]
-		ml := match[2]
+		afterMarker := idx + len(marker)
+		j := afterMarker
+		for j < n && isLxmlSpaceByte(code[j]) {
+			j++
+		}
+		if j >= n || code[j] != '`' {
+			out.WriteString(code[i:afterMarker])
+			i = afterMarker
+			continue
+		}
+
+		blockStart := j + 1
+		closeIdx := findUnescapedBacktick(code, blockStart)
+		if closeIdx == -1 {
+			c.pp.LogError("lx.ml(): unterminated template literal")
+			out.WriteString(code[i:afterMarker])
+			i = afterMarker
+			continue
+		}
+
+		p := closeIdx + 1
+		for p < n && isLxmlSpaceByte(code[p]) {
+			p++
+		}
+		if p >= n || code[p] != ')' {
+			c.pp.LogError("lx.ml(): expected closing ')'")
+			out.WriteString(code[i:afterMarker])
+			i = afterMarker
+			continue
+		}
+		callEnd := p + 1
+
+		segment := code[i:idx]
+		keyword := ""
+		name := ""
+		if loc := reAssign.FindStringSubmatchIndex(segment); loc != nil {
+			keyword = segment[loc[2]:loc[3]]
+			name = segment[loc[4]:loc[5]]
+			segment = segment[:loc[2]]
+		}
+		out.WriteString(segment)
+
+		ml := code[blockStart:closeIdx]
+		ml = strings.ReplaceAll(ml, "\\`", "`")
 
 		parser := lxml.NewParser(c.pp)
-		parser.SetOutput(out)
-		code, err := parser.ParseText(ml)
+		parser.SetOutput(name)
+		if name != "" {
+			parser.SetOutputKeyword(keyword)
+		}
+		compiled, err := parser.ParseText(ml)
 		if err != nil {
 			c.pp.LogError(err.Error())
-			return ""
+		} else {
+			out.WriteString(compiled)
 		}
 
-		return code
-	})
+		i = callEnd
+	}
+
+	return out.String()
+}
+
+func isLxmlIdentByte(b byte) bool {
+	return b == '_' || b == '$' ||
+		(b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
+}
+
+func isLxmlSpaceByte(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
+}
+
+// findUnescapedBacktick returns the index (>= from) of the next backtick in
+// code that is not preceded by an odd number of backslashes, or -1.
+func findUnescapedBacktick(code string, from int) int {
+	n := len(code)
+	for k := from; k < n; k++ {
+		if code[k] != '`' {
+			continue
+		}
+		bs := 0
+		m := k - 1
+		for m >= from && code[m] == '\\' {
+			bs++
+			m--
+		}
+		if bs%2 == 0 {
+			return k
+		}
+	}
+	return -1
 }
 
 func (c *Compiler) cutComments(code string) string {
@@ -330,9 +421,9 @@ func (c *Compiler) cutCoordinationDirectives(code string) string {
 }
 
 func (c *Compiler) injectDatum(code string) string {
-	// val = lx(json, 'path');
-	// val = lx(yaml, 'path');
-	pattern := regexp.MustCompile(`lx\( *(json|yaml) *, *'([^']+?)'\)`)
+	// val = lx.json('path');
+	// val = lx.yaml('path');
+	pattern := regexp.MustCompile(`lx\.(json|yaml)\s*\(\s*['"]?(.*?)['"]?\s*\)`)
 	code = pattern.ReplaceAllStringFunc(code, func(match string) string {
 		matches := pattern.FindStringSubmatch(match)
 		if len(matches) < 3 {

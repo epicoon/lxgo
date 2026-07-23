@@ -1,7 +1,9 @@
 // @lx:module lx.ImageSlider;
 
-// @lx:use lx.BoxSlider;
-// @lx:use lx.Image;
+lx.import(
+	lx.BoxSlider,
+	lx.Image
+);
 
 /**
  * @widget lx.ImageSlider

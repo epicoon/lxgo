@@ -136,7 +136,8 @@ func (p *WidgetParser) getSquare(line string, n *tree.WidgetNode) string {
 	// [10:10:10:10]px
 	// [10%:10%:10px:10px]
 	// [::10:10:10:10]
-	re = regexp.MustCompile(`^\[(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?(?::(-?\d+)([\w%]*))?(?::(-?\d+)([\w%]*))?\]([\w%]+)?`)
+	// [10:10:10:10::10]  (right omitted, bottom given)
+	re = regexp.MustCompile(`^\[(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?:(?:(-?\d+)([\w%]*))?(?::(?:(-?\d+)([\w%]*))?)?(?::(?:(-?\d+)([\w%]*))?)?\]([\w%]+)?`)
 	matches = re.FindStringSubmatch(line)
 
 	if len(matches) != 14 {
@@ -161,7 +162,7 @@ func (p *WidgetParser) getSquare(line string, n *tree.WidgetNode) string {
 
 		n.Geom = append(n.Geom, res)
 	}
-	re = regexp.MustCompile(`^\[(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?(?::-?\d+[\w%]*)?(?::-?\d+[\w%]*)?\](?:[\w%]+)?\s*`)
+	re = regexp.MustCompile(`^\[(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?:(?:-?\d+[\w%]*)?(?::(?:-?\d+[\w%]*)?)?(?::(?:-?\d+[\w%]*)?)?\](?:[\w%]+)?\s*`)
 	line = re.ReplaceAllString(line, "")
 
 	return line

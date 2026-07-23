@@ -64,3 +64,7 @@ func (app *App) CodesRepo() cvn.ICodesRepo {
 func (app *App) TokensRepo() cvn.ITokensRepo {
 	return repos.NewTokensRepo(app)
 }
+
+func (app *App) AdminsRepo() cvn.IAdminsRepo {
+	return repos.NewAdminsRepo(app)
+}

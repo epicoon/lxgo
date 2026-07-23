@@ -1,0 +1,16 @@
+Port: 8000
+
+Settings:
+  AdminPanel: "enable"
+
+Database:
+  Host: "localhost"
+  Port: 5432
+  User: "User"
+  Password: "Password"
+  DBName: "DBName"
+  SSLMode: "disable"
+
+Components:
+  SessionStorage:
+    MaxLifeTime: 36000

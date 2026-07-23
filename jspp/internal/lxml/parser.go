@@ -23,17 +23,18 @@ import (
 type lxmlParser struct {
 	pp jspp.IPreprocessor
 
-	output       string
-	tree         cvt.ITree
-	nStack       nodeStack
-	widgets      []string
-	lines        []string
-	texts        []string
-	currentLine  int
-	currentDepth int
-	stdShift     int
-	inHTML       bool
-	err          string
+	output        string
+	outputKeyword string
+	tree          cvt.ITree
+	nStack        nodeStack
+	widgets       []string
+	lines         []string
+	texts         []string
+	currentLine   int
+	currentDepth  int
+	stdShift      int
+	inHTML        bool
+	err           string
 }
 
 var _ cvt.IParser = (*lxmlParser)(nil)
@@ -49,6 +50,11 @@ func NewParser(pp jspp.IPreprocessor) *lxmlParser {
 
 func (p *lxmlParser) SetOutput(out string) cvt.IParser {
 	p.output = out
+	return p
+}
+
+func (p *lxmlParser) SetOutputKeyword(kw string) cvt.IParser {
+	p.outputKeyword = kw
 	return p
 }
 
@@ -89,6 +95,7 @@ func (p *lxmlParser) ParseText(text string) (string, error) {
 	// Compile code
 	c := compiler.NewTreeCompiler(p)
 	c.SetOutput(p.output)
+	c.SetOutputKeyword(p.outputKeyword)
 	code := c.Run()
 
 	if p.HasError() {
@@ -307,22 +314,15 @@ func (p *lxmlParser) splitLines(text string) {
 		text = re.ReplaceAllString(text, "$1")
 	}
 
-	// Escape \`
-	text = strings.ReplaceAll(text, "\\`", "[|||]")
-
-	// Escape `...`
-	re = regexp.MustCompile("`[^`]*?`")
-	text = re.ReplaceAllStringFunc(text, func(s string) string {
-		inx := len(p.texts)
-		s = strings.Trim(s, "`")
-		s = strings.ReplaceAll(s, "[|||]", "`")
-		p.texts = append(p.texts, s)
-		return fmt.Sprintf("[|%d|]", inx)
-	})
-
-	// Remove custom line breaks
+	// Remove custom line breaks - done before text extraction, so a widget's
+	// attribute list joined via trailing "\" is a single physical line by the
+	// time extractTexts looks at line heads to decide where a quote is
+	// allowed to open a text attribute (see extractTexts).
 	re = regexp.MustCompile(`\\(?:\r\n|\r|\n)\s*`)
 	text = re.ReplaceAllString(text, " ")
+
+	// Extract widget text attributes ('...' / "...") into placeholders
+	text = p.extractTexts(text)
 
 	// Get lines
 	re = regexp.MustCompile(`(\r\n|\r|\n)`)
@@ -330,6 +330,240 @@ func (p *lxmlParser) splitLines(text string) {
 	re = regexp.MustCompile(`\n\n+`)
 	text = re.ReplaceAllString(text, "\n")
 	p.lines = strings.Split(text, "\n")
+}
+
+var lxmlLineHeadRe = regexp.MustCompile(`^(?: |\t)*<([\w\d._]+)`)
+
+// isLxmlWidgetLineHead reports whether line's head is a recognized widget
+// tag (e.g. "<lx.Box>...") as opposed to raw HTML/SVG content, a control-flow
+// line (if/for/call:...), or a reusable-block line (<*Name>/<&Name>) - none
+// of which can carry a quoted text attribute.
+func (p *lxmlParser) isLxmlWidgetLineHead(line string) bool {
+	m := lxmlLineHeadRe.FindStringSubmatch(line)
+	if m == nil {
+		return false
+	}
+	return slices.Contains(p.Widgets(), m[1])
+}
+
+// lxmlLineAt returns the physical line (up to, but not including, the next
+// newline) starting at position from in text.
+func lxmlLineAt(text string, from int) string {
+	if idx := strings.IndexByte(text[from:], '\n'); idx != -1 {
+		return text[from : from+idx]
+	}
+	return text[from:]
+}
+
+// extractTexts scans text for widget text attributes delimited by a single
+// or double quote, replacing each with a "[|N|]" placeholder (the same
+// mechanism the widget parser already reads via Texts()[N]). A quote only
+// opens a text attribute at paren/brace depth 0 (quotes inside a raw (...)
+// or {...} attribute are left untouched, since those spans are consumed
+// whole by the widget parser's own brace matching) AND on a line whose head
+// is a recognized widget tag - this keeps quotes inside raw HTML/SVG content
+// nested under a widget (e.g. `<path d="M10 10" fill="none"/>`) from being
+// misread as text-attribute delimiters, since such lines are never widget
+// lines themselves.
+func (p *lxmlParser) extractTexts(text string) string {
+	var b strings.Builder
+	parenDepth := 0
+	braceDepth := 0
+	n := len(text)
+	i := 0
+	atLineStart := true
+	lineAllowsText := false
+	for i < n {
+		if atLineStart {
+			lineAllowsText = p.isLxmlWidgetLineHead(lxmlLineAt(text, i))
+			atLineStart = false
+		}
+
+		c := text[i]
+		switch {
+		case c == '\n':
+			atLineStart = true
+			b.WriteByte(c)
+			i++
+		case c == '(':
+			parenDepth++
+			b.WriteByte(c)
+			i++
+		case c == ')':
+			if parenDepth > 0 {
+				parenDepth--
+			}
+			b.WriteByte(c)
+			i++
+		case c == '{':
+			braceDepth++
+			b.WriteByte(c)
+			i++
+		case c == '}':
+			if braceDepth > 0 {
+				braceDepth--
+			}
+			b.WriteByte(c)
+			i++
+		case (c == '\'' || c == '"') && parenDepth == 0 && braceDepth == 0 && lineAllowsText:
+			quote := c
+			start := i + 1
+			closeIdx := findUnescapedByte(text, start, quote)
+			if closeIdx == -1 {
+				b.WriteByte(c)
+				i++
+				continue
+			}
+
+			raw := text[start:closeIdx]
+			raw = strings.ReplaceAll(raw, "\\"+string(quote), string(quote))
+
+			inx := len(p.texts)
+			p.texts = append(p.texts, processLxmlText(raw))
+			b.WriteString(fmt.Sprintf("[|%d|]", inx))
+			i = closeIdx + 1
+		default:
+			b.WriteByte(c)
+			i++
+		}
+	}
+	return b.String()
+}
+
+// findUnescapedByte returns the index (>= from) of the next occurrence of
+// target in text that is not preceded by an odd number of backslashes, or -1.
+func findUnescapedByte(text string, from int, target byte) int {
+	n := len(text)
+	for j := from; j < n; j++ {
+		if text[j] != target {
+			continue
+		}
+		bs := 0
+		k := j - 1
+		for k >= from && text[k] == '\\' {
+			bs++
+			k--
+		}
+		if bs%2 == 0 {
+			return j
+		}
+	}
+	return -1
+}
+
+var lxmlWhitespaceRunRe = regexp.MustCompile(`\s+`)
+
+const lxmlPreOpenTag = "<pre>"
+const lxmlPreCloseTag = "</pre>"
+
+// processLxmlText applies the widget text attribute's whitespace rules:
+// outside <pre>...</pre>, any run of whitespace (including newlines)
+// collapses to a single space (HTML-like); inside <pre>...</pre>, formatting
+// is preserved verbatim except for a common leading indentation, taken from
+// the indentation immediately preceding the <pre> tag itself, stripped from
+// every line. Multiple <pre> spans are each dedented independently; nesting
+// is not supported.
+func processLxmlText(raw string) string {
+	// A leading/trailing whitespace run that itself contains a newline is
+	// structural (the author's own indentation between the opening/closing
+	// quote and the real content) and is dropped entirely - unlike a same-line
+	// boundary space/tab (e.g. `Color: `), which is meaningful and only gets
+	// collapsed, never removed.
+	original := raw
+	raw = trimLxmlNewlineBoundary(raw, true)
+	leadingCut := len(original) - len(raw)
+	raw = trimLxmlNewlineBoundary(raw, false)
+
+	var out strings.Builder
+	pos := 0
+	for {
+		openIdx := strings.Index(raw[pos:], lxmlPreOpenTag)
+		if openIdx == -1 {
+			out.WriteString(collapseLxmlWhitespace(raw[pos:]))
+			break
+		}
+		openIdx += pos
+
+		closeIdx := strings.Index(raw[openIdx:], lxmlPreCloseTag)
+		if closeIdx == -1 {
+			out.WriteString(collapseLxmlWhitespace(raw[pos:]))
+			break
+		}
+		closeIdx += openIdx
+
+		out.WriteString(collapseLxmlWhitespace(raw[pos:openIdx]))
+
+		// The indentation immediately preceding <pre> is read from the
+		// original, untrimmed text so a <pre> that ends up at the very start
+		// of raw (after the leading-newline trim above) still finds its own
+		// line's indent rather than an empty prefix.
+		origOpenIdx := openIdx + leadingCut
+		lineStart := strings.LastIndex(original[:origOpenIdx], "\n") + 1
+		indent := original[lineStart:origOpenIdx]
+		if strings.TrimSpace(indent) != "" {
+			indent = ""
+		}
+
+		content := raw[openIdx+len(lxmlPreOpenTag) : closeIdx]
+		out.WriteString(dedentLxmlPre(content, indent))
+
+		pos = closeIdx + len(lxmlPreCloseTag)
+	}
+
+	return out.String()
+}
+
+func collapseLxmlWhitespace(s string) string {
+	return lxmlWhitespaceRunRe.ReplaceAllString(s, " ")
+}
+
+func isLxmlWhitespaceByte(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
+}
+
+// trimLxmlNewlineBoundary strips a leading (or, with leading=false, trailing)
+// run of whitespace from s, but only if that run contains a newline.
+func trimLxmlNewlineBoundary(s string, leading bool) string {
+	n := len(s)
+	sawNewline := false
+	if leading {
+		i := 0
+		for i < n && isLxmlWhitespaceByte(s[i]) {
+			if s[i] == '\n' || s[i] == '\r' {
+				sawNewline = true
+			}
+			i++
+		}
+		if sawNewline {
+			return s[i:]
+		}
+		return s
+	}
+
+	i := n
+	for i > 0 && isLxmlWhitespaceByte(s[i-1]) {
+		if s[i-1] == '\n' || s[i-1] == '\r' {
+			sawNewline = true
+		}
+		i--
+	}
+	if sawNewline {
+		return s[:i]
+	}
+	return s
+}
+
+func dedentLxmlPre(content string, indent string) string {
+	content = trimLxmlNewlineBoundary(content, true)
+	content = trimLxmlNewlineBoundary(content, false)
+	if indent == "" {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimPrefix(line, indent)
+	}
+	return strings.Join(lines, "\n")
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

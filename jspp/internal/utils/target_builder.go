@@ -52,7 +52,7 @@ func (tb *targetBuilder) Build() error {
 func (tb *targetBuilder) renderCss(c jspp.ICompiler) string {
 	sCode := ""
 	for _, m := range c.CompiledModules() {
-		sCode += "@lx:use " + m + ";"
+		sCode += "lx.import(" + m + ");"
 	}
 
 	pCode := `return {css: lx.app.cssManager.pack()};`

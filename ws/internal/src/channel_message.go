@@ -65,7 +65,12 @@ func (m *ChannelMessage) ReceiverIDs() []string {
 
 func (m *ChannelMessage) PrepareDataForConnection(connID string) any {
 	data := m.Message.PrepareDataForConnection(connID)
+
 	mp, _ := data.(map[string]any)
+	mp["data"] = mp["__lxws_message__"]
+	delete(mp, "__lxws_message__")
+
+	mp["__lxws_channel__"] = "message"
 	mp["channel"] = m.channel.Key()
 	mp["from"] = m.sender
 	mp["private"] = m.private

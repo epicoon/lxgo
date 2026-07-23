@@ -15,15 +15,26 @@ import (
 /** kernel.IForm */
 type AuthCallbackRequest struct {
 	*lxHttp.Form
-	Code  string `dict:"code"`
-	State string `dict:"state"`
+	Code  string `json:"code"`
+	State string `json:"state"`
+}
+
+func (f *AuthCallbackRequest) Config() kernel.FormConfig {
+	return kernel.FormConfig{
+		"code": kernel.FormFieldConfig{
+			Description: "unique string to exchange for tokens",
+			Required:    true,
+		},
+		"state": kernel.FormFieldConfig{
+			Description: "unique string for CSRF protection",
+			Required:    true,
+		},
+	}
 }
 
 /** @constructor */
-func NewAuthCallbackRequest() *AuthCallbackRequest {
-	f := &AuthCallbackRequest{Form: lxHttp.NewForm()}
-	f.SetRequired([]string{"code", "state"})
-	return f
+func NewAuthCallbackRequest() kernel.IForm {
+	return lxHttp.PrepareForm(&AuthCallbackRequest{Form: lxHttp.NewForm()})
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -36,7 +47,16 @@ type AuthCallbackHandler struct {
 
 /** @type kernel.CHttpResource */
 func NewAuthCallbackHandler() kernel.IHttpResource {
-	return &AuthCallbackHandler{Resource: lxHttp.NewResource()}
+	return &AuthCallbackHandler{Resource: lxHttp.NewResource(kernel.HttpResourceConfig{
+		CRequestForm: NewAuthCallbackRequest,
+	})}
+}
+
+func (handler *AuthCallbackHandler) ProcessRequestErrors() kernel.IHttpResponse {
+	return handler.ErrorResponse(
+	    http.StatusBadRequest,
+	    fmt.Sprintf("Invalid request: %v", handler.RequestForm().GetFirstError()),
+    )
 }
 
 func (handler *AuthCallbackHandler) Run() kernel.IHttpResponse {
@@ -51,12 +71,7 @@ func (handler *AuthCallbackHandler) Run() kernel.IHttpResponse {
 		return handler.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
 	}
 
-	// Extract request parameters
-	reqForm := NewAuthCallbackRequest()
-	lxHttp.FormFiller().SetContext(handler.Context()).SetForm(reqForm).Fill()
-	if reqForm.HasErrors() {
-		return handler.ErrorResponse(http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", reqForm.GetFirstError()))
-	}
+	reqForm := handler.RequestForm().(*AuthCallbackRequest)
 
 	// Validate received state
 	origState, ok := sess.Get("lxgo_auth_state").(string)

@@ -10,17 +10,12 @@ import (
 	"github.com/epicoon/lxgo/jspp/internal/md"
 )
 
-var mdDirectiveRe = regexp.MustCompile(`@lx:md\s*\(\s*['"]?(.*?)['"]?\s*\)`)
+var mdDirectiveRe = regexp.MustCompile(`lx\.md\s*\(\s*['"]?(.*?)['"]?\s*\)`)
 
-// parseMd handles the `@lx:md('rel/path')` directive: the path is resolved
+// parseMd handles the `lx.md('rel/path')` directive: the path is resolved
 // relative to the directory of the file being compiled, ".md" is appended if
 // missing, and the directive is replaced with a JSON-encoded string of the
 // rendered HTML (or "" if the file doesn't exist).
-//
-// No guard is needed against matching inside a not-yet-uncommented
-// "// @lx:md(...)" — by the time this runs, cutComments has already stripped
-// all real comments, and @lx:-prefixed directives were already uncommented
-// earlier in the pipeline (see compileCodeInnerDirectives).
 func (c *Compiler) parseMd(code, path string) string {
 	return mdDirectiveRe.ReplaceAllStringFunc(code, func(m string) string {
 		sub := mdDirectiveRe.FindStringSubmatch(m)

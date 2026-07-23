@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -24,6 +25,9 @@ type WSServer struct {
 	channels ws.IChannelRepo
 	secret   string
 	wg       sync.WaitGroup
+
+	channelValidator      ws.ChannelValidator
+	channelCreatedHandler ws.ChannelCreatedHandler
 }
 
 /** @interface */
@@ -70,10 +74,6 @@ func NewWSServer() *WSServer {
 	return s
 }
 
-func (s *WSServer) AfterInit() {
-	s.channels.Init()
-}
-
 func (s *WSServer) Name() string {
 	return "WSServer"
 }
@@ -96,6 +96,34 @@ func (s *WSServer) MaxRequestsPerMinute() int {
 
 func (s *WSServer) MaxConnectionsPerIp() int {
 	return s.Config().MaxConnectionsPerIp
+}
+
+func (s *WSServer) MaxChannelsPerConnection() int {
+	return s.Config().MaxChannelsPerConnection
+}
+
+func (s *WSServer) EmptyChannelTTL() int {
+	return s.Config().EmptyChannelTTL
+}
+
+func (s *WSServer) AllowedOrigins() []string {
+	return s.Config().AllowedOrigins
+}
+
+func (s *WSServer) SetChannelValidator(v ws.ChannelValidator) {
+	s.channelValidator = v
+}
+
+func (s *WSServer) ChannelValidator() ws.ChannelValidator {
+	return s.channelValidator
+}
+
+func (s *WSServer) SetChannelCreatedHandler(h ws.ChannelCreatedHandler) {
+	s.channelCreatedHandler = h
+}
+
+func (s *WSServer) ChannelCreatedHandler() ws.ChannelCreatedHandler {
+	return s.channelCreatedHandler
 }
 
 func (s *WSServer) ReconnectionAllowed() bool {
@@ -133,6 +161,14 @@ func (s *WSServer) CreateMessage() ws.IMessage {
 }
 
 func (s *WSServer) Start() error {
+	// Deliberately not in AfterInit(): that runs synchronously inside
+	// SetAppComponent, before application code has a chance to call
+	// SetChannelValidator/SetChannelCreatedHandler on the *WSServer it gets
+	// back from AppComponent() - initializing channels (including
+	// DefaultChannel) here instead means ChannelCreatedHandler is guaranteed
+	// to already be registered by the time it fires for it.
+	s.channels.Init()
+
 	addr := fmt.Sprintf("%s:%d", s.Config().Host, s.Config().Port)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -144,6 +180,9 @@ func (s *WSServer) Start() error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
 			log.Printf("accept error: %v", err)
 			continue
 		}
@@ -162,6 +201,7 @@ func (s *WSServer) Stop() {
 	}
 	s.wg.Wait()
 	s.conns.Close()
+	s.channels.Close()
 }
 
 func (s *WSServer) LifecycleLog(msg string, params ...any) {

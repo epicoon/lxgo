@@ -1,7 +1,7 @@
 // @lx:module lx.Paginator;
 // @lx:module-data: i18n = i18n.yaml;
 
-// @lx:use lx.BasicCssContext;
+lx.import(lx.BasicCssContext);
 
 /**
  * @widget lx.Paginator

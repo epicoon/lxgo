@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	cvn "github.com/epicoon/lxgo/auth/internal/conventions"
+	"github.com/epicoon/lxgo/auth/internal/models"
 	"github.com/epicoon/lxgo/auth/internal/repos"
 	"github.com/epicoon/lxgo/kernel"
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
@@ -21,6 +22,7 @@ type RefreshRequest struct {
 	ClientID     uint   `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
 	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
 }
 
 var _ kernel.IForm = (*RefreshRequest)(nil)
@@ -42,6 +44,10 @@ func (f *RefreshRequest) Config() kernel.FormConfig {
 		"refresh_token": kernel.FormFieldConfig{
 			Description: "token for refresh of a pair of tokens",
 			Required:    true,
+		},
+		"scope": kernel.FormFieldConfig{
+			Description: "optionally narrow the scope of the reissued tokens; must not exceed the scope already granted to the refresh token (RFC 6749 §6); omit to keep the current scope unchanged",
+			Required:    false,
 		},
 	}
 }
@@ -94,6 +100,16 @@ func (handler *RefreshHandler) Run() kernel.IHttpResponse {
 		return errorResponse(handler, http.StatusUnauthorized, ERR_TOKEN_NOT_FOUND, "Token not found")
 	}
 
+	// Narrow scope if requested - broadening beyond what was originally
+	// granted is not allowed (RFC 6749 §6).
+	if req.Scope != "" {
+		if !models.ValidateScope(req.Scope) || !models.ScopeIncludes(accessToken.Scope, req.Scope) {
+			return errorResponse(handler, http.StatusBadRequest, ERR_INVAL_SCOPE, "Requested scope exceeds the scope already granted")
+		}
+		accessToken.Scope = req.Scope
+		refreshToken.Scope = req.Scope
+	}
+
 	// Start transaction
 	tx := coreApp.Gorm().Begin()
 	defer func() {
@@ -123,6 +139,7 @@ func (handler *RefreshHandler) Run() kernel.IHttpResponse {
 			"refresh_token":         refreshToken.Value,
 			"access_token_expired":  accessToken.ExpiredAt.Unix(),
 			"refresh_token_expired": refreshToken.ExpiredAt.Unix(),
+			"scope":                 accessToken.Scope,
 		},
 	})
 }

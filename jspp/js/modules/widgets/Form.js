@@ -1,6 +1,6 @@
 // @lx:module lx.Form;
 
-// @lx:use lx.Button;
+lx.import(lx.Button);
 
 /**
  * @widget lx.Form

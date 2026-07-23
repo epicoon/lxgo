@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/epicoon/lxgo/jspp"
 )
 
 const (
@@ -124,6 +126,10 @@ func (c *pluginCache) Save() error {
 	if err != nil {
 		return fmt.Errorf("can not marshal nested plugins config for plugin '%s': %w", c.r.plugin.Name(), err)
 	}
+	assetsBytes, err := json.Marshal(cachedAssetsFrom(c.r.assets))
+	if err != nil {
+		return fmt.Errorf("can not marshal assets for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	// Data hash
 	hashMd5 := md5.New()
@@ -182,6 +188,9 @@ func (c *pluginCache) Save() error {
 	if err := os.WriteFile(filepath.Join(cacheRoot, "deps.json"), depsBytes, 0644); err != nil {
 		return fmt.Errorf("can not write cache file 'deps.json' for plugin '%s': %w", c.r.plugin.Name(), err)
 	}
+	if err := os.WriteFile(filepath.Join(cacheRoot, "assets.json"), assetsBytes, 0644); err != nil {
+		return fmt.Errorf("can not write cache file 'assets.json' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	return nil
 }
@@ -217,6 +226,10 @@ func (c *pluginCache) Load() error {
 	if err != nil {
 		return fmt.Errorf("can not read cache file 'nested' for plugin '%s': %w", c.r.plugin.Name(), err)
 	}
+	assetsData, err := os.ReadFile(filepath.Join(cacheRoot, "assets.json"))
+	if err != nil {
+		return fmt.Errorf("can not read cache file 'assets.json' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	jsData := string(js)
 	parts := strings.SplitN(jsData, ":::", 2)
@@ -232,12 +245,17 @@ func (c *pluginCache) Load() error {
 	if err := json.Unmarshal(nested, &nestedConf); err != nil {
 		return fmt.Errorf("can not parse cache file 'nested' for plugin '%s': %w", c.r.plugin.Name(), err)
 	}
+	var assetsConf []cachedAsset
+	if err := json.Unmarshal(assetsData, &assetsConf); err != nil {
+		return fmt.Errorf("can not parse cache file 'assets.json' for plugin '%s': %w", c.r.plugin.Name(), err)
+	}
 
 	c.r.rootSnippetKey = parts[0]
 	c.r.output.Js = parts[1]
 	c.r.html = string(html)
 	c.r.output.Snippets = snippetsConf
 	c.r.nestedConf = nestedConf
+	applyCachedAssets(c.r.assets, assetsConf)
 
 	return nil
 }
@@ -321,4 +339,51 @@ func (c *pluginCache) collectDeps() []string {
 		i++
 	}
 	return deps
+}
+
+// cachedAsset is the on-disk JSON shape for one jspp.IAsset entry - Asset's
+// own fields aren't exported, so this package keeps its own serializable
+// mirror, round-tripped only through the public IAssets methods.
+type cachedAsset struct {
+	Path string `json:"path"`
+	Type string `json:"type"`
+}
+
+const (
+	cachedAssetJS     = "js"
+	cachedAssetCSS    = "css"
+	cachedAssetModule = "module"
+)
+
+func cachedAssetsFrom(assets jspp.IAssets) []cachedAsset {
+	all := assets.All()
+	res := make([]cachedAsset, 0, len(all))
+	for _, a := range all {
+		var tp string
+		switch {
+		case a.IsJS():
+			tp = cachedAssetJS
+		case a.IsCSS():
+			tp = cachedAssetCSS
+		case a.IsModule():
+			tp = cachedAssetModule
+		default:
+			continue
+		}
+		res = append(res, cachedAsset{Path: a.Path(), Type: tp})
+	}
+	return res
+}
+
+func applyCachedAssets(assets jspp.IAssets, cached []cachedAsset) {
+	for _, a := range cached {
+		switch a.Type {
+		case cachedAssetJS:
+			assets.AddJS(a.Path)
+		case cachedAssetCSS:
+			assets.AddCSS(a.Path)
+		case cachedAssetModule:
+			assets.AddModule(a.Path)
+		}
+	}
 }

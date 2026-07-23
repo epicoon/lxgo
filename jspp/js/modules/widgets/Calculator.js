@@ -1,7 +1,9 @@
 // @lx:module lx.Calculator;
 
-// @lx:use lx.Input;
-// @lx:use lx.Button;
+lx.import(
+    lx.Input,
+    lx.Button
+);
 
 /**
  * @widget lx.Calculator

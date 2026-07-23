@@ -11,10 +11,10 @@ lx.VERTICAL = 1;
 lx.HORIZONTAL = 2;
 
 // @lx:<context CLIENT:
-// @lx:require ../client/lx_core;
+lx.import('../client/lx_core');
 // @lx:context>
 // @lx:<context SERVER:
-// @lx:require ../server/lx_core;
+lx.import('../server/lx_core');
 // @lx:context>
 
 /**

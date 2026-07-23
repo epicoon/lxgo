@@ -1,5 +1,3 @@
-#lx:public;
-
 class EditorContext {
     constructor(editor) {
         this._editor = editor;

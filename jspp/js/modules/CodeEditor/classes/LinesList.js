@@ -1,5 +1,3 @@
-#lx:public;
-
 class LinesList {
     constructor(list) {
         this.list = list;

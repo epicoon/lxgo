@@ -1,8 +1,10 @@
 // @lx:module lx.Dropbox;
 
-// @lx:use lx.Input;
-// @lx:use lx.Table;
-// @lx:use lx.BasicCssContext;
+lx.import(
+	lx.Input,
+	lx.Table,
+	lx.BasicCssContext
+);
 
 // @lx:<context CLIENT:
 let _opened = null;

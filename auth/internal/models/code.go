@@ -5,4 +5,5 @@ type Code struct {
 	Value    string `gorm:"not null"`
 	ClientID uint   `gorm:"not null"`
 	UserID   uint   `gorm:"not null"`
+	Scope    string `gorm:"not null"`
 }

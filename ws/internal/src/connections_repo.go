@@ -13,9 +13,10 @@ type reqCounter struct {
 }
 
 type tombstone struct {
-	conn      ws.IConnection
-	channels  map[string]map[string]any
-	expiresAt time.Time
+	conn            ws.IConnection
+	channels        map[string]map[string]any
+	createdChannels int
+	expiresAt       time.Time
 }
 
 type ConnRepo struct {
@@ -92,9 +93,10 @@ func (r *ConnRepo) MarkDisconnected(c ws.IConnection) {
 	duration := time.Duration(r.server.ReconnectionDuration()) * time.Millisecond
 	r.tombsMu.Lock()
 	r.tombstones[c.ID()] = &tombstone{
-		conn:      c,
-		channels:  c.Channels(),
-		expiresAt: time.Now().Add(duration),
+		conn:            c,
+		channels:        c.Channels(),
+		createdChannels: c.CreatedChannelsCount(),
+		expiresAt:       time.Now().Add(duration),
 	}
 	r.tombsMu.Unlock()
 }
@@ -133,6 +135,7 @@ func (r *ConnRepo) Reconnect(conn ws.IConnection, ID string) bool {
 		}
 	}
 	conn.SetChannels(chs)
+	conn.SetCreatedChannelsCount(tConn.createdChannels)
 	return true
 }
 

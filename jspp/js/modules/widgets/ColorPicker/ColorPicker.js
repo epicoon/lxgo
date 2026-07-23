@@ -1,10 +1,12 @@
 // @lx:module lx.ColorPicker;
 // @lx:module-data: i18n = i18n.yaml;
 
-// @lx:use lx.Color;
-// @lx:use lx.Input;
-// @lx:use lx.Button;
-// @lx:use lx.Scroll;
+lx.import(
+    lx.Color,
+    lx.Input,
+    lx.Button,
+    lx.Scroll
+);
 
 const __slices = [
     {base: [1, 0, 0], change: 1, direction: +1},

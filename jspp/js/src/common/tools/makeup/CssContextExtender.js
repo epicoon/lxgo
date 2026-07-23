@@ -11,11 +11,11 @@ class CssContextExtender {
     }
 
     /**
-     * @returns lx.CssContext
+     * @returns {lx.CssContext}
      */
     static getContext() {
         if (!this.context) {
-            const css = new lx.CssContext;
+            const css = new lx.CssContext();
             this.init(css);
             this.context = css;
         }

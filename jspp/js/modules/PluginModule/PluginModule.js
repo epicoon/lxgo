@@ -1,7 +1,9 @@
 // @lx:module lx.Plugin;
 
-// @lx:require Plugin;
-// @lx:require common/;
+lx.import(
+    'Plugin',
+    'common/'
+);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 // @lx:<context SERVER:
@@ -76,7 +78,7 @@ lx.Box.prototype.setPlugin = function (config) {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 // @lx:<context CLIENT:
-// @lx:require client/;
+lx.import('client/');
 lx.Rect.prototype.getRectInPlugin = function () {
     let plugin = lx.app.pluginManager.getPlugin(this);
     return plugin
@@ -103,7 +105,7 @@ lx.Box.prototype.setPlugin = function (config) {
 // @lx:context>
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-// @lx:require components/;
+lx.import('components/');
 lx.app.registerComponents({
     pluginManager: lx.PluginManager,
     snippetMap: lx.SnippetMap,

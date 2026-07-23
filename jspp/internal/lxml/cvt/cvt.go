@@ -2,6 +2,7 @@ package cvt
 
 type IParser interface {
 	SetOutput(out string) IParser
+	SetOutputKeyword(kw string) IParser
 	ParseFile(path string) (string, error)
 	ParseText(text string) (string, error)
 
@@ -19,6 +20,7 @@ type INodeParser interface {
 
 type ITreeCompiler interface {
 	SetOutput(out string) ITreeCompiler
+	SetOutputKeyword(kw string) ITreeCompiler
 	Run() string
 }
 

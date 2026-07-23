@@ -1,4 +1,19 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.24
+Version: v0.1.0-alpha.28
+Changes:
+- add: `lx.import(...)` call syntax replaces the `@lx:require`/`@lx:use` comment directives - one unified call that mixes file/directory requires and module names, with `-R`/`-F`/`-U` flags as arguments
+- add: `lx.ml(\`...\`)` call syntax replaces the `@lx:<ml ... ml>` comment-block form for inline LXML templates - supports an escaped backtick (`` \` ``) inside the template and absorbs an immediately preceding `const`/`let`/`var` assignment into the compiled output
+- add: `lx.md(...)` directive syntax (was `@lx:md(...)`) for embedding rendered markdown
+- add: generic `jspp.IElement`/`elems.Element` - a DI-registered object exposing ajax handlers, dispatched through a new `/lx/elem` endpoint; `IPlugin`/`Plugin` now build on top of it instead of duplicating `Init`/`App`/`Preprocessor`
+- add: plugin rendering cache (`off`/`on`/`dev`/`inherit` modes)
+- add: `lx.ModelTypeEnum.PK` constant
+- rename: `ModelCollectionGrid` widget rewritten and renamed to `ModelsGrid`
+- rename: `Tost.js` → `Toast.js` (typo)
+- refactor: generated code from `ServiceHandler`'s `get-modules` action and from plugin rendering now uses `lx.import(...)` instead of `@lx:use`/`@lx:require`, matching the new syntax
+- docs: `pp.md`/`lxml.md`/`widgets.md`/`plugins.md`/`css.md`/`components.md`/`models.md` rewritten for the new `lx.import`/`lx.ml`/`lx.md` syntax; new `modules.md` and `positioning-strategies.md` guides added
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.16
 Version: v0.1.0-alpha.27
 Changes:
@@ -83,7 +98,7 @@ Changes:
 Date: 2025.11.12
 Version: v0.1.0-alpha.20
 Changes:
-- refactor: tost messages can be removed by click in any cases
+- refactor: toast messages can be removed by click in any cases
 - fix: lx.Rect click event for touchscreen
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -127,7 +142,7 @@ Changes:
 Date: 2025.09.18
 Version: v0.1.0-alpha.12
 Changes:
-- fix lx.Tost
+- fix lx.Toast
 - fix AlignPositioningStrategy
 - refactor CssTag
 

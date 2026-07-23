@@ -1,6 +1,6 @@
 # Package HTTP sessions in lxgo/kernel web-applications
 
-> Actual version: `v0.1.0-alpha.3`. [Details](https://github.com/epicoon/lxgo/tree/master/session/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.4`. [Details](https://github.com/epicoon/lxgo/tree/master/session/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -10,7 +10,7 @@ Components:
   # ...
   SessionStorage:
     CookieName: lxgosessid
-    MaxLifeTime: 36000
+    MaxLifeTime: 36000 # seconds
 ```
 
 2. Plug application component:
@@ -42,25 +42,33 @@ if err != nil {
     })
 }
 
-// Set session data
-sess.Set("my_key", data)
-// or sess.SetForce - to rewrite value
+// Set session data - errors if the key is already set
+if err := sess.Set("my_key", data); err != nil {
+    // "my_key" was already set - use SetForce below if you mean to overwrite it
+}
+// SetForce always (over)writes the value, no error
+sess.SetForce("my_key", data)
 
-// Get and delete session data
+// Get and remove session data
 if sess.Has("some_key") {
     val := sess.Get("some_key")
-    sess.Delete("some_key")
+    sess.Remove("some_key")
 }
 
 // Drop session
-sessStorage, err := session.AppComponent(r.App())
+sessStorage, err := session.AppComponent(recource.App())
 if err != nil {
-    r.LogError("Server configuration is wrong: sessions are required", "App")
-    return r.HtmlResponse(kernel.HtmlResponseConfig{
+    recource.LogError("Server configuration is wrong: sessions are required", "App")
+    return recource.HtmlResponse(kernel.HtmlResponseConfig{
         Code: 500,
-        Html: "internal server error"
+        Html: "internal server error",
     })
 }
 sessStorage.DestroySession(sess)
 // ...
 ```
+
+
+## License
+
+Apache License 2.0 — see [LICENSE](./LICENSE).

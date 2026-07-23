@@ -1,5 +1,3 @@
-#lx:public;
-
 class SelectionRange {
     constructor(context) {
         this.context = context;

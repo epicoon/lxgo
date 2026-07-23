@@ -20,21 +20,18 @@ up:
         ON DELETE CASCADE
     );
   - CREATE INDEX rights_name_idx ON rights (name);
+  - CREATE INDEX rights_role_id_idx ON rights (role_id);
 
   - CREATE TABLE
     clients (
       id SERIAL PRIMARY KEY,
       secret VARCHAR(255),
-      role_id INT NOT NULL,
       access_token_lifetime INT NOT NULL DEFAULT 900,
       refresh_token_lifetime INT NOT NULL DEFAULT 604800,
+      redirect_uri VARCHAR(255),
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      deleted_at TIMESTAMP,
-      CONSTRAINT fk_clients_role_id
-        FOREIGN KEY(role_id)
-        REFERENCES roles(id)
-        ON DELETE RESTRICT
+      deleted_at TIMESTAMP
     )
   - CREATE INDEX clients_secret_idx ON clients (secret);
 
@@ -54,6 +51,26 @@ up:
   - CREATE INDEX users_password_idx ON users (password);
 
   - CREATE TABLE
+    admins (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL,
+      role_id INT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP,
+      CONSTRAINT fk_admins_user_id
+        FOREIGN KEY(user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_admins_role_id
+        FOREIGN KEY(role_id)
+        REFERENCES roles(id)
+        ON DELETE RESTRICT
+    );
+  - CREATE INDEX admins_role_id_idx ON admins (role_id);
+  - CREATE UNIQUE INDEX admins_user_id_idx ON admins (user_id) WHERE deleted_at IS NULL;
+
+  - CREATE TABLE
     user_data (
       id SERIAL PRIMARY KEY,
       client_id INT NOT NULL,
@@ -71,6 +88,9 @@ up:
         REFERENCES users(id)
         ON DELETE CASCADE
     );
+  - CREATE INDEX user_data_client_id_idx ON user_data (client_id);
+  - CREATE INDEX user_data_user_id_idx ON user_data (user_id);
+  - CREATE UNIQUE INDEX user_data_client_user_idx ON user_data (client_id, user_id) WHERE deleted_at IS NULL;
 
   - CREATE TABLE
     codes (
@@ -78,6 +98,7 @@ up:
       value VARCHAR(255) NOT NULL,
       client_id INT NOT NULL,
       user_id INT NOT NULL,
+      scope VARCHAR(50) NOT NULL DEFAULT 'profile',
       CONSTRAINT fk_codes_client_id
         FOREIGN KEY(client_id)
         REFERENCES clients(id)
@@ -88,13 +109,16 @@ up:
         ON DELETE CASCADE
     );
   - CREATE INDEX codes_value_idx ON codes (value);
+  - CREATE INDEX codes_client_id_idx ON codes (client_id);
+  - CREATE INDEX codes_user_id_idx ON codes (user_id);
 
-  - CREATE TABLE 
+  - CREATE TABLE
     tokens (
       id SERIAL PRIMARY KEY,
       client_id INT NOT NULL,
       user_id INT NOT NULL,
       value VARCHAR(255) NOT NULL,
+      scope VARCHAR(50) NOT NULL DEFAULT 'profile',
       is_refresh BOOLEAN NOT NULL,
       expired_at TIMESTAMP NOT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,26 +132,54 @@ up:
         ON DELETE CASCADE
     );
   - CREATE INDEX tokens_value_idx ON tokens (value);
+  - CREATE INDEX tokens_client_id_idx ON tokens (client_id);
+  - CREATE INDEX tokens_user_id_idx ON tokens (user_id);
+
+  - INSERT INTO roles (id, name)
+    VALUES
+      (1, 'superadmin'),
+      (2, 'admin');
+  - SELECT SETVAL(pg_get_serial_sequence('roles', 'id'), MAX(id)) FROM roles;
+
+  - INSERT INTO rights (role_id, name)
+    VALUES
+      (1, 'superadmin_r'),
+      (1, 'superadmin_w'),
+      (2, 'admin_r'),
+      (2, 'admin_w');
+  - SELECT SETVAL(pg_get_serial_sequence('rights', 'id'), MAX(id)) FROM rights;
 
 down:
+  - DROP INDEX IF EXISTS tokens_user_id_idx;
+  - DROP INDEX IF EXISTS tokens_client_id_idx;
   - DROP INDEX IF EXISTS tokens_value_idx;
   - ALTER TABLE tokens DROP CONSTRAINT IF EXISTS fk_tokens_client_id;
   - ALTER TABLE tokens DROP CONSTRAINT IF EXISTS fk_tokens_user_id;
   - DROP TABLE IF EXISTS tokens;
+  - DROP INDEX IF EXISTS codes_user_id_idx;
+  - DROP INDEX IF EXISTS codes_client_id_idx;
   - DROP INDEX IF EXISTS codes_value_idx;
   - ALTER TABLE codes DROP CONSTRAINT IF EXISTS fk_codes_client_id;
   - ALTER TABLE codes DROP CONSTRAINT IF EXISTS fk_codes_user_id;
   - DROP TABLE IF EXISTS codes;
+  - DROP INDEX IF EXISTS user_data_client_user_idx;
+  - DROP INDEX IF EXISTS user_data_user_id_idx;
+  - DROP INDEX IF EXISTS user_data_client_id_idx;
   - ALTER TABLE user_data DROP CONSTRAINT IF EXISTS fk_user_data_client_id;
   - ALTER TABLE user_data DROP CONSTRAINT IF EXISTS fk_user_data_user_id;
   - DROP TABLE IF EXISTS user_data;
+  - ALTER TABLE admins DROP CONSTRAINT IF EXISTS fk_admins_user_id;
+  - ALTER TABLE admins DROP CONSTRAINT IF EXISTS fk_admins_role_id;
+  - DROP INDEX IF EXISTS admins_user_id_idx;
+  - DROP INDEX IF EXISTS admins_role_id_idx;
+  - DROP TABLE IF EXISTS admins;
   - DROP INDEX IF EXISTS users_password_idx;
   - DROP INDEX IF EXISTS users_login_idx;
   - DROP TABLE IF EXISTS users;
-  - ALTER TABLE clients DROP CONSTRAINT IF EXISTS fk_clients_role_id;
   - DROP INDEX IF EXISTS clients_secret_idx;
   - DROP TABLE IF EXISTS clients;
   - ALTER TABLE rights DROP CONSTRAINT IF EXISTS fk_rights_role_id;
+  - DROP INDEX IF EXISTS rights_role_id_idx;
   - DROP INDEX IF EXISTS rights_name_idx;
   - DROP TABLE IF EXISTS rights;
   - DROP INDEX IF EXISTS roles_name_idx;

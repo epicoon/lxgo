@@ -1,6 +1,6 @@
 # The package helps to work with DB
 
-> Actual version: `v0.1.0-alpha.1`. [Details](https://github.com/epicoon/lxgo/tree/master/query/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.2`. [Details](https://github.com/epicoon/lxgo/tree/master/query/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -95,3 +95,8 @@ Structure `BaseRepo` implements `IBaseRepo` and `IRepoTx`
 ### <a name="link3">Remain:</a>
 
 * There is `BaseModel` with `ID uint64` instead of `gorm.Model` with `ID uint`
+
+
+## License
+
+Apache License 2.0 — see [LICENSE](./LICENSE).

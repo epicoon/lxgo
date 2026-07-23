@@ -1,13 +1,15 @@
 // @lx:module lx.socket.ChatBox;
 // @lx:module-data: i18n = i18n.yaml;
 
-// @lx:use lx.BasicCssContext;
-// @lx:use lx.MultiBox;
-// @lx:use lx.JointMover;
-// @lx:use lx.Dropbox;
-// @lx:use lx.Textarea;
-// @lx:use lx.Button;
-// @lx:use lx.Scroll;
+lx.import(
+    lx.BasicCssContext,
+    lx.MultiBox,
+    lx.JointMover,
+    lx.Dropbox,
+    lx.Textarea,
+    lx.Button,
+    lx.Scroll
+);
 
 /**
  * @widget lx.MultiBox
@@ -217,12 +219,12 @@ class ChatBox extends lx.Box {
         if (message == '') return;
 
         if (!this.socket || !this.socket.isConnected()) {
-            lx.tostWarning(lx.i18n(noConnection));
+            lx.toastWarning(lx.i18n(noConnection));
             return;
         }
         const channel = this.getChannel();
         if (!channel) {
-            lx.tostWarning(lx.i18n(noChannel));
+            lx.toastWarning(lx.i18n(noChannel));
             return;
         }
         

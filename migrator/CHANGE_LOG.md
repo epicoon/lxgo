@@ -1,4 +1,10 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.24
+Version: v0.1.0-alpha.5
+Changes:
+- docs: README clarified - migrator:create's actual filename shape, that name/type in a migration file aren't read by the migrator (only the filename matters for tracking), up/down accepting a single statement or an ordered list, PostgreSQL-only for now; assorted typo fixes
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.13
 Version: v0.1.0-alpha.4
 Changes:

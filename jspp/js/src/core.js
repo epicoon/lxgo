@@ -12,21 +12,27 @@
     });
     lx.globalContext.lx = lx;
 
-    // @lx:require common/js_extends;
-    // @lx:require common/lx_core;
-    // @lx:require Application;
-    // @lx:require -R common/tools/;
+    lx.import(
+        'common/js_extends',
+        'common/lx_core',
+        'Application',
+        '-R common/tools/'
+    );
     // @lx:<context CLIENT:
-        // @lx:require client/tools/behavior/;
-        // @lx:require client/tools/request/;
-        // @lx:require client/tools/;
+        lx.import(
+            'client/tools/behavior/',
+            'client/tools/request/',
+            'client/tools/'
+        );
     // @lx:context>
     // @lx:<context SERVER:
-        // @lx:require -R server/tools/;
+        lx.import('-R server/tools/');
     // @lx:context>
-    // @lx:require common/widgets/Rect/Rect;
-    // @lx:require common/widgets/TextBox;
-    // @lx:require common/widgets/Box/Box;
+    lx.import(
+        'common/widgets/Rect/Rect',
+        'common/widgets/TextBox',
+        'common/widgets/Box/Box'
+    );
 
     lx.app = new lx.Application();
 })();

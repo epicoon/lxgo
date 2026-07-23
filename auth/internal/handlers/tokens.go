@@ -126,12 +126,12 @@ func (handler *TokensHandler) Run() kernel.IHttpResponse {
 		tx.Rollback()
 		return serverErrorResponse(handler, fmt.Sprintf("Can not delete existing tokens: %s", err))
 	}
-	accessToken, err := tokensRepo.CreateAccessToken(client, user)
+	accessToken, err := tokensRepo.CreateAccessToken(client, user, authCode.Scope)
 	if err != nil {
 		tx.Rollback()
 		return serverErrorResponse(handler, fmt.Sprintf("Can not create access token: %s", err))
 	}
-	refreshToken, err := tokensRepo.CreateRefreshToken(client, user)
+	refreshToken, err := tokensRepo.CreateRefreshToken(client, user, authCode.Scope)
 	if err != nil {
 		tx.Rollback()
 		return serverErrorResponse(handler, fmt.Sprintf("Can not create refresh token: %s", err))
@@ -149,6 +149,7 @@ func (handler *TokensHandler) Run() kernel.IHttpResponse {
 			"refresh_token":         refreshToken.Value,
 			"access_token_expired":  accessToken.ExpiredAt.Unix(),
 			"refresh_token_expired": refreshToken.ExpiredAt.Unix(),
+			"scope":                 accessToken.Scope,
 		},
 	})
 }

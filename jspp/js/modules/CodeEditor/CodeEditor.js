@@ -1,8 +1,9 @@
 // @lx:module lx.CodeEditor;
 
-// @lx:use lx.Table;
-
-// @lx:require -R classes/;
+lx.import(
+    lx.Table,
+    '-RU classes/'
+);
 
 /*
 * TODO

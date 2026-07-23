@@ -31,7 +31,7 @@ func TestTokensHandler_Success(t *testing.T) {
 	password := "Password123!"
 	user, err := app.UsersRepo().Create(login, password)
 	assert.NoError(t, err, "Failed to create test user")
-	authCode, err := app.CodesRepo().Create(testutils.TestClientID, user.ID)
+	authCode, err := app.CodesRepo().Create(testutils.TestClientID, user.ID, models.SCOPE_PROFILE_DATA)
 	if err != nil {
 		log.Fatalf("Can not create code: %s", err)
 	}
@@ -140,7 +140,7 @@ func TestTokensHandler_InvalidCode(t *testing.T) {
 	password := "Password123!"
 	user, err := app.UsersRepo().Create(login, password)
 	assert.NoError(t, err, "Failed to create test user")
-	authCode, err := app.CodesRepo().Create(1, user.ID)
+	authCode, err := app.CodesRepo().Create(1, user.ID, models.SCOPE_PROFILE_DATA)
 	if err != nil {
 		log.Fatalf("Can not create code: %s", err)
 	}

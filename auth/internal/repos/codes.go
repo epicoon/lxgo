@@ -21,10 +21,11 @@ func NewCodesRepo(app cvn.IApp) *CodesRepo {
 	return &CodesRepo{AbstractRepo: &AbstractRepo{app: app}}
 }
 
-func (repo *CodesRepo) Create(clientID uint, userID uint) (*models.Code, error) {
+func (repo *CodesRepo) Create(clientID uint, userID uint, scope string) (*models.Code, error) {
 	code := &models.Code{
 		ClientID: clientID,
 		UserID:   userID,
+		Scope:    scope,
 		Value:    utils.GenRandomHash(16),
 	}
 

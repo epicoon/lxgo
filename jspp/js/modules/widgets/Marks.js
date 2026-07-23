@@ -1,6 +1,6 @@
 // @lx:module lx.Marks;
 
-// @lx:use lx.BasicCssContext;
+lx.import(lx.BasicCssContext);
 
 /**
  * @widget lx.Marks

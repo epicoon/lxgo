@@ -1,6 +1,6 @@
-// @lx:require common/components/;
+lx.import('common/components/');
 // @lx:<context CLIENT:
-// @lx:require client/components/;
+lx.import('client/components/');
 // @lx:context>
 
 let _params = {};
@@ -30,7 +30,7 @@ function _componentsMap() {
         storage: lx.Storage,
         binder: lx.Binder,
         alert: lx.Alert,
-        tost: lx.Tost,
+        toast: lx.Toast,
         mouse: lx.Mouse,
         keyboard: lx.Keyboard,
         dragNDrop: lx.DragNDrop,

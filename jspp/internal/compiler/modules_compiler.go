@@ -3,50 +3,11 @@ package compiler
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 
 	"github.com/epicoon/lxgo/jspp"
 	"gopkg.in/yaml.v3"
 )
-
-func (c *Compiler) plugAllModules(code, rootPath string) (string, error) {
-	// @lx:use ModuleName;  =>  plug in module code
-	pattern := regexp.MustCompile(`@lx:use\s+([^;]+?);`)
-	matches := pattern.FindAllStringSubmatch(code, -1)
-	if len(matches) == 0 {
-		return code, nil
-	}
-
-	code = pattern.ReplaceAllString(code, "")
-	moduleNames := extractModuleNames(matches)
-
-	if !c.buildModules {
-		c.compiledModules = moduleNames
-		return code, nil
-	}
-
-	var filePaths []string
-	var modulesForBuild []string
-	for _, moduleName := range moduleNames {
-		c.checkModule(moduleName, &modulesForBuild, &filePaths)
-	}
-
-	modulesCode, err := c.compileFileGroup(filePaths, Flags{}, rootPath)
-	if err != nil {
-		return "", err
-	}
-
-	for _, m := range modulesForBuild {
-		if !slices.Contains(c.compiledModules, m) {
-			c.compiledModules = append(c.compiledModules, m)
-		}
-	}
-
-	c.modulesCode += modulesCode
-
-	return code, nil
-}
 
 func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, filePaths *[]string) {
 	if resolved, ok := c.pp.Config().ModuleInjector[moduleName]; ok {
@@ -89,22 +50,26 @@ func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, fil
 }
 
 func (c *Compiler) checkModuleDependencies(modulePath string, modulesForBuild *[]string, filePaths *[]string) {
-	// @lx:use ModuleName;  =>  add used modules
-	pattern := regexp.MustCompile(`@lx:use\s+([^;]+?);`)
+	// lx.import(ModuleName)  =>  add used modules (path arguments in the
+	// module's own lx.import(...) calls are resolved later, in place, when
+	// this module's file itself goes through compileFileGroup/
+	// compileCodeOuterDirectives - here we only need to pre-discover its
+	// bare module-name arguments, to fold them into the same dependency scan)
 	code, err := os.ReadFile(modulePath)
 	if err != nil {
 		c.pp.LogError("Failed to read module file '%s': %v\n", modulePath, err)
 		return
 	}
 
-	matches := pattern.FindAllStringSubmatch(string(code), -1)
-	if len(matches) == 0 {
+	calls := findImportCalls(string(code))
+	if len(calls) == 0 {
 		return
 	}
 
-	moduleNames := extractModuleNames(matches)
-	for _, moduleName := range moduleNames {
-		c.checkModule(moduleName, modulesForBuild, filePaths)
+	for _, call := range calls {
+		for _, moduleName := range call.modules {
+			c.checkModule(moduleName, modulesForBuild, filePaths)
+		}
 	}
 }
 

@@ -15,6 +15,7 @@ type tokensForm struct {
 	RefreshToken        string `dict:"refresh_token"`
 	AccessTokenExpired  int64  `dict:"access_token_expired"`
 	RefreshTokenExpired int64  `dict:"refresh_token_expired"`
+	Scope               string `dict:"scope"`
 }
 
 type token struct {
@@ -25,6 +26,7 @@ type token struct {
 type Tokens struct {
 	Access  *token
 	Refresh *token
+	Scope   string
 }
 
 func (ts *Tokens) Set(data *tokensForm) {
@@ -34,6 +36,7 @@ func (ts *Tokens) Set(data *tokensForm) {
 	ts.Refresh = new(token)
 	ts.Refresh.value = data.RefreshToken
 	ts.Refresh.expiresAt = time.Unix(data.RefreshTokenExpired, 0)
+	ts.Scope = data.Scope
 }
 
 func (t *token) Value() string {
