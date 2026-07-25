@@ -49,7 +49,10 @@ func NewPluginHandler() kernel.IHttpResource {
 func (h *PluginHandler) Run() kernel.IHttpResponse {
 	reqForm := NewPluginRequest()
 
-	lxHttp.FormFiller().SetContext(h.Context()).SetForm(reqForm).Fill()
+	if err := lxHttp.FormFiller().SetContext(h.Context()).SetForm(reqForm).Fill(); err != nil {
+		h.LogError(fmt.Sprintf("Can not fill request form: %s", err), "Handling")
+		return h.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
+	}
 	if reqForm.HasErrors() {
 		return h.ErrorResponse(http.StatusBadRequest, reqForm.GetFirstError().Error())
 	}

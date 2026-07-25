@@ -18,7 +18,7 @@ type executor struct {
 	code string
 }
 
-var _ jspp.IExecutor = (*executor)(nil)
+var _ jspp.IJSExecutor = (*executor)(nil)
 
 type execResult struct {
 	log    map[string][]string
@@ -28,7 +28,7 @@ type execResult struct {
 	fatal  string
 }
 
-var _ jspp.IExecResult = (*execResult)(nil)
+var _ jspp.IJSExecResult = (*execResult)(nil)
 
 func (er *execResult) Log() map[string][]string {
 	return er.log
@@ -55,7 +55,7 @@ type codePart struct {
 	code  string
 }
 
-func (e *executor) Exec() (jspp.IExecResult, error) {
+func (e *executor) Exec() (jspp.IJSExecResult, error) {
 	vm := goja.New()
 
 	c := make(chan codePart, 3)

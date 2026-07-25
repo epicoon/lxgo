@@ -1,3 +1,9 @@
+// Package config loads and reads a kernel.Config from YAML - Load reads the
+// file at path, merges in a local override file (the "Local" key) if
+// present, and substitutes "${VAR}"/"${VAR:-default}" placeholders from a
+// .env file and the process environment (the "Env" key). GetParam/HasParam/
+// SetParam then read/write individual parameters, with GetParam coercing
+// between common types (e.g. a YAML string into an int).
 package config
 
 import (
@@ -13,6 +19,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Load reads and parses the YAML config file at path, merging in a local
+// override file and applying environment-variable substitution - see the
+// package doc comment for the full behavior.
 func Load(path string) (*kernel.Config, error) {
 	conf, err := load(path)
 	if err != nil {
@@ -56,15 +65,20 @@ func Load(path string) (*kernel.Config, error) {
 	return conf, nil
 }
 
+// SetParam sets a single top-level config parameter.
 func SetParam(c *kernel.Config, param string, val any) {
 	(*c)[param] = val
 }
 
+// HasParam reports whether param is set at the top level of c.
 func HasParam(c *kernel.Config, param string) bool {
 	_, exists := (*c)[param]
 	return exists
 }
 
+// GetParam returns param's value from c, coerced to T - handling the
+// common YAML mismatches (numeric strings into int/int64/float64, string
+// slices into typed slices) that come up when reading env-substituted values.
 func GetParam[T any](c *kernel.Config, param string) (T, error) {
 	val, exists := (*c)[param]
 	if !exists {

@@ -1,4 +1,13 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.25
+Version: v0.1.0-alpha.7
+Changes:
+- rename: `FConstructor` → `CCommand` - matches the package's own `C`-prefix constructor-type convention
+  (`CommandsList` is now `map[string]CCommand`)
+- docs: Go-doc comments for every exported declaration in the package (`ICommand`/`Command`, `Config` and friends,
+  `ICommandOptions`, `GetOptions`, `Prepare`, `Init`/`Run`) - previously undocumented
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.24
 Version: v0.1.0-alpha.6
 Changes:

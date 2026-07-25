@@ -1,3 +1,6 @@
+// Package cmd provides console commands for managing a running lxgo/kernel
+// application over its manage socket (ManageCommand) and for generating its
+// API documentation (see gen_api_doc.go).
 package cmd
 
 import (
@@ -7,17 +10,27 @@ import (
 	"github.com/epicoon/lxgo/cmd"
 )
 
+// ManageCommandOptions is ManageCommand's cmd.ICommandOptions - pass the
+// same socket path the target app is configured with (its "ManageSocket" config key).
 type ManageCommandOptions struct {
 	SocketPath string
 }
 
 /** @interface cmd.ICommand */
+
+// ManageCommand talks to a running application's manage socket - status/
+// refresh-config/inject-config/trigger - see NewManageCommand.
 type ManageCommand struct {
 	*cmd.Command
 	SocketPath string
 }
 
-/** @type cmd.FConstructor */
+var _ cmd.ICommand = (*ManageCommand)(nil)
+
+/** @constructor cmd.CCommand */
+
+// NewManageCommand constructs a ManageCommand - pass its socket path via
+// ManageCommandOptions.
 func NewManageCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 	options := cmd.GetOptions[ManageCommandOptions](opt)
 	return cmd.Prepare(&ManageCommand{
@@ -26,6 +39,8 @@ func NewManageCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 	})
 }
 
+// Config declares the "status", "refresh-config", "inject-config" and
+// "trigger" actions - see cmd.ICommand.
 func (c *ManageCommand) Config() *cmd.Config {
 	return &cmd.Config{
 		Description: "Command for local app managing by socket file defined in the config param 'ManageSocket'",
@@ -88,26 +103,31 @@ func (c *ManageCommand) Config() *cmd.Config {
 	}
 }
 
+// BeforeExec announces which socket the command is about to talk to - see cmd.ICommand.
 func (c *ManageCommand) BeforeExec() error {
 	fmt.Println("Send message to socket '" + c.SocketPath + "'...")
 	return nil
 }
 
+/** @handler cmd.FAction */
 func status(c cmd.ICommand) error {
 	sendToSocket(c.(*ManageCommand).SocketPath, "status")
 	return nil
 }
 
+/** @handler cmd.FAction */
 func refreshConfig(c cmd.ICommand) error {
 	sendToSocket(c.(*ManageCommand).SocketPath, prepareMsg("reconf", c.Params()))
 	return nil
 }
 
+/** @handler cmd.FAction */
 func injectConfig(c cmd.ICommand) error {
 	sendToSocket(c.(*ManageCommand).SocketPath, prepareMsg("inconf", c.Params()))
 	return nil
 }
 
+/** @handler cmd.FAction */
 func trigger(c cmd.ICommand) error {
 	e := c.Param("event")
 

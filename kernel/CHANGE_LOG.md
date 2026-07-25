@@ -1,4 +1,20 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.25
+Version: v0.1.0-alpha.25
+Changes:
+- rename: `app.Configurate` → `app.Configure`; `app.NewDIConteiner` → `app.NewDIContainer` (typo fixes)
+- refactor: `app.NewAppPathfinder`/`template.NewTemplateHolder` now return `kernel.IPathfinder`/`kernel.ITemplateHolder`
+  directly instead of an unexported concrete type
+- refactor: `IHttpResource.PreRun()` replaced by `Base() IHttpResource` (mirrors `IApp.BaseApp()`) and
+  `BeforeRunCallbacks() []func(res IHttpResource)` - the router now runs the registered hooks itself instead of the
+  resource running them internally
+- add: `IFormFiller` interface (`http.FormFiller()`'s return type) - `Fill()` now returns an `error` for
+  misuse (no form set, no data source set, or both `SetContext`/`SetDict` set) instead of panicking; the router and
+  `Resource.JsonResponse`/`FailResponse` log the error and return a generic 500 instead of crashing the request
+- docs: Go-doc comments for the whole public API - package root plus every public subpackage (`app`, `cmd`, `config`,
+  `conv`, `errors`, `events`, `http`, `template`, `utils`) - previously completely undocumented
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.24
 Version: v0.1.0-alpha.24
 Changes:

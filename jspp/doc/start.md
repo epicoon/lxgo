@@ -9,7 +9,7 @@
 
 - Get the package with commang `go get https://github.com/epicoon/lxgo/jspp`
 
-- Configurate `JSPreprocessor` component in application configuration file `config.yaml`:
+- Configure `JSPreprocessor` component in application configuration file `config.yaml`:
   ```yaml
   Components:
     # ...

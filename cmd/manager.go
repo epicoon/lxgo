@@ -8,7 +8,7 @@ import (
 )
 
 type manager struct {
-	list     map[string]FConstructor
+	list     map[string]CCommand
 	cmdRoute string
 	cmdName  string
 	subName  string
@@ -56,7 +56,7 @@ func (m *manager) prepare() {
 	m.params = params
 }
 
-func (m *manager) defineConstructor() (FConstructor, error) {
+func (m *manager) defineConstructor() (CCommand, error) {
 	_, exists := m.list[m.cmdName]
 	if !exists {
 		if m.cmdName == "" {

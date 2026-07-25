@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.24`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.25`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -68,7 +68,7 @@ param2 := app.ConfigParam("Object.ParamKey")
 ```
 
 
-### <a name="link4">4. Lets create the app instance and run it. Change your `main.go` file:</a>
+### <a name="link4">4. Let's create the app instance and run it. Change your `main.go` file:</a>
 - use this code for your `main.go` file:
     ```go
     package main
@@ -90,7 +90,7 @@ param2 := app.ConfigParam("Object.ParamKey")
     func NewApp() kernel.IApp {
         app := &App{App: lxApp.NewApp()}
         // Apply app config
-        if err := lxApp.Configurate(app); err != nil {
+        if err := lxApp.Configure(app); err != nil {
             panic(err)
         }
         return app
@@ -649,11 +649,11 @@ Database:
   # Optional, seconds between attempts, defaults to 2
   ConnectAttemptDelay: 2
 ```
-Applying the app config (`lxApp.Configurate(app)`) prepares a `kernel.IConnection`
+Applying the app config (`lxApp.Configure(app)`) prepares a `kernel.IConnection`
 from this section, but does **not** connect automatically - call `Connect()`
 yourself once, right after configuring the app:
 ```go
-if err := lxApp.Configurate(app); err != nil {
+if err := lxApp.Configure(app); err != nil {
     panic(err)
 }
 if err := app.Connection().Connect(); err != nil {

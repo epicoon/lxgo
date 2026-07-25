@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.25
+Version: v0.1.0-alpha.29
+Changes:
+- rename: `IExecutor`/`IExecutorBuilder`/`IExecResult` → `IJSExecutor`/`IJSExecutorBuilder`/`IJSExecResult`;
+  `IPreprocessor.ExecutorBuilder()` → `JSExecutorBuilder()` - disambiguates from other "executor" concepts in the package
+- rename: `IAsset.Path()` → `IAsset.Src()`
+- fix: `NewJSPreprocesor` → `NewJSPreprocessor` (typo in the exported constructor name)
+- docs: Go-doc comments for the module's public API (everything outside `internal/`) - root `conventions.go`, plus
+  the `cmd`/`component`/`elems`/`plugins` subpackages
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.24
 Version: v0.1.0-alpha.28
 Changes:

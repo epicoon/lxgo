@@ -18,13 +18,21 @@ import (
  * Config
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+/** @interface kernel.IAppComponentConfig */
+
+// Config is Storage's app-component configuration.
 type Config struct {
 	*lxApp.ComponentConfig
-	CookieName  string
+	// CookieName is the cookie sessions are tracked under - see Storage.SessionCookieName.
+	CookieName string
+	// MaxLifeTime is how long, in seconds, a session survives without being
+	// accessed before GC removes it.
 	MaxLifeTime int
 }
 
-/** kernel.CAppComponentConfig */
+/** @constructor kernel.CAppComponentConfig */
+
+// NewConfig constructs a Config.
 func NewConfig() kernel.IAppComponentConfig {
 	return &Config{ComponentConfig: lxApp.NewComponentConfigStruct()}
 }
@@ -33,7 +41,11 @@ func NewConfig() kernel.IAppComponentConfig {
  * Storage
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/** @interface session.IStorage */
+/** @interface kernel.IAppComponent */
+/** @interface kernel.IStorage */
+
+// Storage is the default IStorage implementation - see SetAppComponent to
+// register it on an app.
 type Storage struct {
 	*lxApp.AppComponent
 	lock     sync.Mutex
@@ -42,6 +54,8 @@ type Storage struct {
 
 var _ IStorage = (*Storage)(nil)
 
+// SetAppComponent registers a new Storage on app under APP_COMPONENT_KEY,
+// configured from the config section named by configKey.
 func SetAppComponent(app kernel.IApp, configKey string) error {
 	if app.HasComponent(APP_COMPONENT_KEY) {
 		return fmt.Errorf("the application already has component: %s", APP_COMPONENT_KEY)
@@ -57,6 +71,7 @@ func SetAppComponent(app kernel.IApp, configKey string) error {
 	return nil
 }
 
+// AppComponent returns the Storage registered on app under APP_COMPONENT_KEY.
 func AppComponent(app kernel.IApp) (IStorage, error) {
 	c := app.Component(APP_COMPONENT_KEY)
 	if c == nil {
@@ -71,15 +86,19 @@ func AppComponent(app kernel.IApp) (IStorage, error) {
 	return storage, nil
 }
 
-// @constructor
+/** @constructor */
+
+// NewStorage constructs a Storage.
 func NewStorage() IStorage {
 	return &Storage{AppComponent: lxApp.NewAppComponent()}
 }
 
+// Name returns the component's name - see kernel.IAppComponent.
 func (s *Storage) Name() string {
 	return "SessionsStorage"
 }
 
+// AfterInit registers the session-loading middleware and starts the GC loop - see kernel.IAppComponent.
 func (s *Storage) AfterInit() {
 	s.App().Router().AddMiddleware(func(ctx kernel.IHandleContext) error {
 		session, err := s.StartSession(ctx)
@@ -92,25 +111,31 @@ func (s *Storage) AfterInit() {
 	s.GC()
 }
 
+// CConfig returns Config's constructor - see kernel.IAppComponent.
 func (c *Storage) CConfig() kernel.CAppComponentConfig {
 	return NewConfig
 }
 
+// Config returns the component's Config.
 func (c *Storage) Config() *Config {
 	return (c.GetConfig()).(*Config)
 }
 
-func (s *Storage) Scaner() IScaner {
-	return &Scaner{
+// Scanner returns an IScanner for inspecting the current session storage.
+func (s *Storage) Scanner() IScanner {
+	return &Scanner{
 		storage:  s,
 		provider: s.provider,
 	}
 }
 
+// SessionCookieName returns the cookie name sessions are tracked under.
 func (s *Storage) SessionCookieName() string {
 	return s.Config().CookieName
 }
 
+// StartSession reads ctx's session cookie and returns the matching session,
+// creating a new one (and setting the cookie) if none exists yet.
 func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -139,6 +164,7 @@ func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession, err
 	return session, nil
 }
 
+// DestroySession removes sess from storage and clears its cookie.
 func (s *Storage) DestroySession(sess ISession) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -153,6 +179,7 @@ func (s *Storage) DestroySession(sess ISession) {
 	http.SetCookie(sess.Context().ResponseWriter(), &newCookie)
 }
 
+// SessionByID looks up a session by ID, returning (nil, nil) if it doesn't exist.
 func (s *Storage) SessionByID(sid string) (ISession, error) {
 	provider := s.getProvider()
 	if !provider.SessionExists(sid) {
@@ -165,12 +192,15 @@ func (s *Storage) SessionByID(sid string) (ISession, error) {
 	return session, nil
 }
 
+// SetSessionID re-keys sess under a new ID, replacing its old entry in storage.
 func (s *Storage) SetSessionID(sess ISession, sid string) {
 	provider := s.getProvider()
 	provider.DestroySession(sess.ID())
 	provider.AddSession(sess, sid)
 }
 
+// GC sweeps expired sessions and reschedules itself for the next sweep,
+// MaxLifeTime seconds later.
 func (s *Storage) GC() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -178,6 +208,8 @@ func (s *Storage) GC() {
 	time.AfterFunc(time.Duration(s.Config().MaxLifeTime)*time.Second, func() { s.GC() })
 }
 
+// Provider returns the underlying IProvider, initializing the default
+// BaseProvider on first call.
 func (s *Storage) Provider() IProvider {
 	return s.getProvider()
 }

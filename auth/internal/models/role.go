@@ -3,7 +3,7 @@ package models
 import "slices"
 
 // Roles apply to Admin, not to Client - a Client (OAuth relying party) has
-// no role of its own, see .claude/tasks/0062.md.
+// no role of its own.
 const (
 	ROLE_SUPERADMIN = 1 + iota
 	ROLE_ADMIN

@@ -11,6 +11,9 @@ import (
 )
 
 /** @interface kernel.IHttpResource */
+
+// Resource is the base kernel.IHttpResource implementation - embed it in
+// your own resource struct and override at least Run.
 type Resource struct {
 	context       kernel.IHandleContext
 	preCallbacks  []func(kernel.IHttpResource)
@@ -23,6 +26,9 @@ type Resource struct {
 var _ kernel.IHttpResource = (*Resource)(nil)
 
 /** @constructor */
+
+// NewResource constructs a Resource, optionally configured with request/
+// response/fail form constructors via c.
 func NewResource(c ...kernel.HttpResourceConfig) *Resource {
 	var conf *kernel.HttpResourceConfig
 	if len(c) == 1 {
@@ -47,22 +53,36 @@ func NewResource(c ...kernel.HttpResourceConfig) *Resource {
 	return r
 }
 
-func (r *Resource) CRequestForm() kernel.CForm {
-	return r.cRequestForm
+// Base returns the underlying *http.Resource - useful when IHttpResource is wrapped.
+func (r *Resource) Base() kernel.IHttpResource {
+	return r
 }
 
-func (r *Resource) CResponseForm() kernel.CForm {
-	return r.cResponseForm
-}
+/** @abstract */
 
-func (r *Resource) CFailForm() kernel.CForm {
-	return r.cFailForm
-}
-
+// Init is a no-op - override it for per-request setup.
 func (r *Resource) Init() {
 	// Pass
 }
 
+/** @abstract */
+
+// Run returns nil - override it to handle the request and return a response.
+func (r *Resource) Run() kernel.IHttpResponse {
+	// Pass
+	return nil
+}
+
+/** @abstract */
+
+// ProcessRequestErrors returns nil - override it to return a custom
+// response when the request form fails validation.
+func (r *Resource) ProcessRequestErrors() kernel.IHttpResponse {
+	// Pass
+	return nil
+}
+
+// BeforeRun registers a hook to run right before Run.
 func (r *Resource) BeforeRun(callback func(res kernel.IHttpResource)) {
 	if r.preCallbacks == nil {
 		r.preCallbacks = make([]func(kernel.IHttpResource), 0, 1)
@@ -70,28 +90,12 @@ func (r *Resource) BeforeRun(callback func(res kernel.IHttpResource)) {
 	r.preCallbacks = append(r.preCallbacks, callback)
 }
 
-func (r *Resource) PreRun() {
-	if r.preCallbacks == nil {
-		return
-	}
-
-	for _, f := range r.preCallbacks {
-		f(r)
-	}
+// BeforeRunCallbacks returns hooks to run right before Run.
+func (r *Resource) BeforeRunCallbacks() []func(res kernel.IHttpResource) {
+	return r.preCallbacks
 }
 
-/** @abstract */
-func (r *Resource) Run() kernel.IHttpResponse {
-	// Pass
-	return nil
-}
-
-/** @abstract */
-func (r *Resource) ProcessRequestErrors() kernel.IHttpResponse {
-	// Pass
-	return nil
-}
-
+// Lang returns the request's language via Lang, or "en-EN" if there's no request yet.
 func (r *Resource) Lang() string {
 	req := r.Request()
 	if req == nil {
@@ -101,54 +105,67 @@ func (r *Resource) Lang() string {
 	return Lang(r.App(), req)
 }
 
+// SetContext binds the resource to its IHandleContext.
 func (r *Resource) SetContext(c kernel.IHandleContext) {
 	r.context = c
 }
 
+// Context returns the resource's IHandleContext.
 func (r *Resource) Context() kernel.IHandleContext {
 	return r.context
 }
 
+// App returns the owning application.
 func (r *Resource) App() kernel.IApp {
 	return r.context.App()
 }
 
+// Route returns the matched route.
 func (r *Resource) Route() string {
 	return r.context.Route()
 }
 
+// Method returns the HTTP method.
 func (r *Resource) Method() string {
 	return r.context.Method()
 }
 
+// ResponseWriter returns the underlying http.ResponseWriter.
 func (r *Resource) ResponseWriter() http.ResponseWriter {
 	return r.context.ResponseWriter()
 }
 
+// Request returns the underlying *http.Request.
 func (r *Resource) Request() *http.Request {
 	return r.context.Request()
 }
 
+// SetRequestForm sets the parsed request form.
 func (r *Resource) SetRequestForm(f kernel.IForm) {
 	r.requestForm = f
 }
 
+// RequestForm returns the parsed request form.
 func (r *Resource) RequestForm() kernel.IForm {
 	return r.requestForm
 }
 
+// Log writes an informational message under category, prefixed with the resource's route.
 func (r *Resource) Log(msg string, category string) {
 	r.App().Log(fmt.Sprintf("Message from '%s' handling: %s", r.Route(), msg), category)
 }
 
+// LogWarning writes a warning message under category, prefixed with the resource's route.
 func (r *Resource) LogWarning(msg string, category string) {
 	r.App().Log(fmt.Sprintf("Warning from '%s' handling: %s", r.Route(), msg), category)
 }
 
+// LogError writes an error message under category, prefixed with the resource's route.
 func (r *Resource) LogError(msg string, category string) {
 	r.App().Log(fmt.Sprintf("Error occurred while '%s' handling: %s", r.Route(), msg), category)
 }
 
+// HtmlResponse builds an HTML response - see the package-level HtmlResponse.
 func (r *Resource) HtmlResponse(conf kernel.HtmlResponseConfig) kernel.IHttpResponse {
 	resp, err := HtmlResponse(r.App(), conf)
 	if err != nil {
@@ -159,20 +176,27 @@ func (r *Resource) HtmlResponse(conf kernel.HtmlResponseConfig) kernel.IHttpResp
 	return resp
 }
 
+// JsonResponse builds a successful JSON response, filling/validating it
+// through the configured response form (see CResponseForm) if conf.Dict or
+// conf.Form is used.
 func (r *Resource) JsonResponse(conf kernel.JsonResponseConfig) kernel.IHttpResponse {
 	return jsonResponse(r, conf, r.cResponseForm)
 }
 
+// FailResponse builds a failed JSON response, filling/validating it through
+// the configured fail form (see CFailForm) if conf.Dict or conf.Form is used.
 func (r *Resource) FailResponse(conf kernel.JsonResponseConfig) kernel.IHttpResponse {
 	return jsonResponse(r, conf, r.cFailForm)
 }
 
+// ErrorResponse builds a JSON error response with the given HTTP code and message.
 func (r *Resource) ErrorResponse(code int, msg string) kernel.IHttpResponse {
 	response := new(Response)
 	response.SetError(code, msg)
 	return response
 }
 
+// Redirect builds an HTTP redirect response to URL with params appended as query string.
 func (r *Resource) Redirect(URL string, code int, params map[string]any) kernel.IHttpResponse {
 	u, err := url.Parse(URL)
 	if err != nil {
@@ -190,6 +214,9 @@ func (r *Resource) Redirect(URL string, code int, params map[string]any) kernel.
 	return nil
 }
 
+// PostRedirect builds a response with a self-submitting HTML form that
+// POSTs params to url - use this instead of Redirect when the target needs
+// a POST rather than a GET.
 func (r *Resource) PostRedirect(url string, params map[string]any) kernel.IHttpResponse {
 	escapedActionURL := html.EscapeString(url)
 	var inputs strings.Builder
@@ -218,6 +245,21 @@ func (r *Resource) PostRedirect(url string, params map[string]any) kernel.IHttpR
 	})
 }
 
+// CRequestForm returns the request form constructor, if configured.
+func (r *Resource) CRequestForm() kernel.CForm {
+	return r.cRequestForm
+}
+
+// CResponseForm returns the response form constructor, if configured.
+func (r *Resource) CResponseForm() kernel.CForm {
+	return r.cResponseForm
+}
+
+// CFailForm returns the fail-response form constructor, if configured.
+func (r *Resource) CFailForm() kernel.CForm {
+	return r.cFailForm
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -244,7 +286,11 @@ func jsonResponse(r kernel.IHttpResource, conf kernel.JsonResponseConfig, cForm 
 			return response
 		}
 		f := cForm()
-		FormFiller().SetForm(f).SetDict(conf.Dict).Fill()
+		if err := FormFiller().SetForm(f).SetDict(conf.Dict).Fill(); err != nil {
+			r.LogError(fmt.Sprintf("Can not fill response form: %s", err), "HttpHandling")
+			http.Error(r.ResponseWriter(), "Something went wrong", http.StatusInternalServerError)
+			return nil
+		}
 		if f.HasErrors() {
 			r.LogError(fmt.Sprintf("Can not fill response form: %s", f.GetFirstError().Error()), "HttpHandling")
 			http.Error(r.ResponseWriter(), "Something went wrong", http.StatusInternalServerError)

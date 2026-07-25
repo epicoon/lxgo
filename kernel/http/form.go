@@ -8,6 +8,10 @@ import (
 )
 
 /** @interface kernel.IForm */
+
+// Form is the base kernel.IForm implementation - embed it in your own form
+// struct and override at least Fill/Validate (and Config, to declare
+// required fields).
 type Form struct {
 	*errors.ErrorsCollector
 	required []string
@@ -15,11 +19,16 @@ type Form struct {
 
 var _ kernel.IForm = (*Form)(nil)
 
+// PrepareForm sets f's required fields from its own Config - call this
+// right after constructing a form (see the CForm pattern in
+// kernel.HttpResourceConfig).
 func PrepareForm(f kernel.IForm) kernel.IForm {
 	configureForm(f, f.Config())
 	return f
 }
 
+// FormToMap renders form f's fields as a map[string]any, keyed by their
+// "json" tag (skipping fields with no tag or a "-" tag).
 func FormToMap(f kernel.IForm) map[string]any {
 	result := make(map[string]any)
 
@@ -67,6 +76,8 @@ func FormToMap(f kernel.IForm) map[string]any {
 }
 
 /** @constructor */
+
+// NewForm constructs an empty Form with no required fields.
 func NewForm() *Form {
 	return &Form{
 		ErrorsCollector: errors.NewErrorsCollector(),
@@ -74,30 +85,39 @@ func NewForm() *Form {
 	}
 }
 
+// Config returns an empty FormConfig - override this to declare the form's fields.
 func (f *Form) Config() kernel.FormConfig {
 	return *new(kernel.FormConfig)
 }
 
+// SetRequired overrides which fields are required.
 func (f *Form) SetRequired(required []string) {
 	f.required = required
 }
 
+// Required returns the currently required fields.
 func (f *Form) Required() []string {
 	return f.required
 }
 
 /** @abstract */
+
+// Fill is a no-op - override it to populate the form from d.
 func (f *Form) Fill(d *kernel.Dict) error {
 	// Pass
 	return nil
 }
 
 /** @abstract */
+
+// AfterFill is a no-op - override it for cross-field logic after Fill succeeds.
 func (f *Form) AfterFill() {
 	// Pass
 }
 
 /** @abstract */
+
+// Validate returns true - override it to validate the filled form.
 func (f *Form) Validate() bool {
 	// Pass
 	return true

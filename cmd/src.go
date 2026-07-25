@@ -6,12 +6,15 @@ import (
 	"strconv"
 )
 
-type CommandsList map[string]FConstructor
-
+// Init registers the application's commands, keyed by name (used as
+// "command" or "command:action" on the command line) - call this once
+// before Run, typically with the empty-string key for the default command.
 func Init(cmds CommandsList) {
 	m.list = cmds
 }
 
+// Run parses os.Args, resolves the matching command/action from the
+// CommandsList passed to Init, and executes it - call this from main.
 func Run() {
 	m.prepare()
 	cc, err := m.defineConstructor()
@@ -75,6 +78,45 @@ func Run() {
 	if err != nil {
 		fmt.Printf("Error occurred while action executing: %s\n", err)
 	}
+}
+
+// GetOptions type-asserts the first element of opt to T, returning T's zero
+// value if opt is empty or its first element isn't a T - use this in a
+// command constructor to pull out its ICommandOptions.
+func GetOptions[T any](opt []ICommandOptions) T {
+	if len(opt) > 0 && opt[0] != nil {
+		res, ok := opt[0].(T)
+		if !ok {
+			//TODO log to fmt
+			return *new(T)
+		}
+		return res
+	}
+	return *new(T)
+}
+
+// Prepare registers c's Config.Actions executors onto c via RegisterActions
+// - call this after constructing a command that declares actions through Config.
+func Prepare(c ICommand) ICommand {
+	conf := c.Config()
+	if conf == nil {
+		return c
+	}
+
+	actionsLen := len(conf.Actions)
+	if actionsLen > 0 {
+		al := make(ActionsList, actionsLen)
+		for key, val := range conf.Actions {
+			if val.Executor != nil {
+				al[key] = val.Executor
+			}
+		}
+		if len(al) > 0 {
+			c.RegisterActions(al)
+		}
+	}
+
+	return c
 }
 
 func validate(c ICommand) error {

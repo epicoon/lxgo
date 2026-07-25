@@ -1,6 +1,10 @@
 package ws
 
 /** @constructor */
+
+// NewChannelBuilder returns an empty IChannelBuilder - set what you need via
+// its SetXxx methods (all optional; a Key of "" means "let the server
+// generate one"), then pass it to IChannelRepo.CreateChannel.
 func NewChannelBuilder() IChannelBuilder {
 	return &channelBuilder{}
 }

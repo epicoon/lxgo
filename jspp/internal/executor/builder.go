@@ -8,22 +8,22 @@ type executorBuilder struct {
 	executor *executor
 }
 
-func Builder() jspp.IExecutorBuilder {
+func Builder() jspp.IJSExecutorBuilder {
 	return &executorBuilder{
 		executor: &executor{},
 	}
 }
 
-func (b *executorBuilder) Executor() jspp.IExecutor {
+func (b *executorBuilder) Executor() jspp.IJSExecutor {
 	return b.executor
 }
 
-func (b *executorBuilder) SetPreprocessor(pp jspp.IPreprocessor) jspp.IExecutorBuilder {
+func (b *executorBuilder) SetPreprocessor(pp jspp.IPreprocessor) jspp.IJSExecutorBuilder {
 	b.executor.pp = pp
 	return b
 }
 
-func (b *executorBuilder) SetCode(code string) jspp.IExecutorBuilder {
+func (b *executorBuilder) SetCode(code string) jspp.IJSExecutorBuilder {
 	b.executor.code = code
 	return b
 }

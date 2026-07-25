@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.25
+Version: v0.1.0-alpha.6
+Changes:
+- docs: Go-doc comments for every exported declaration in the package (`Config`, `Init`/`SetDB`/`SetMigrationsPath`,
+  `Create`/`Check`/`Show`/`Up`/`Down`/`UpSeeds`, `MigratorCommand`/`NewCommand`) - previously undocumented
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.24
 Version: v0.1.0-alpha.5
 Changes:

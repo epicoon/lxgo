@@ -1,3 +1,9 @@
+// Package conv converts loosely-typed values (from YAML/JSON config, form
+// data, etc.) into Go structs and back - DictToStruct/JsonToStruct/
+// MapToStruct populate a struct from a kernel.Dict/JSON/map, coercing
+// mismatched-but-compatible types (numeric strings into ints, nested maps
+// into nested structs) along the way; ToString/ToMap/GetDictItem/GetMapItem
+// handle single-value conversions.
 package conv
 
 import (
@@ -11,6 +17,8 @@ import (
 	"github.com/epicoon/lxgo/kernel"
 )
 
+// ToString renders value as a string - numbers/bools via their standard
+// formatting, fmt.Stringer via String(), anything else via fmt.Sprintf("%v", ...).
 func ToString(value any) string {
 	if value == nil {
 		return ""
@@ -35,6 +43,9 @@ func ToString(value any) string {
 	}
 }
 
+// ToMap renders struct s's fields as a map[string]any, keyed by field name
+// with each value stringified - logs and returns an empty map if s isn't a
+// struct (or pointer to one).
 func ToMap(s any) map[string]any {
 	result := make(map[string]any)
 
@@ -65,11 +76,16 @@ func ToMap(s any) map[string]any {
 	return result
 }
 
+// GetMapItem returns item's value from m, coerced to T - see GetDictItem.
 func GetMapItem[T any](m map[string]any, item string) (T, error) {
 	d := kernel.Dict(m)
 	return GetDictItem[T](&d, item)
 }
 
+// GetDictItem returns item's value from d, coerced to T - handles the
+// common mismatches for int/uint/string/map[string]any (e.g. a YAML numeric
+// string into an int), falling back to a direct type assertion for
+// anything else.
 func GetDictItem[T any](d *kernel.Dict, item string) (T, error) {
 	val, exists := (*d)[item]
 	if !exists {
@@ -137,6 +153,7 @@ func GetDictItem[T any](d *kernel.Dict, item string) (T, error) {
 	return result, nil
 }
 
+// JsonToStruct unmarshals JSON data into a kernel.Dict and populates struct s from it - see DictToStruct.
 func JsonToStruct(data []byte, s any) error {
 	dict := make(kernel.Dict)
 	if err := json.Unmarshal(data, &dict); err != nil {
@@ -145,11 +162,17 @@ func JsonToStruct(data []byte, s any) error {
 	return DictToStruct(&dict, s)
 }
 
+// MapToStruct populates struct s from map m - see DictToStruct.
 func MapToStruct(m map[string]any, s any) error {
 	dict := kernel.Dict(m)
 	return DictToStruct(&dict, s)
 }
 
+// DictToStruct populates struct s's fields from dict, matching each field
+// by its "dict" tag, then "json" tag, then field name; recurses into
+// nested structs/slices/maps, coercing mismatched-but-compatible value
+// types along the way (numeric strings, etc.). s must be a struct or a
+// pointer to one.
 func DictToStruct(dict *kernel.Dict, s any) error {
 	val := reflect.ValueOf(s)
 	typ := reflect.TypeOf(s)

@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"reflect"
 	"strings"
@@ -10,37 +11,55 @@ import (
 	"github.com/epicoon/lxgo/kernel/conv"
 )
 
+/** @interface kernel.IFormFiller */
+
 type formFiller struct {
 	form kernel.IForm
 	ctx  kernel.IHandleContext
 	dict kernel.Dict
 }
 
-func FormFiller() *formFiller {
+var _ kernel.IFormFiller = (*formFiller)(nil)
+
+// FormFiller starts a fluent form-filling call: chain SetForm with either
+// SetContext (fill from an HTTP request, GET query or JSON/urlencoded body)
+// or SetDict (fill from an already-parsed kernel.Dict), then call Fill.
+func FormFiller() kernel.IFormFiller {
 	return &formFiller{}
 }
 
-func (ff *formFiller) SetForm(f kernel.IForm) *formFiller {
+// SetForm sets the form to fill.
+func (ff *formFiller) SetForm(f kernel.IForm) kernel.IFormFiller {
 	ff.form = f
 	return ff
 }
 
-func (ff *formFiller) SetContext(ctx kernel.IHandleContext) *formFiller {
+// SetContext sets the request context to fill the form from (an HTTP
+// request's GET query or JSON/urlencoded body) - mutually exclusive with SetDict.
+func (ff *formFiller) SetContext(ctx kernel.IHandleContext) kernel.IFormFiller {
 	ff.ctx = ctx
 	return ff
 }
 
-func (ff *formFiller) SetDict(d kernel.Dict) *formFiller {
+// SetDict sets an already-parsed kernel.Dict to fill the form from -
+// mutually exclusive with SetContext.
+func (ff *formFiller) SetDict(d kernel.Dict) kernel.IFormFiller {
 	ff.dict = d
 	return ff
 }
 
-func (ff *formFiller) Fill() {
+// Fill fills the form from whichever of SetContext/SetDict was called,
+// returning an error (without touching the form) if SetForm wasn't called,
+// if neither SetContext nor SetDict was, or was called both.
+func (ff *formFiller) Fill() error {
 	if ff.form == nil {
-		panic("nothing to fiil")
+		return errors.New("form filler: no form set, call SetForm first")
 	}
 	if ff.ctx == nil && ff.dict == nil {
-		panic("no data to fill form")
+		return errors.New("form filler: no data source set, call SetContext or SetDict first")
+	}
+	if ff.ctx != nil && ff.dict != nil {
+		return errors.New("form filler: context and dict are both presented, it's not clear what to choose")
 	}
 
 	if ff.ctx != nil {
@@ -48,6 +67,7 @@ func (ff *formFiller) Fill() {
 	} else if ff.dict != nil {
 		fillFormByDict(ff.form, ff.dict)
 	}
+	return nil
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -92,34 +112,7 @@ func fillFormByDict(f kernel.IForm, dict kernel.Dict) {
 	if err := conv.DictToStruct(&dict, f); err != nil {
 		f.CollectErrorf(err.Error())
 	}
-
-	// if useFill(f) {
-	// 	if err := f.Fill(&dict); err != nil {
-	// 		f.CollectErrorf(err.Error())
-	// 	}
-	// } else {
-	// 	if err := conv.DictToStruct(&dict, f); err != nil {
-	// 		f.CollectErrorf(err.Error())
-	// 	}
-	// }
 }
-
-// var fillMethodCache sync.Map
-
-// func useFill(f kernel.IForm) bool {
-// 	t := reflect.TypeOf(f)
-// 	if t.Kind() == reflect.Ptr {
-// 		t = t.Elem()
-// 	}
-// 	if cached, ok := fillMethodCache.Load(t); ok {
-// 		return cached.(bool)
-// 	}
-// 	method, exists := t.MethodByName("Fill")
-// 	orig, _ := reflect.TypeOf((*Form)(nil)).MethodByName("Fill")
-// 	isOverridden := exists && method.Type != orig.Type
-// 	fillMethodCache.Store(t, isOverridden)
-// 	return isOverridden
-// }
 
 func fillGetParams(f kernel.IForm, r *http.Request) {
 	queryParams := r.URL.Query()

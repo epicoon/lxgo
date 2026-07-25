@@ -3,17 +3,24 @@ package events
 import "github.com/epicoon/lxgo/kernel"
 
 /** @interface kernel.IEventManager */
+
+// EventManager is the default kernel.IEventManager implementation.
 type EventManager struct {
 	app           kernel.IApp
 	events        map[string][]kernel.FEventHandler
 	eventHandlers map[string][]kernel.IEventHandler
 }
 
+var _ kernel.IEventManager = (*EventManager)(nil)
+
 /** @constructor */
+
+// NewEventManager constructs an EventManager bound to app.
 func NewEventManager(app kernel.IApp) *EventManager {
 	return &EventManager{app: app}
 }
 
+// Subscribe registers a function to run when eventName fires.
 func (em *EventManager) Subscribe(eventName string, handler kernel.FEventHandler) {
 	if em.events == nil {
 		em.events = make(map[string][]kernel.FEventHandler)
@@ -24,6 +31,7 @@ func (em *EventManager) Subscribe(eventName string, handler kernel.FEventHandler
 	em.events[eventName] = append(em.events[eventName], handler)
 }
 
+// Handle registers an IEventHandler to run when eventName fires, binding it to the manager's app.
 func (em *EventManager) Handle(eventName string, handler kernel.IEventHandler) {
 	if em.eventHandlers == nil {
 		em.eventHandlers = make(map[string][]kernel.IEventHandler)
@@ -35,6 +43,7 @@ func (em *EventManager) Handle(eventName string, handler kernel.IEventHandler) {
 	em.eventHandlers[eventName] = append(em.eventHandlers[eventName], handler)
 }
 
+// Trigger fires eventName, running every subscribed function and IEventHandler with the given payload data.
 func (em *EventManager) Trigger(eventName string, d ...kernel.IData) {
 	e := NewEvent(em.app, eventName)
 	if len(d) == 1 {

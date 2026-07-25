@@ -116,7 +116,7 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 		sr.pr.depFiles[fn] = true
 	}
 
-	executor := sr.pr.pp.ExecutorBuilder().
+	executor := sr.pr.pp.JSExecutorBuilder().
 		SetCode(code).
 		Executor()
 	rawRes, err := executor.Exec()

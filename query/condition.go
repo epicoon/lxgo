@@ -2,6 +2,8 @@ package query
 
 import "fmt"
 
+// Condition is a single leaf Node ("field operator value") - normally built
+// via Eq/Gt/Lt/.../In/Exists rather than constructed directly.
 type Condition struct {
 	Field    string
 	Operator string

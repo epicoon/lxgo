@@ -10,19 +10,33 @@ import (
 	"github.com/epicoon/lxgo/kernel"
 )
 
+// ApiDocCommandOptions is ApiDocCommand's cmd.ICommandOptions.
 type ApiDocCommandOptions struct {
+	// Router is the application's router - its registered resources are
+	// what gets documented.
 	Router kernel.IRouter
+	// Output is the file to write the generated markdown to; printed to
+	// stdout instead if empty.
 	Output string
 }
 
 /** @interface cmd.ICommand */
+
+// ApiDocCommand generates markdown API documentation from an application's
+// registered HTTP resources and their request/response/fail forms - see
+// NewApiDocCommand.
 type ApiDocCommand struct {
 	*cmd.Command
 	router kernel.IRouter
 	output string
 }
 
-/** @type cmd.FConstructor */
+var _ cmd.ICommand = (*ApiDocCommand)(nil)
+
+/** @constructor cmd.CCommand */
+
+// NewApiDocCommand constructs an ApiDocCommand with a single "gen" action -
+// pass the application's router and an output path via ApiDocCommandOptions.
 func NewApiDocCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 	options := cmd.GetOptions[ApiDocCommandOptions](opt)
 	c := &ApiDocCommand{

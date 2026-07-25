@@ -74,7 +74,7 @@ func (tb *targetBuilder) renderCss(c jspp.ICompiler) string {
 		return ""
 	}
 
-	executor := tb.pp.ExecutorBuilder().
+	executor := tb.pp.JSExecutorBuilder().
 		SetCode(code).
 		Executor()
 	rawRes, err := executor.Exec()

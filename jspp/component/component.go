@@ -1,3 +1,7 @@
+// Package component provides the default jspp.IPreprocessor implementation
+// (JSPreprocessor) - register it on an application via SetAppComponent,
+// then access it through AppComponent (or the "jspp" context key middleware
+// sets on every /lx/... request).
 package component
 
 import (
@@ -20,6 +24,11 @@ import (
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * JSPreprocessor
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/** @interface kernel.IAppComponent */
+/** @interface cnv.IPreprocessor */
+
+// JSPreprocessor is the default jspp.IPreprocessor implementation - see SetAppComponent to register it on an app.
 type JSPreprocessor struct {
 	*lxApp.AppComponent
 
@@ -28,15 +37,16 @@ type JSPreprocessor struct {
 	pm cnv.IPluginManager
 }
 
-/** @interface */
 var _ cnv.IPreprocessor = (*JSPreprocessor)(nil)
 
+// SetAppComponent registers a new JSPreprocessor on app under
+// jspp.APP_COMPONENT_KEY, configured from the config section named by configKey.
 func SetAppComponent(app kernel.IApp, configKey string) error {
 	if app.HasComponent(cnv.APP_COMPONENT_KEY) {
 		return fmt.Errorf("the application already has component: %s", cnv.APP_COMPONENT_KEY)
 	}
 
-	pp := NewJSPreprocesor()
+	pp := NewJSPreprocessor()
 	if err := lxApp.InitComponent(pp, app, configKey); err != nil {
 		return fmt.Errorf("can not init js-preprocessor component: %s", err)
 	}
@@ -46,6 +56,7 @@ func SetAppComponent(app kernel.IApp, configKey string) error {
 	return nil
 }
 
+// AppComponent returns the JSPreprocessor registered on app under jspp.APP_COMPONENT_KEY.
 func AppComponent(app kernel.IApp) (*JSPreprocessor, error) {
 	c := app.Component(cnv.APP_COMPONENT_KEY)
 	if c == nil {
@@ -61,51 +72,64 @@ func AppComponent(app kernel.IApp) (*JSPreprocessor, error) {
 }
 
 /** @constructor */
-func NewJSPreprocesor() *JSPreprocessor {
+
+// NewJSPreprocessor constructs a JSPreprocessor with its modules/plugin maps ready to use.
+func NewJSPreprocessor() *JSPreprocessor {
 	pp := &JSPreprocessor{AppComponent: lxApp.NewAppComponent()}
 	pp.mm = modules.NewMap(pp)
 	pp.pm = plugins.NewMap(pp)
 	return pp
 }
 
+// Name returns the component's name - see kernel.IAppComponent.
 func (c *JSPreprocessor) Name() string {
 	return "JSPreprocessor"
 }
 
+// LogCategory returns the category the component's log methods write under.
 func (pp *JSPreprocessor) LogCategory() string {
 	return "JSPreprocessor"
 }
 
+// CConfig returns the preprocessor config's constructor - see kernel.IAppComponent.
 func (pp *JSPreprocessor) CConfig() kernel.CAppComponentConfig {
 	return base.NewJSPreprocessorConfig
 }
 
+// Config returns the component's config.
 func (pp *JSPreprocessor) Config() *base.JSPreprocessorConfig {
 	return (pp.GetConfig()).(*base.JSPreprocessorConfig)
 }
 
+// Pathfinder returns the preprocessor's own IPathfinder.
 func (pp *JSPreprocessor) Pathfinder() kernel.IPathfinder {
 	return pp.pf
 }
 
+// ModulesMap returns the preprocessor's modules map.
 func (pp *JSPreprocessor) ModulesMap() cnv.IModulesMap {
 	return pp.mm
 }
 
+// PluginManager returns the preprocessor's plugin manager.
 func (pp *JSPreprocessor) PluginManager() cnv.IPluginManager {
 	return pp.pm
 }
 
+// CompilerBuilder returns a fresh ICompilerBuilder, pre-bound to this preprocessor.
 func (pp *JSPreprocessor) CompilerBuilder() cnv.ICompilerBuilder {
 	return compiler.Builder().
 		SetPreprocessor(pp)
 }
 
-func (pp *JSPreprocessor) ExecutorBuilder() cnv.IExecutorBuilder {
+// JSExecutorBuilder returns a fresh IJSExecutorBuilder, pre-bound to this preprocessor.
+func (pp *JSPreprocessor) JSExecutorBuilder() cnv.IJSExecutorBuilder {
 	return executor.Builder().
 		SetPreprocessor(pp)
 }
 
+// AfterInit registers the /lx/service, /lx/elem and /lx/plugin routes and
+// the asset-build hook - see kernel.IAppComponent.
 func (pp *JSPreprocessor) AfterInit() {
 	pp.App().Router().RegisterResources(kernel.HttpResourcesList{
 		"/lx/service[POST]": handlers.NewServiceHandler,
@@ -136,12 +160,4 @@ func (pp *JSPreprocessor) AfterInit() {
 			pp.LogError("can not build asset '%s': %v", filePath, err)
 		}
 	})
-}
-
-func (pp *JSPreprocessor) LogError(msg string, params ...any) {
-	if len(params) > 0 {
-		pp.App().LogError(fmt.Sprintf(msg, params...), "JSPreprocessor")
-	} else {
-		pp.App().LogError(msg, "JSPreprocessor")
-	}
 }

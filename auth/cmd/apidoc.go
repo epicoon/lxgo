@@ -7,7 +7,10 @@ import (
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
 )
 
-/** @type cmd.FConstructor */
+/** @constructor cmd.CCommand */
+
+// NewApiDocCommand builds the apidoc:gen command, which regenerates
+// ApiDoc.md from the application's actually registered routes/forms.
 func NewApiDocCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	r := lxHttp.NewRouter(nil)
 	core.InitRoutes(r)

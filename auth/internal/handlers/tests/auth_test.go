@@ -130,7 +130,7 @@ func TestAuthHandler_PostAuth_Success(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Can not get session app component: %v", err)
 	}
-	if !sessStorage.Scaner().IsEmpty() {
+	if !sessStorage.Scanner().IsEmpty() {
 		log.Fatal("Session storage has to be empty")
 	}
 

@@ -22,6 +22,7 @@ type migration struct {
 	applied   bool
 }
 
+// NewMigration parses filename (expected format "timestamp_name.ext") into a migration.
 func NewMigration(filename string) (*migration, error) {
 	base := filepath.Base(filename)
 	ext := filepath.Ext(base)

@@ -12,13 +12,21 @@ import (
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * AuthCallbackRequest
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/** kernel.IForm */
+
+/** @interface kernel.IForm */
+
+// AuthCallbackRequest is NewAuthCallbackHandler's request form - the
+// authorization service redirects here with a code to exchange and the
+// CSRF state to validate.
 type AuthCallbackRequest struct {
 	*lxHttp.Form
 	Code  string `json:"code"`
 	State string `json:"state"`
 }
 
+var _ kernel.IForm = (*AuthCallbackRequest)(nil)
+
+// Config describes AuthCallbackRequest's fields - see kernel.IForm.
 func (f *AuthCallbackRequest) Config() kernel.FormConfig {
 	return kernel.FormConfig{
 		"code": kernel.FormFieldConfig{
@@ -32,7 +40,10 @@ func (f *AuthCallbackRequest) Config() kernel.FormConfig {
 	}
 }
 
-/** @constructor */
+/** @constructor kernel.CForm */
+
+// NewAuthCallbackRequest returns an AuthCallbackRequest, ready to be used as
+// an HTTP resource's CRequestForm.
 func NewAuthCallbackRequest() kernel.IForm {
 	return lxHttp.PrepareForm(&AuthCallbackRequest{Form: lxHttp.NewForm()})
 }
@@ -40,25 +51,39 @@ func NewAuthCallbackRequest() kernel.IForm {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * AuthCallbackHandler
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 /** @interface kernel.IHttpResource */
+
+// AuthCallbackHandler is the redirect target the authorization service
+// sends the browser back to after authenticating - validates the CSRF
+// state, exchanges the code for tokens, stores them in the session, and
+// redirects to wherever the user originally came from (see NewStateHandler).
+// Register it at the path configured as AuthConfig.RedirectUri's route.
 type AuthCallbackHandler struct {
 	*lxHttp.Resource
 }
 
-/** @type kernel.CHttpResource */
+var _ kernel.IHttpResource = (*AuthCallbackHandler)(nil)
+
+/** @constructor kernel.CHttpResource */
+
+// NewAuthCallbackHandler constructs an AuthCallbackHandler.
 func NewAuthCallbackHandler() kernel.IHttpResource {
 	return &AuthCallbackHandler{Resource: lxHttp.NewResource(kernel.HttpResourceConfig{
 		CRequestForm: NewAuthCallbackRequest,
 	})}
 }
 
+// ProcessRequestErrors reports a malformed request - see kernel.IHttpResource.
 func (handler *AuthCallbackHandler) ProcessRequestErrors() kernel.IHttpResponse {
 	return handler.ErrorResponse(
-	    http.StatusBadRequest,
-	    fmt.Sprintf("Invalid request: %v", handler.RequestForm().GetFirstError()),
-    )
+		http.StatusBadRequest,
+		fmt.Sprintf("Invalid request: %v", handler.RequestForm().GetFirstError()),
+	)
 }
 
+// Run validates the CSRF state, exchanges the code for tokens, stores them
+// in the session, and redirects the browser to the original page.
 func (handler *AuthCallbackHandler) Run() kernel.IHttpResponse {
 	// Check session
 	sess, err := session.ExtractSession(handler.Context())

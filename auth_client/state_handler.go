@@ -12,12 +12,18 @@ import (
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * StateRequest
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 /** @interface kernel.IForm */
+
+// StateRequest is NewStateHandler's request form.
 type StateRequest struct {
 	*lxHttp.Form
 	URI string `json:"uri"`
 }
 
+var _ kernel.IForm = (*StateRequest)(nil)
+
+// Config describes StateRequest's fields - see kernel.IForm.
 func (f *StateRequest) Config() kernel.FormConfig {
 	return kernel.FormConfig{
 		"uri": kernel.FormFieldConfig{
@@ -27,7 +33,10 @@ func (f *StateRequest) Config() kernel.FormConfig {
 	}
 }
 
-/** @constructor */
+/** @constructor kernel.CForm */
+
+// NewStateRequest returns a StateRequest, ready to be used as an HTTP
+// resource's CRequestForm.
 func NewStateRequest() kernel.IForm {
 	return lxHttp.PrepareForm(&StateRequest{Form: lxHttp.NewForm()})
 }
@@ -35,18 +44,31 @@ func NewStateRequest() kernel.IForm {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * StateHandler
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 /** @interface kernel.IHttpResource */
+
+// StateHandler generates a fresh CSRF state, stores it (and the page to
+// return to, URI) in the session, and hands the state back to the caller -
+// call this before redirecting the browser to the authorization service, so
+// the state can be echoed back through it and validated by
+// AuthCallbackHandler. Register it at the path configured as
+// AuthConfig.StatePath.
 type StateHandler struct {
 	*lxHttp.Resource
 }
 
-/** @kernel.CHttpResource */
+var _ kernel.IHttpResource = (*StateHandler)(nil)
+
+/** @constructor kernel.CHttpResource */
+
+// NewStateHandler constructs a StateHandler.
 func NewStateHandler() kernel.IHttpResource {
 	return &StateHandler{Resource: lxHttp.NewResource(kernel.HttpResourceConfig{
 		CRequestForm: NewStateRequest,
 	})}
 }
 
+// Run generates the CSRF state and stores it (with the return URI) in the session.
 func (handler *StateHandler) Run() kernel.IHttpResponse {
 	// Get session
 	sess, err := session.ExtractSession(handler.Context())

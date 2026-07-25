@@ -14,9 +14,13 @@ import (
 )
 
 const (
-	CACHE_OFF     = "off"
-	CACHE_ON      = "on"
-	CACHE_DEV     = "dev"
+	// CACHE_OFF disables rendering cache for a plugin - always render fresh.
+	CACHE_OFF = "off"
+	// CACHE_ON always serves a plugin's rendering from cache, ignoring dependency changes.
+	CACHE_ON = "on"
+	// CACHE_DEV serves a plugin's rendering from cache only while its dependencies haven't changed.
+	CACHE_DEV = "dev"
+	// CACHE_INHERIT uses the preprocessor's own default cache mode (PluginCacheType) - the default.
 	CACHE_INHERIT = "inherit"
 )
 
@@ -370,7 +374,7 @@ func cachedAssetsFrom(assets jspp.IAssets) []cachedAsset {
 		default:
 			continue
 		}
-		res = append(res, cachedAsset{Path: a.Path(), Type: tp})
+		res = append(res, cachedAsset{Path: a.Src(), Type: tp})
 	}
 	return res
 }

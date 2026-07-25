@@ -1,3 +1,7 @@
+// Package app provides the default kernel.IApp implementation (App) and its
+// supporting pieces - DB connection, pathfinder, DI container. Embed App in
+// your own application struct, override ConfigPath, and call Configure to
+// load config.yaml and wire everything up.
 package app
 
 import (
@@ -18,6 +22,9 @@ import (
 )
 
 /** @interface kernel.IApp */
+
+// App is the default kernel.IApp implementation - embed it in your own
+// application struct and override at least ConfigPath.
 type App struct {
 	port         int
 	pathfinder   kernel.IPathfinder
@@ -33,16 +40,21 @@ type App struct {
 }
 
 /** @constructor */
+
+// NewApp constructs an App with its pathfinder, DI container, template
+// holder and event manager ready to use.
 func NewApp() *App {
 	app := &App{}
 	app.pathfinder = NewAppPathfinder(app)
-	app.diContainer = NewDIConteiner(app)
+	app.diContainer = NewDIContainer(app)
 	app.tplHolder = template.NewTemplateHolder(app)
 	app.events = events.NewEventManager(app)
 	return app
 }
 
-func Configurate(app kernel.IApp) error {
+// Configure loads config.yaml from app.ConfigPath() and initializes app
+// via InitApp - call this once after constructing your application.
+func Configure(app kernel.IApp) error {
 	path := app.ConfigPath()
 	if path == "" {
 		return errors.New("unknown configuration file path")
@@ -60,6 +72,9 @@ func Configurate(app kernel.IApp) error {
 	return nil
 }
 
+// InitApp sets up app from an already-loaded config: port, optional manage
+// socket, optional DB connection, and router - see Configure for the
+// usual entry point that also loads the config file.
 func InitApp(app kernel.IApp, c *kernel.Config) error {
 	port, err := config.GetParam[int](c, "Port")
 	if err != nil {
@@ -93,23 +108,30 @@ func InitApp(app kernel.IApp, c *kernel.Config) error {
 	return nil
 }
 
+// BaseApp returns app itself.
 func (app *App) BaseApp() kernel.IApp {
 	return app
 }
 
+// ConfigPath returns "" - override this in your embedding application struct.
 func (app *App) ConfigPath() string {
 	// abstract
 	return ""
 }
 
+// SetPort overrides the port from config.
 func (app *App) SetPort(p int) {
 	app.port = p
 }
 
+// SetConfig replaces the application's config.
 func (app *App) SetConfig(c *kernel.Config) {
 	app.config = c
 }
 
+// SetConfigParam sets a single top-level config key, coercing val to the
+// existing value's type when they differ (e.g. a string "42" into an int
+// field); logs a warning and leaves the value unchanged if it can't coerce.
 func (app *App) SetConfigParam(key string, val any) {
 	if app.config == nil {
 		return
@@ -174,6 +196,8 @@ func (app *App) SetConfigParam(key string, val any) {
 	), "Config")
 }
 
+// ConfigParam returns a config value by dotted path (e.g. "Database.Host"),
+// or nil if any segment is missing.
 func (app *App) ConfigParam(key string) any {
 	conf := app.Config()
 	path := strings.Split(key, ".")
@@ -194,10 +218,12 @@ func (app *App) ConfigParam(key string) any {
 	return nil
 }
 
+// Config returns the application's config.
 func (app *App) Config() *kernel.Config {
 	return app.config
 }
 
+// SetComponent registers a component under key.
 func (app *App) SetComponent(key any, c kernel.IAppComponent) {
 	if app.components == nil {
 		app.components = make(map[any]kernel.IAppComponent)
@@ -205,11 +231,13 @@ func (app *App) SetComponent(key any, c kernel.IAppComponent) {
 	app.components[key] = c
 }
 
+// HasComponent reports whether a component is registered under key.
 func (app *App) HasComponent(key any) bool {
 	_, exists := app.components[key]
 	return exists
 }
 
+// Component returns the component registered under key, or nil.
 func (app *App) Component(key any) kernel.IAppComponent {
 	c, exists := app.components[key]
 	if !exists {
@@ -218,42 +246,53 @@ func (app *App) Component(key any) kernel.IAppComponent {
 	return c
 }
 
+// SetConnection sets the application's DB connection.
 func (app *App) SetConnection(c kernel.IConnection) {
 	app.connection = c
 }
 
+// SetRouter sets the application's router.
 func (app *App) SetRouter(r kernel.IRouter) {
 	app.router = r
 }
 
+// Pathfinder returns the application's IPathfinder.
 func (app *App) Pathfinder() kernel.IPathfinder {
 	return app.pathfinder
 }
 
+// DIContainer returns the application's dependency-injection container.
 func (app *App) DIContainer() kernel.IDIContainer {
 	return app.diContainer
 }
 
+// Router returns the application's router.
 func (app *App) Router() kernel.IRouter {
 	return app.router
 }
 
+// TemplateHolder returns the application's ITemplateHolder.
 func (app *App) TemplateHolder() kernel.ITemplateHolder {
 	return app.tplHolder
 }
 
+// TemplateRenderer returns a fresh ITemplateRenderer.
 func (app *App) TemplateRenderer() kernel.ITemplateRenderer {
 	return app.tplHolder.TemplateRenderer()
 }
 
+// Events returns the application's event manager.
 func (app *App) Events() kernel.IEventManager {
 	return app.events
 }
 
+// Connection returns the application's DB connection.
 func (app *App) Connection() kernel.IConnection {
 	return app.connection
 }
 
+// Log writes an informational message under category, via the configured
+// logger or the standard log package if none is set.
 func (app *App) Log(msg string, category string) {
 	if app.logger != nil {
 		app.logger.Log(msg, category)
@@ -262,6 +301,8 @@ func (app *App) Log(msg string, category string) {
 	log.Println("[" + category + "]" + " " + msg)
 }
 
+// LogWarning writes a warning message under category, via the configured
+// logger or the standard log package if none is set.
 func (app *App) LogWarning(msg string, category string) {
 	if app.logger != nil {
 		app.logger.LogWarning(msg, category)
@@ -270,6 +311,8 @@ func (app *App) LogWarning(msg string, category string) {
 	log.Println("[" + category + ": warning]" + " " + msg)
 }
 
+// LogError writes an error message under category, via the configured
+// logger or the standard log package if none is set.
 func (app *App) LogError(msg string, category string) {
 	if app.logger != nil {
 		app.logger.LogError(msg, category)
@@ -278,14 +321,18 @@ func (app *App) LogError(msg string, category string) {
 	log.Println("[" + category + ": error]" + " " + msg)
 }
 
+// Logger returns the application's ILogger, or nil if none is set.
 func (app *App) Logger() kernel.ILogger {
 	return app.logger
 }
 
+// SetLogger overrides the application's logger.
 func (app *App) SetLogger(l kernel.ILogger) {
 	app.logger = l
 }
 
+// Run starts the manage socket (if configured), the router, the HTTP
+// server, and every registered component - blocks serving requests.
 func (app *App) Run() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -322,6 +369,8 @@ func (app *App) Run() {
 	}
 }
 
+// Final fires EVENT_APP_BEFORE_FINAL, closes the DB connection, stops the
+// manage socket, and finalizes every registered component.
 func (app *App) Final() {
 	app.events.Trigger(kernel.EVENT_APP_BEFORE_FINAL)
 

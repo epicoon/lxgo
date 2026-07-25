@@ -1,7 +1,7 @@
 package utils
 
-// Returns a new slice containing all elements from slice1
-// that are not present in slice2.
+// SliceDiff returns a new slice containing all elements from slice1 that
+// are not present in slice2.
 func SliceDiff[T comparable](slice1, slice2 []T) []T {
 	diff := []T{}
 	// Create a map to store elements of slice2 for efficient lookup

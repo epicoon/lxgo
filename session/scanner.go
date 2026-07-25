@@ -8,24 +8,33 @@ import (
 	"github.com/epicoon/lxgo/kernel"
 )
 
-type Scaner struct {
+/** @interface IScanner */
+
+// Scanner is the default IScanner implementation - see Storage.Scanner.
+type Scanner struct {
 	storage  IStorage
 	provider IProvider
 }
 
-func (s *Scaner) Len() int {
+var _ IScanner = (*Scanner)(nil)
+
+// Len returns the number of sessions currently stored.
+func (s *Scanner) Len() int {
 	return s.provider.len()
 }
 
-func (s *Scaner) IsEmpty() bool {
+// IsEmpty reports whether the store holds no sessions.
+func (s *Scanner) IsEmpty() bool {
 	return s.Len() == 0
 }
 
-func (s *Scaner) PrintContent() string {
+// PrintContent renders every stored session's data as a string.
+func (s *Scanner) PrintContent() string {
 	return s.provider.content()
 }
 
-func (s *Scaner) PrintContextContent(ctx kernel.IHandleContext) string {
+// PrintContextContent renders the current request's session data as a string.
+func (s *Scanner) PrintContextContent(ctx kernel.IHandleContext) string {
 	cookie, err := ctx.Request().Cookie(s.storage.SessionCookieName())
 	if err != nil {
 		return fmt.Sprintf("can not get session name from cookie: %v", err)

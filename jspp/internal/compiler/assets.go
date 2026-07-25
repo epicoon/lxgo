@@ -24,7 +24,7 @@ func (a Asset) Type() string {
 	return a.tp
 }
 
-func (a Asset) Path() string {
+func (a Asset) Src() string {
 	return a.path
 }
 
@@ -83,7 +83,7 @@ func (as *Assets) AddModule(name string) {
 
 func (as *Assets) Merge(asset jspp.IAssets) {
 	for _, a := range asset.All() {
-		addAsset(as, a.Path(), a.Type())
+		addAsset(as, a.Src(), a.Type())
 	}
 }
 
@@ -104,7 +104,7 @@ func addAsset(as jspp.IAssets, path, tp string) {
 
 func hasAsset(as *Assets, path string) bool {
 	for _, dep := range as.list {
-		if dep.Path() == path {
+		if dep.Src() == path {
 			return true
 		}
 	}

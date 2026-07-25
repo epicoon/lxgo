@@ -11,10 +11,13 @@ import (
 	"github.com/epicoon/lxgo/kernel/conv"
 )
 
+// RequestBuilder starts a fluent outgoing HTTP request: chain Set*/AddHeader
+// calls (each returns the Request itself), then call Send.
 func RequestBuilder() *Request {
 	return &Request{}
 }
 
+// Request is a fluent builder for outgoing HTTP requests - see RequestBuilder.
 type Request struct {
 	method   string
 	url      string
@@ -23,26 +26,31 @@ type Request struct {
 	respForm any
 }
 
+// SetMethod sets the HTTP method.
 func (b *Request) SetMethod(method string) *Request {
 	b.method = method
 	return b
 }
 
+// SetURL sets the target URL.
 func (b *Request) SetURL(url string) *Request {
 	b.url = url
 	return b
 }
 
+// SetJson adds a "Content-Type: application/json" header.
 func (b *Request) SetJson() *Request {
 	b.AddHeader("Content-Type", "application/json")
 	return b
 }
 
+// SetParams sets the request parameters - sent as a query string for GET, as a JSON body otherwise.
 func (b *Request) SetParams(params map[string]any) *Request {
 	b.params = params
 	return b
 }
 
+// AddHeader adds a request header.
 func (b *Request) AddHeader(key, val string) *Request {
 	if b.headers == nil {
 		b.headers = make(map[string]string)
@@ -51,11 +59,14 @@ func (b *Request) AddHeader(key, val string) *Request {
 	return b
 }
 
+// SetResponseForm sets a struct (or *struct) to unmarshal the JSON response body into.
 func (b *Request) SetResponseForm(f any) *Request {
 	b.respForm = f
 	return b
 }
 
+// Send performs the request and returns the raw *http.Response alongside
+// the response form (if SetResponseForm was called) populated from its JSON body.
 func (b *Request) Send() (*http.Response, any, error) {
 	// Create request
 	var req *http.Request

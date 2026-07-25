@@ -10,15 +10,25 @@ import (
 	"github.com/epicoon/lxgo/kernel/utils"
 )
 
+/** @interface cmd.ICommand */
+
+// ClientCommand manages OAuth2 clients (the Client entity requests
+// authenticate against, not end-user accounts).
 type ClientCommand struct {
 	*cmd.Command
 	App cvn.IApp
 }
 
+var _ cmd.ICommand = (*ClientCommand)(nil)
+
+/** @constructor cmd.CCommand */
+
+// NewClientCommand constructs a ClientCommand.
 func NewClientCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	return cmd.Prepare(&ClientCommand{Command: cmd.NewCommand()})
 }
 
+// Config declares the "new", "new-secret", "show" and "del" actions - see cmd.ICommand.
 func (c *ClientCommand) Config() *cmd.Config {
 	return &cmd.Config{
 		Description: "Command to manage OAuth2 clients",
@@ -81,7 +91,7 @@ func (c *ClientCommand) Config() *cmd.Config {
 	}
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func newClient(c cmd.ICommand) error {
 	app, err := core.PrepareApp("config.yaml")
 	if err != nil {
@@ -107,7 +117,7 @@ func newClient(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func delClient(c cmd.ICommand) error {
 	app, err := core.PrepareApp("config.yaml")
 	if err != nil {
@@ -124,7 +134,7 @@ func delClient(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func showClient(c cmd.ICommand) error {
 	app, err := core.PrepareApp("config.yaml")
 	if err != nil {
@@ -145,7 +155,7 @@ func showClient(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func newClientSecret(c cmd.ICommand) error {
 	app, err := core.PrepareApp("config.yaml")
 	if err != nil {

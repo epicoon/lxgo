@@ -13,6 +13,8 @@ import (
 )
 
 /** @interface conventions.IPluginsMap */
+
+// PluginManager is the default jspp.IPluginManager implementation.
 type PluginManager struct {
 	pp      jspp.IPreprocessor
 	data    map[string]pluginData
@@ -21,16 +23,21 @@ type PluginManager struct {
 
 var _ jspp.IPluginManager = (*PluginManager)(nil)
 
+/** @constructor */
+
+// NewMap constructs a PluginManager bound to pp.
 func NewMap(pp jspp.IPreprocessor) jspp.IPluginManager {
 	return &PluginManager{pp: pp}
 }
 
+// Path returns the plugins map's on-disk file path.
 func (m *PluginManager) Path() string {
 	app := m.pp.App()
 	dir := app.Pathfinder().GetAbsPath(m.pp.Config().MapsPath)
 	return filepath.Join(dir, "_plugins.json")
 }
 
+// Has reports whether key is a known plugin name, loading the map first if it hasn't been yet.
 func (m *PluginManager) Has(key string) bool {
 	if m.data == nil {
 		if err := m.Load(); err != nil {
@@ -42,6 +49,9 @@ func (m *PluginManager) Has(key string) bool {
 	return ok
 }
 
+// Get returns the IPlugin registered under pluginName, constructing (via
+// its Go DI key, if any, otherwise the plain base Plugin) and initializing
+// it on first access, then caching the instance.
 func (m *PluginManager) Get(pluginName string) jspp.IPlugin {
 	if p, ok := m.plugins[pluginName]; ok {
 		return p
@@ -88,6 +98,7 @@ func (m *PluginManager) Get(pluginName string) jspp.IPlugin {
 	return plugin
 }
 
+// Load reads the plugins map from disk.
 func (m *PluginManager) Load() error {
 	path := m.Path()
 
@@ -109,14 +120,17 @@ func (m *PluginManager) Load() error {
 	return nil
 }
 
+// Reset rebuilds the plugins map from scratch.
 func (m *PluginManager) Reset() {
 	utils.BuildMaps(m.pp, utils.MapBuilderOptions{Plugins: true})
 }
 
+// NewData constructs an IPluginData entry for name/path/plugin, not yet saved.
 func (m *PluginManager) NewData(name, path, plugin string) jspp.IPluginData {
 	return &pluginData{Ename: name, Epath: path, Eplugin: plugin}
 }
 
+// Save persists plugins as the map's full contents.
 func (m *PluginManager) Save(plugins []jspp.IPluginData) error {
 	filePath := m.Path()
 	dir := filepath.Dir(filePath)
@@ -140,6 +154,7 @@ func (m *PluginManager) Save(plugins []jspp.IPluginData) error {
 	return nil
 }
 
+// SetRoutes registers list's routes to serve each plugin as a full HTML page.
 func (m *PluginManager) SetRoutes(list jspp.PluginRoutesList) {
 	router := m.pp.App().Router()
 
@@ -160,6 +175,7 @@ func (m *PluginManager) SetRoutes(list jspp.PluginRoutesList) {
 	})
 }
 
+// Render renders plugin's snippets for lang and returns the result.
 func (m *PluginManager) Render(plugin jspp.IPlugin, lang string) (*jspp.PluginRenderInfo, error) {
 	renderer := newPluginRenderer(m.pp, plugin, "", lang)
 	res := renderer.run()
@@ -169,6 +185,7 @@ func (m *PluginManager) Render(plugin jspp.IPlugin, lang string) (*jspp.PluginRe
 	return res, nil
 }
 
+// HtmlPage renders pluginName as a full HTML page for lang.
 func (m *PluginManager) HtmlPage(pluginName, lang string) (string, error) {
 	plugin := m.pp.PluginManager().Get(pluginName)
 	if plugin == nil {

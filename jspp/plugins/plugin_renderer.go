@@ -120,11 +120,11 @@ func (r *pluginRenderer) run() *jspp.PluginRenderInfo {
 	for _, as := range commonAssets.All() {
 		switch {
 		case as.IsJS():
-			result.Assets.Scripts = append(result.Assets.Scripts, as.Path())
+			result.Assets.Scripts = append(result.Assets.Scripts, as.Src())
 		case as.IsCSS():
-			result.Assets.Css = append(result.Assets.Css, as.Path())
+			result.Assets.Css = append(result.Assets.Css, as.Src())
 		case as.IsModule():
-			result.Assets.Modules = append(result.Assets.Modules, as.Path())
+			result.Assets.Modules = append(result.Assets.Modules, as.Src())
 		}
 	}
 

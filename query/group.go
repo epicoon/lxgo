@@ -2,6 +2,9 @@ package query
 
 import "strings"
 
+// Group is a Node combining several Nodes with a single SQL boolean operator
+// ("AND" or "OR") - normally built via And/Or rather than constructed
+// directly.
 type Group struct {
 	Operator string // AND / OR
 	Nodes    []Node

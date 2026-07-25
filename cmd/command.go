@@ -1,104 +1,9 @@
 package cmd
 
-import (
-	"errors"
-)
-
-type FConstructor func(opt ...ICommandOptions) ICommand
-type FAction func(c ICommand) error
-type ActionsList map[string]FAction
-type ICommandOptions interface{}
-
-type Config struct {
-	Description string
-	Params      ParamsConfig
-	Actions     ActionsConfig
-}
-
-type ParamType string
-
-const (
-	ParamTypeString ParamType = "string"
-	ParamTypeInt    ParamType = "int"
-	ParamTypeBool   ParamType = "bool"
-)
-
-type ParamsConfig map[string]ParamConfig
-
-type ParamConfig struct {
-	Description string
-	Type        ParamType
-	Required    bool
-	Default     any
-	HideDefault bool
-}
-
-type ActionsConfig map[string]ActionConfig
-
-type ActionConfig struct {
-	Description string
-	Executor    FAction
-	Params      ParamsConfig
-}
-
-func GetOptions[T any](opt []ICommandOptions) T {
-	if len(opt) > 0 && opt[0] != nil {
-		res, ok := opt[0].(T)
-		if !ok {
-			//TODO log to fmt
-			return *new(T)
-		}
-		return res
-	}
-	return *new(T)
-}
-
-type ICommand interface {
-	Config() *Config
-	SetName(name string)
-	Name() string
-	SetAction(action string)
-	Action() string
-	Actions() ActionsList
-	ActiveAction() FAction
-	SetParams(params map[string]any)
-	SetParam(key string, val any)
-	Params() map[string]any
-	HasParam(key string) bool
-	Param(key string) any
-	Flag(key string) bool
-	SetContext(key string, value any)
-	Context(key string) (any, bool)
-	RegisterActions(ActionsList)
-	BeforeExec() error
-	Exec() error
-}
-
-var ErrNotImplementedExec = errors.New("no exec")
-
-func Prepare(c ICommand) ICommand {
-	conf := c.Config()
-	if conf == nil {
-		return c
-	}
-
-	actionsLen := len(conf.Actions)
-	if actionsLen > 0 {
-		al := make(ActionsList, actionsLen)
-		for key, val := range conf.Actions {
-			if val.Executor != nil {
-				al[key] = val.Executor
-			}
-		}
-		if len(al) > 0 {
-			c.RegisterActions(al)
-		}
-	}
-
-	return c
-}
-
 /** @interface ICommand */
+
+// Command is the base ICommand implementation - embed it in your own
+// command struct and override at least Config or Exec.
 type Command struct {
 	name    string
 	action  string
@@ -108,36 +13,45 @@ type Command struct {
 }
 
 /** @constructor */
+
+// NewCommand constructs an empty Command.
 func NewCommand() *Command {
 	return &Command{
 		actions: make(ActionsList, 0),
 	}
 }
 
+// Config returns nil - override this to declare parameters/actions.
 func (c *Command) Config() *Config {
 	return nil
 }
 
+// SetName sets the command's name.
 func (c *Command) SetName(name string) {
 	c.name = name
 }
 
+// Name returns the command's name.
 func (c *Command) Name() string {
 	return c.name
 }
 
+// SetAction sets the action to run.
 func (c *Command) SetAction(action string) {
 	c.action = action
 }
 
+// Action returns the action to run, or "" if the command was called with no action.
 func (c *Command) Action() string {
 	return c.action
 }
 
+// Actions returns the command's registered actions.
 func (c *Command) Actions() ActionsList {
 	return c.actions
 }
 
+// ActiveAction returns the FAction registered for the current Action, or nil if there isn't one.
 func (c *Command) ActiveAction() FAction {
 	if c.action == "" {
 		return nil
@@ -149,10 +63,12 @@ func (c *Command) ActiveAction() FAction {
 	return a
 }
 
+// SetParams replaces all of the command's parameters.
 func (c *Command) SetParams(params map[string]any) {
 	c.params = params
 }
 
+// SetParam sets a single parameter.
 func (c *Command) SetParam(key string, val any) {
 	if c.params == nil {
 		c.params = make(map[string]any, 1)
@@ -160,15 +76,18 @@ func (c *Command) SetParam(key string, val any) {
 	c.params[key] = val
 }
 
+// Params returns all of the command's parameters.
 func (c *Command) Params() map[string]any {
 	return c.params
 }
 
+// HasParam reports whether key is set.
 func (c *Command) HasParam(key string) bool {
 	_, exists := c.params[key]
 	return exists
 }
 
+// Param returns the value of key, or nil if it isn't set.
 func (c *Command) Param(key string) any {
 	val, ok := c.params[key]
 	if !ok {
@@ -177,10 +96,12 @@ func (c *Command) Param(key string) any {
 	return val
 }
 
+// Flag reports whether key was passed as a boolean flag - equivalent to HasParam.
 func (c *Command) Flag(key string) bool {
 	return c.HasParam(key)
 }
 
+// SetContext stores a value in the command's execution context.
 func (c *Command) SetContext(key string, value any) {
 	if c.context == nil {
 		c.context = make(map[string]any)
@@ -188,11 +109,13 @@ func (c *Command) SetContext(key string, value any) {
 	c.context[key] = value
 }
 
+// Context returns a value from the command's execution context.
 func (c *Command) Context(key string) (any, bool) {
 	val, exists := c.context[key]
 	return val, exists
 }
 
+// RegisterActions adds actions to the command, keyed by name.
 func (c *Command) RegisterActions(list ActionsList) {
 	for key, val := range list {
 		c.actions[key] = val
@@ -200,12 +123,17 @@ func (c *Command) RegisterActions(list ActionsList) {
 }
 
 /** @abstract */
+
+// BeforeExec is a no-op - override it to run logic before Exec/the active action.
 func (c *Command) BeforeExec() error {
 	// pass
 	return nil
 }
 
 /** @abstract */
+
+// Exec returns ErrNotImplementedExec, falling through to action-based
+// dispatch - override it for a command with no actions.
 func (c *Command) Exec() error {
 	// pass
 	return ErrNotImplementedExec

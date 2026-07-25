@@ -10,7 +10,11 @@ import (
 	"github.com/epicoon/lxgo/migrator"
 )
 
-/** @type cmd.FConstructor */
+/** @constructor cmd.CCommand */
+
+// NewMigratorCommand builds the migrator:<action> command, wired up against
+// this application's DB connection and its "migrations" directory - see
+// lxgo/migrator for the available actions.
 func NewMigratorCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	conf, err := config.Load("config.yaml")
 	if err != nil {

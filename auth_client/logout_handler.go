@@ -11,16 +11,27 @@ import (
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * LogoutHandler
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 /** @interface kernel.IHttpResource */
+
+// LogoutHandler proxies a logout request through to the authorization
+// service, revoking the caller's access token (see GetBearer for how it's
+// read off the request). Register it at the path configured as
+// AuthConfig.LogoutPath.
 type LogoutHandler struct {
 	*lxHttp.Resource
 }
 
+var _ kernel.IHttpResource = (*LogoutHandler)(nil)
+
 /** @constructor kernel.CHttpResource */
+
+// NewLogoutHandler constructs a LogoutHandler.
 func NewLogoutHandler() kernel.IHttpResource {
 	return &LogoutHandler{Resource: &lxHttp.Resource{}}
 }
 
+// Run revokes the caller's access token on the authorization service.
 func (handler *LogoutHandler) Run() kernel.IHttpResponse {
 	authClient, err := AppComponent(handler.App())
 	if err != nil {

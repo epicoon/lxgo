@@ -1,3 +1,6 @@
+// Package template provides the default kernel.ITemplateHolder/
+// kernel.ITemplateRenderer implementations, resolving templates and their
+// layouts by namespace from the app's "Templates" config section.
 package template
 
 import (
@@ -10,6 +13,7 @@ import (
 )
 
 /** @interface kernel.ITemplateHolder */
+
 type holder struct {
 	app            kernel.IApp
 	conf           map[string]tplScope
@@ -24,7 +28,12 @@ type tplScope struct {
 var _ kernel.ITemplateHolder = (*holder)(nil)
 
 /** @constructor */
-func NewTemplateHolder(app kernel.IApp) *holder {
+
+// NewTemplateHolder constructs the application's default
+// kernel.ITemplateHolder, reading namespace/dir/layout scopes from the
+// app's "Templates" config section (falling back to a single unnamed
+// namespace with no layout if that section is absent).
+func NewTemplateHolder(app kernel.IApp) kernel.ITemplateHolder {
 	return &holder{
 		app:            app,
 		confParseError: false,

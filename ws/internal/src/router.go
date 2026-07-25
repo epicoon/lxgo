@@ -1,6 +1,7 @@
 package src
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -56,7 +57,12 @@ func (router *Router) Handle(route string, params map[string]any) kernel.IHttpRe
 	cReq := res.CRequestForm()
 	if cReq != nil {
 		reqForm := cReq()
-		lxHttp.FormFiller().SetDict(kernel.Dict(params)).SetForm(reqForm).Fill()
+		if err := lxHttp.FormFiller().SetDict(kernel.Dict(params)).SetForm(reqForm).Fill(); err != nil {
+			router.server.App().LogError(fmt.Sprintf("can not fill request form: %s", err), "Handling")
+			resp := &lxHttp.Response{}
+			resp.SetError(http.StatusInternalServerError, "Something went wrong")
+			return resp
+		}
 		res.SetRequestForm(reqForm)
 		if reqForm.HasErrors() {
 			if resp = res.ProcessRequestErrors(); resp != nil {
@@ -65,7 +71,11 @@ func (router *Router) Handle(route string, params map[string]any) kernel.IHttpRe
 		}
 	}
 
-	res.PreRun()
+	preHooks := res.BeforeRunCallbacks()
+	for _, f := range preHooks {
+		f(res)
+	}
+
 	resp = res.Run()
 
 	if resp != nil {

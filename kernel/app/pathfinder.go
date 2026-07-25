@@ -11,22 +11,30 @@ import (
 	"github.com/epicoon/lxgo/kernel/config"
 )
 
+/** @interface kernel.IPathfinder */
+
+// Pathfinder is the default kernel.IPathfinder implementation - resolves
+// relative paths against a fixed root directory.
 type Pathfinder struct {
 	root string
 }
 
-/** @interface */
 var _ kernel.IPathfinder = (*Pathfinder)(nil)
 
+/** @constructor */
+
+// NewPathfinder constructs a Pathfinder rooted at root.
 func NewPathfinder(root string) *Pathfinder {
 	pf := &Pathfinder{root: root}
 	return pf
 }
 
+// GetRoot returns the pathfinder's root directory.
 func (pf *Pathfinder) GetRoot() string {
 	return pf.root
 }
 
+// GetAbsPath resolves path against the root directory (returning path unchanged if it's already absolute).
 func (pf *Pathfinder) GetAbsPath(path string) string {
 	if filepath.IsAbs(path) {
 		return path
@@ -34,16 +42,23 @@ func (pf *Pathfinder) GetAbsPath(path string) string {
 	return filepath.Join(pf.root, path)
 }
 
+/** @interface kernel.IPathfinder */
+
 type appPathfinder struct {
 	*Pathfinder
 	app     kernel.IApp
 	aliases map[string]string
 }
 
-/** @interface */
 var _ kernel.IPathfinder = (*appPathfinder)(nil)
 
-func NewAppPathfinder(app kernel.IApp) *appPathfinder {
+/** @constructor */
+
+// NewAppPathfinder constructs the application's default IPathfinder, rooted
+// at the nearest ancestor directory containing go.mod or bin, with support
+// for "@alias/..." paths resolved via the app's config
+// (Pathfinder.Aliases) - "@app/..." is a built-in alias for the root itself.
+func NewAppPathfinder(app kernel.IApp) kernel.IPathfinder {
 	return &appPathfinder{
 		Pathfinder: NewPathfinder(getProjectRoot()),
 		app:        app,

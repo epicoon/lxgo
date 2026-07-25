@@ -12,6 +12,9 @@ import (
 )
 
 /** @interface kernel.IRouter */
+
+// Router is the default kernel.IRouter implementation - also implements
+// http.Handler, so it can be registered directly with net/http (see Start).
 type Router struct {
 	app        kernel.IApp
 	resources  map[string]kernel.HttpResourcesList
@@ -22,6 +25,9 @@ type Router struct {
 var _ kernel.IRouter = (*Router)(nil)
 
 /** @constructor */
+
+// NewRouter constructs an empty Router bound to app (may be nil for
+// standalone use outside a kernel.IApp).
 func NewRouter(app kernel.IApp) kernel.IRouter {
 	return &Router{
 		app:       app,
@@ -30,6 +36,7 @@ func NewRouter(app kernel.IApp) kernel.IRouter {
 	}
 }
 
+// AddMiddleware registers a middleware, run before every request.
 func (router *Router) AddMiddleware(mh kernel.FMiddleware) {
 	if router.middleware == nil {
 		router.middleware = make([]kernel.FMiddleware, 0, 1)
@@ -37,10 +44,13 @@ func (router *Router) AddMiddleware(mh kernel.FMiddleware) {
 	router.middleware = append(router.middleware, mh)
 }
 
+// Resources returns all registered resources, keyed by route then HTTP method.
 func (router *Router) Resources() map[string]kernel.HttpResourcesList {
 	return router.resources
 }
 
+// RegisterTemplates registers named templates, each served via GET at its
+// own route with the template/params made available through the request context.
 func (router *Router) RegisterTemplates(tpls kernel.HttpTemplatesList) {
 	for url := range tpls {
 		router.RegisterResource(url, "GET", newStdHandler)
@@ -59,6 +69,8 @@ func (router *Router) RegisterTemplates(tpls kernel.HttpTemplatesList) {
 	})
 }
 
+// RegisterResources registers a batch of routes - each key may embed its
+// method as "path[METHOD]" (see parseRoute).
 func (router *Router) RegisterResources(routes kernel.HttpResourcesList) {
 	for route, cResource := range routes {
 		path, method := parseRoute(route)
@@ -66,6 +78,8 @@ func (router *Router) RegisterResources(routes kernel.HttpResourcesList) {
 	}
 }
 
+// RegisterResource registers a single route/method - an empty method
+// matches any HTTP method not otherwise registered for the route.
 func (router *Router) RegisterResource(route string, method string, cResource kernel.CHttpResource) {
 	method = strings.ToUpper(method)
 
@@ -81,6 +95,9 @@ func (router *Router) RegisterResource(route string, method string, cResource ke
 	router.resources[route][method] = cResource
 }
 
+// RegisterFileAssets registers static file routes: each key is a URL
+// prefix, each value the directory it's served from (resolved via the
+// app's pathfinder, if any).
 func (router *Router) RegisterFileAssets(assets map[string]string) {
 	maps.Copy(router.assetsMap, assets)
 	for urlPrefix, dir := range assets {
@@ -100,6 +117,8 @@ func (router *Router) RegisterFileAssets(assets map[string]string) {
 	}
 }
 
+// RegisterProxy registers conf.Routes/conf.Map's routes to be proxied
+// through to conf.Server.
 func (router *Router) RegisterProxy(conf kernel.HttpProxyConfig) {
 	for _, path := range conf.Routes {
 		router.RegisterResource(path, "", newProxyHandler)
@@ -124,6 +143,8 @@ func (router *Router) RegisterProxy(conf kernel.HttpProxyConfig) {
 	})
 }
 
+// GetAssetRoute returns the URL prefix registered for the directory path,
+// or "" if none matches - the reverse of RegisterFileAssets.
 func (router *Router) GetAssetRoute(path string) string {
 	for urlPrefix, dir := range router.assetsMap {
 		if dir == path {
@@ -133,6 +154,9 @@ func (router *Router) GetAssetRoute(path string) string {
 	return ""
 }
 
+// Handle initializes res's context for route/w/r, fires
+// EVENT_APP_BEFORE_HANDLE_REQUEST, and runs it through the router's
+// middleware/form-filling pipeline.
 func (router *Router) Handle(res kernel.IHttpResource, route string, w http.ResponseWriter, r *http.Request) kernel.IHttpResponse {
 	res.Context().Init(
 		router.app,
@@ -151,10 +175,13 @@ func (router *Router) Handle(res kernel.IHttpResource, route string, w http.Resp
 	return processResource(router, res)
 }
 
+// Start registers the router as the handler for "/" on the default net/http mux.
 func (router *Router) Start() {
 	http.Handle("/", router)
 }
 
+// ServeHTTP implements http.Handler: resolves the matching resource for the
+// request, runs it, and sends its response.
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedRoute := r.URL.Path
 	if requestedRoute != "/" {
@@ -255,7 +282,16 @@ func processResource(router *Router, resource kernel.IHttpResource) kernel.IHttp
 	cReq := resource.CRequestForm()
 	if cReq != nil {
 		reqForm := cReq()
-		FormFiller().SetContext(ctx).SetForm(reqForm).Fill()
+		if err := FormFiller().SetContext(ctx).SetForm(reqForm).Fill(); err != nil {
+			msg := fmt.Sprintf("can not fill request form: %s", err)
+			if router.app == nil {
+				fmt.Println(msg)
+			} else {
+				router.app.LogError(msg, "HttpHandling")
+			}
+			http.Error(ctx.ResponseWriter(), "Internal server error", http.StatusInternalServerError)
+			return nil
+		}
 		resource.SetRequestForm(reqForm)
 		if reqForm.HasErrors() {
 			if resp = resource.ProcessRequestErrors(); resp != nil {
@@ -264,7 +300,11 @@ func processResource(router *Router, resource kernel.IHttpResource) kernel.IHttp
 		}
 	}
 
-	resource.PreRun()
+	preHooks := resource.BeforeRunCallbacks()
+	for _, f := range preHooks {
+		f(resource)
+	}
+
 	resp = resource.Run()
 	return resp
 }

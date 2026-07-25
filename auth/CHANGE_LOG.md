@@ -1,4 +1,13 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.25
+Version: v0.1.0-alpha.4
+Changes:
+- docs: Go-doc comments for the `cmd` package's exported declarations - the module's only real public Go API (root is
+  `package main`, everything else lives under `internal/`)
+- docs: removed leftover references to internal task-tracking files from code comments (`AdminCommand`,
+  `internal/models/role.go`, `internal/models/admin.go`) - no behavior change
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.24
 Version: v0.1.0-alpha.3
 Changes:

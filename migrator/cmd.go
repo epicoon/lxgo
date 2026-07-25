@@ -8,15 +8,23 @@ import (
 )
 
 /** @interface cmd.ICommand */
+
+// MigratorCommand is the migrator:<action> console command, wrapping
+// Create/Show/Check/Up/Down/UpSeeds - see NewCommand.
 type MigratorCommand struct {
 	*cmd.Command
 }
 
-/** @type cmd.FConstructor */
+/** @constructor cmd.CCommand */
+
+// NewCommand constructs a MigratorCommand - call migrator.Init first, so it
+// has a DB connection and paths to work with.
 func NewCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	return cmd.Prepare(&MigratorCommand{Command: cmd.NewCommand()})
 }
 
+// Config declares the "create", "show", "check", "up", "down" and
+// "up-seeds" actions - see cmd.ICommand.
 func (c *MigratorCommand) Config() *cmd.Config {
 	return &cmd.Config{
 		Description: "Command to manage migrations",
@@ -74,7 +82,7 @@ func (c *MigratorCommand) Config() *cmd.Config {
 	}
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func create(c cmd.ICommand) error {
 	params := c.Params()
 	name, ok := params["name"]
@@ -98,7 +106,7 @@ func create(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func show(c cmd.ICommand) error {
 	params := c.Params()
 	cntStr, ok := params["count"]
@@ -137,7 +145,7 @@ func show(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func check(c cmd.ICommand) error {
 	mm, err := Check()
 	if err != nil {
@@ -158,13 +166,13 @@ func check(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func up(c cmd.ICommand) error {
 	Up()
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func down(c cmd.ICommand) error {
 	params := c.Params()
 	cntStr, ok := params["count"]
@@ -183,7 +191,7 @@ func down(c cmd.ICommand) error {
 	return nil
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func upSeeds(c cmd.ICommand) error {
 	UpSeeds()
 	return nil

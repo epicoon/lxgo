@@ -44,7 +44,10 @@ func NewServiceHandler() kernel.IHttpResource {
 func (h *ServiceHandler) Run() kernel.IHttpResponse {
 	req := NewServiceRequest()
 
-	lxHttp.FormFiller().SetContext(h.Context()).SetForm(req).Fill()
+	if err := lxHttp.FormFiller().SetContext(h.Context()).SetForm(req).Fill(); err != nil {
+		h.LogError(fmt.Sprintf("Can not fill request form: %s", err), "Handling")
+		return h.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
+	}
 	if req.HasErrors() {
 		return h.ErrorResponse(http.StatusBadRequest, req.GetFirstError().Error())
 	}

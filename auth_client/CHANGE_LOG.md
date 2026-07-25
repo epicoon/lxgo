@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.25
+Version: v0.1.0-alpha.3
+Changes:
+- docs: Go-doc comments for every exported declaration in the package (`AuthClient`, `AuthConfig`, `Tokens`,
+  `GetBearer`, and all 4 ready-made HTTP handlers with their request forms) - previously undocumented
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.24
 Version: v0.1.0-alpha.2
 Changes:

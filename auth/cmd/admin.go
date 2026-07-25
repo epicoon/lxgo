@@ -9,18 +9,26 @@ import (
 	"github.com/epicoon/lxgo/cmd"
 )
 
+/** @interface cmd.ICommand */
+
 // AdminCommand manages service administrators - people who operate the auth
 // service itself, not to be confused with "client" (an OAuth relying party,
-// see ClientCommand). See .claude/tasks/0062.md.
+// see ClientCommand).
 type AdminCommand struct {
 	*cmd.Command
 	App cvn.IApp
 }
 
+var _ cmd.ICommand = (*AdminCommand)(nil)
+
+/** @constructor cmd.CCommand */
+
+// NewAdminCommand constructs an AdminCommand.
 func NewAdminCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 	return cmd.Prepare(&AdminCommand{Command: cmd.NewCommand()})
 }
 
+// Config declares the "new" action for bootstrapping an admin - see cmd.ICommand.
 func (c *AdminCommand) Config() *cmd.Config {
 	return &cmd.Config{
 		Description: "Command to manage service administrators",
@@ -51,7 +59,7 @@ func (c *AdminCommand) Config() *cmd.Config {
 	}
 }
 
-/** @type cmd.FAction */
+/** @handler cmd.FAction */
 func newAdmin(c cmd.ICommand) error {
 	app, err := core.PrepareApp("config.yaml")
 	if err != nil {

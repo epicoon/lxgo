@@ -1,3 +1,7 @@
+// Package migrator manages DB schema migrations and data seeds for
+// lxgo/kernel applications - migrations are YAML files with `up`/`down` SQL,
+// tracked in a dedicated table; see NewCommand for the ready-made console
+// command wrapping Create/Show/Check/Up/Down/UpSeeds.
 package migrator
 
 import (
@@ -22,26 +26,36 @@ up: | # TODO SQL to up migration
 down: | # TODO SQL to down migration
 `
 
+// Config configures the package-level migrator state - see Init.
 type Config struct {
-	DB             *sql.DB
+	// DB is the database connection migrations/seeds run against.
+	DB *sql.DB
+	// MigrationsPath is the directory migration YAML files are read from/written to.
 	MigrationsPath string
-	SeedsPath      string
+	// SeedsPath is the directory seed YAML files are read from.
+	SeedsPath string
 }
 
+// Init sets up the package-level migrator state from conf - call this once
+// before using any other function in the package.
 func Init(conf Config) {
 	m.db = conf.DB
 	m.migrationsPath = conf.MigrationsPath
 	m.seedsPath = conf.SeedsPath
 }
 
+// SetDB overrides the database connection set by Init.
 func SetDB(db *sql.DB) {
 	m.db = db
 }
 
+// SetMigrationsPath overrides the migrations directory set by Init.
 func SetMigrationsPath(migrationsPath string) {
 	m.migrationsPath = migrationsPath
 }
 
+// Create writes a new migration YAML file (timestamped, named after name)
+// into the configured migrations directory, with an up/down template ready to fill in.
 func Create(name string) error {
 	timestamp := time.Now().UTC().Format("20060102150405.000")
 	filename := fmt.Sprintf("%s_%s.yaml", timestamp, name)
@@ -65,6 +79,7 @@ func Create(name string) error {
 	return nil
 }
 
+// Check returns every migration that hasn't been applied yet.
 func Check() ([]*migration, error) {
 	list, err := getMigrations(cGET_UNAPPLIED_ONLY)
 	if err != nil {
@@ -74,6 +89,8 @@ func Check() ([]*migration, error) {
 	return list, nil
 }
 
+// Show returns the last count migrations (applied or not), oldest first;
+// count == 0 returns all of them.
 func Show(count int) ([]*migration, error) {
 	list, err := getMigrations(cGET_ALL)
 	if err != nil {
@@ -86,6 +103,8 @@ func Show(count int) ([]*migration, error) {
 	return list[len(list)-count:], nil
 }
 
+// Up applies every unapplied migration, in one transaction, printing
+// progress and errors to stdout.
 func Up() {
 	mm, err := Check()
 	if err != nil {
@@ -128,6 +147,9 @@ func Up() {
 	fmt.Println("All migrations applied successfully.")
 }
 
+// Down rolls back the last steps applied migrations, in one transaction,
+// printing progress and errors to stdout; steps == 0 rolls back just the
+// last one.
 func Down(steps int) {
 	appliedMigrations, err := getMigrations(cGET_APPLIED_ONLY)
 	if err != nil {
@@ -173,6 +195,9 @@ func Down(steps int) {
 	fmt.Println("Selected migrations rolled back successfully.")
 }
 
+// UpSeeds applies every seed YAML file in the configured seeds directory -
+// each file's basename is the target table, each entry an inserted row -
+// printing progress and errors to stdout.
 func UpSeeds() {
 	if m.seedsPath == "" {
 		fmt.Println("Seeds path not set.")

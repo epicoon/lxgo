@@ -1,3 +1,9 @@
+// Package client is the client-side counterpart of the lxgo/auth
+// authentication microservice - it wires an lxgo/kernel-based application
+// into the OAuth2-like flow that microservice implements, so you don't have
+// to write the integration by hand. See the README for the full setup
+// (config, wiring the component, registering the ready-made handlers, and
+// the one endpoint - "/get-user" - you still write yourself).
 package client
 
 import (
@@ -11,6 +17,10 @@ import (
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
 )
 
+/** @interface kernel.IForm */
+
+// BaseResponse is the common {success, error_code, error_message} shape the
+// authorization service's endpoints reply with.
 type BaseResponse struct {
 	*lxHttp.Form
 	Success      bool   `json:"success"`
@@ -18,6 +28,12 @@ type BaseResponse struct {
 	ErrorMessage string `json:"error_message,omitempty"`
 }
 
+var _ kernel.IForm = (*BaseResponse)(nil)
+
+/** @constructor */
+
+// NewBaseResponse returns an empty BaseResponse, ready to be used as a
+// lxHttp.RequestBuilder response form.
 func NewBaseResponse() *BaseResponse {
 	return &BaseResponse{Form: lxHttp.NewForm()}
 }
@@ -26,19 +42,34 @@ func NewBaseResponse() *BaseResponse {
  * AuthConfig
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+// AuthConfig is AuthClient's config - see "Add the app component to your
+// app config file" in the README for the full config.yaml shape this binds to.
 type AuthConfig struct {
 	lxApp.ComponentConfig
-	ID           int
-	Secret       string
-	RedirectUri  string
-	Server       string
-	StatePath    string
-	LogoutPath   string
-	RefreshPath  string
+	// ID is this client's ID, as registered with the authorization service.
+	ID int
+	// Secret is this client's secret, as registered with the authorization service.
+	Secret string
+	// RedirectUri is where the authorization service sends the user back to
+	// after authenticating - must match what's registered for this client.
+	RedirectUri string
+	// Server is the authorization service's base URL.
+	Server string
+	// StatePath is the local route that generates the CSRF state - see NewStateHandler.
+	StatePath string
+	// LogoutPath is the local route that proxies /logout - see NewLogoutHandler.
+	LogoutPath string
+	// RefreshPath is the local route that proxies /refresh - see NewRefreshHandler.
+	RefreshPath string
+	// UserDataPath is the local route your own handler proxies /user-data
+	// through - see AuthClient.GetUserData.
 	UserDataPath string
 }
 
 /** kernel.CComponentConfig */
+
+// NewAuthConfig returns an empty AuthConfig - see AuthClient.CConfig, not
+// normally called directly.
 func NewAuthConfig() kernel.IAppComponentConfig {
 	return &AuthConfig{ComponentConfig: *lxApp.NewComponentConfigStruct()}
 }
@@ -47,12 +78,25 @@ func NewAuthConfig() kernel.IAppComponentConfig {
  * AuthClient
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+/** @interface kernel.IAppComponent */
+
+// AuthClient is the app component that talks to the authorization service's
+// API - see SetAppComponent to set one up and AppComponent to get a handle
+// to it.
 type AuthClient struct {
 	*lxApp.AppComponent
 }
 
+var _ kernel.IAppComponent = (*AuthClient)(nil)
+
+// APP_COMPONENT_KEY is the key this component registers itself under via
+// kernel.IApp.SetComponent - see AppComponent.
 const APP_COMPONENT_KEY = "lxgo_auth_client"
 
+// SetAppComponent creates an AuthClient, configures it from configKey (see
+// "Add the app component to your app config file" in the README), and
+// registers it on app under APP_COMPONENT_KEY - errors if the app already
+// has that component.
 func SetAppComponent(app kernel.IApp, configKey string) error {
 	if app.HasComponent(APP_COMPONENT_KEY) {
 		return fmt.Errorf("the application already has component: %s", APP_COMPONENT_KEY)
@@ -68,6 +112,8 @@ func SetAppComponent(app kernel.IApp, configKey string) error {
 	return nil
 }
 
+// AppComponent returns app's AuthClient, previously set up via
+// SetAppComponent - errors if there isn't one.
 func AppComponent(app kernel.IApp) (*AuthClient, error) {
 	c := app.Component(APP_COMPONENT_KEY)
 	if c == nil {
@@ -83,22 +129,32 @@ func AppComponent(app kernel.IApp) (*AuthClient, error) {
 }
 
 /** @constructor */
+
+// NewAuthClient constructs a bare AuthClient - normally reached via
+// SetAppComponent instead of calling this directly.
 func NewAuthClient() kernel.IAppComponent {
 	return &AuthClient{AppComponent: lxApp.NewAppComponent()}
 }
 
+// Name returns the component's registration name ("AuthClient").
 func (c *AuthClient) Name() string {
 	return "AuthClient"
 }
 
+// CConfig returns the AuthConfig constructor - see kernel.CAppComponentConfig.
 func (c *AuthClient) CConfig() kernel.CAppComponentConfig {
 	return NewAuthConfig
 }
 
+// Config returns the component's bound AuthConfig.
 func (c *AuthClient) Config() *AuthConfig {
 	return (c.GetConfig()).(*AuthConfig)
 }
 
+// PrepareClientSettings renders the client-side config (client ID,
+// redirect/state/logout/refresh/user-data paths) as an inline <script> tag
+// that sets window._lxauth_settings - embed it in a page template so
+// browser-side auth code can read its own configuration.
 func (c *AuthClient) PrepareClientSettings() template.HTML {
 	config := c.Config()
 	data := struct {
@@ -128,6 +184,8 @@ func (c *AuthClient) PrepareClientSettings() template.HTML {
 	return template.HTML("<script>window._lxauth_settings='" + string(jsonStr) + "'</script>")
 }
 
+// ExchangeCodeForTokens exchanges an authorization code (received via
+// NewAuthCallbackHandler) for a token pair.
 func (c *AuthClient) ExchangeCodeForTokens(code string) (*Tokens, error) {
 	config := c.Config()
 	_, tokensResp, err := lxHttp.RequestBuilder().
@@ -150,6 +208,7 @@ func (c *AuthClient) ExchangeCodeForTokens(code string) (*Tokens, error) {
 	return tokens, nil
 }
 
+// LogOut revokes accessToken on the authorization service.
 func (c *AuthClient) LogOut(accessToken string) error {
 	config := c.Config()
 	_, resp, err := lxHttp.RequestBuilder().
@@ -174,6 +233,8 @@ func (c *AuthClient) LogOut(accessToken string) error {
 	return nil
 }
 
+// RefreshTokens exchanges a refresh token for a new token pair - narrowing
+// the granted scope is possible, broadening it is not (RFC 6749 §6).
 func (c *AuthClient) RefreshTokens(refreshToken string) (*Tokens, error) {
 	config := c.Config()
 	_, resp, err := lxHttp.RequestBuilder().
@@ -200,6 +261,9 @@ func (c *AuthClient) RefreshTokens(refreshToken string) (*Tokens, error) {
 	return tokens, nil
 }
 
+// GetUserData fetches the data an authenticated user stored on the
+// authorization service (see lxgo/auth's /user-data) - requires the
+// "profile:data" scope; accessToken must be valid.
 func (c *AuthClient) GetUserData(accessToken string) (*UserData, error) {
 	config := c.Config()
 	type respForm struct {

@@ -1,3 +1,5 @@
+// Package cmd provides the "compile" console command for building/serving
+// the jspp preprocessor's static output - core JS, modules map, plugins map.
 package cmd
 
 import (
@@ -13,17 +15,28 @@ import (
 	"github.com/epicoon/lxgo/kernel"
 )
 
+// CompileCommandOptions is CompileCommand's cmd.ICommandOptions - App is required.
 type CompileCommandOptions struct {
+	// App is the application the jspp component is registered on.
 	App kernel.IApp
 }
 
 /** @interface cmd.ICommand */
+
+// CompileCommand builds jspp's static output: the core JS bundle, and the
+// modules/plugins maps - see NewCompileCommand.
 type CompileCommand struct {
 	*cmd.Command
 	app kernel.IApp
 }
 
-/** @type cmd.FConstructor */
+var _ cmd.ICommand = (*CompileCommand)(nil)
+
+/** @constructor cmd.CCommand */
+
+// NewCompileCommand constructs a CompileCommand with "build"/"build-core"/
+// "build-maps"/"build-modules-map"/"build-plugins-map" actions - panics if
+// CompileCommandOptions.App isn't given.
 func NewCompileCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 	options := cmd.GetOptions[CompileCommandOptions](opt)
 	if options.App == nil {
@@ -44,7 +57,7 @@ func NewCompileCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 	return c
 }
 
-/** @function cmd.FAction */
+/** @handler cmd.FAction */
 func build(com cmd.ICommand) error {
 	if err := buildCore(com); err != nil {
 		return err
@@ -55,7 +68,7 @@ func build(com cmd.ICommand) error {
 	return nil
 }
 
-/** @function cmd.FAction */
+/** @handler cmd.FAction */
 func buildCore(com cmd.ICommand) error {
 	c := com.(*CompileCommand)
 	app := c.app
@@ -74,7 +87,7 @@ func buildCore(com cmd.ICommand) error {
 	return nil
 }
 
-/** @function cmd.FAction */
+/** @handler cmd.FAction */
 func buildMaps(com cmd.ICommand) error {
 	return buildMap(com, utils.MapBuilderOptions{
 		Modules: true,
@@ -82,14 +95,14 @@ func buildMaps(com cmd.ICommand) error {
 	})
 }
 
-/** @function cmd.FAction */
+/** @handler cmd.FAction */
 func buildModulesMap(com cmd.ICommand) error {
 	return buildMap(com, utils.MapBuilderOptions{
 		Modules: true,
 	})
 }
 
-/** @function cmd.FAction */
+/** @handler cmd.FAction */
 func buildPluginsMap(com cmd.ICommand) error {
 	return buildMap(com, utils.MapBuilderOptions{
 		Plugins: true,

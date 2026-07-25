@@ -7,6 +7,8 @@ import (
 	"github.com/epicoon/lxgo/kernel"
 )
 
+// Lang returns req's language from the "lxlang" cookie, defaulting to
+// "en-EN" if it's missing.
 func Lang(app kernel.IApp, req *http.Request) string {
 	lc, err := req.Cookie("lxlang")
 	if err != nil {
@@ -18,6 +20,9 @@ func Lang(app kernel.IApp, req *http.Request) string {
 	return lc.Value
 }
 
+// HtmlResponse builds an HTML IHttpResponse from conf - conf.Html is used
+// verbatim if set, otherwise conf.Template is rendered with conf.Params via
+// app's template renderer.
 func HtmlResponse(app kernel.IApp, conf kernel.HtmlResponseConfig) (kernel.IHttpResponse, error) {
 	var html string
 	if conf.Html != "" {

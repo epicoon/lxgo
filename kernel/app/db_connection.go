@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// ConnectionConfig configures a Connection - see Connection.SetConfig.
 type ConnectionConfig struct {
 	Host                string
 	Port                int
@@ -23,30 +24,43 @@ type ConnectionConfig struct {
 	ConnectAttemptDelay int
 }
 
+/** @interface kernel.IConnection */
+
+// Connection is the default kernel.IConnection implementation - a
+// PostgreSQL connection via database/sql.
 type Connection struct {
 	app kernel.IApp
 	cfg *ConnectionConfig
 	db  *sql.DB
 }
 
+var _ kernel.IConnection = (*Connection)(nil)
+
+/** @constructor */
+
+// NewConnection constructs an unconfigured Connection.
 func NewConnection() *Connection {
 	return new(Connection)
 }
 
+// SetApp binds the connection to its owning app.
 func (c *Connection) SetApp(app kernel.IApp) {
 	c.app = app
 }
 
+// SetConfig converts cfg into a ConnectionConfig.
 func (c *Connection) SetConfig(cfg *kernel.Config) {
 	c.cfg = new(ConnectionConfig)
 	conv.DictToStruct((*kernel.Dict)(cfg), c.cfg)
 }
 
+// DB returns the underlying *sql.DB, or nil before Connect succeeds.
 func (c *Connection) DB() *sql.DB {
 	return c.db
 }
 
-// Try to establish connection to DB
+// Connect opens the connection, retrying up to ConnectAttempts times
+// (10 by default) with ConnectAttemptDelay seconds between attempts (2 by default).
 func (c *Connection) Connect() error {
 	cfg := c.cfg
 	if err := validateConfig(cfg); err != nil {
@@ -88,6 +102,7 @@ func (c *Connection) Connect() error {
 	return fmt.Errorf("failed to connect to DB after %d attempts: %w", attempts, err)
 }
 
+// Close closes the connection.
 func (c *Connection) Close() error {
 	if c.db != nil {
 		return c.db.Close()
