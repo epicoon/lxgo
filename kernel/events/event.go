@@ -11,7 +11,7 @@ import "github.com/epicoon/lxgo/kernel"
 type Event struct {
 	app     kernel.IApp
 	name    string
-	payload kernel.IData
+	payload kernel.IDict
 }
 
 var _ kernel.IEvent = (*Event)(nil)
@@ -23,7 +23,7 @@ func NewEvent(app kernel.IApp, name string) *Event {
 	return &Event{
 		app:     app,
 		name:    name,
-		payload: kernel.NewEmptyData(),
+		payload: make(kernel.Dict),
 	}
 }
 
@@ -38,11 +38,11 @@ func (e *Event) App() kernel.IApp {
 }
 
 // SetPayload sets the event's payload data.
-func (e *Event) SetPayload(d kernel.IData) {
+func (e *Event) SetPayload(d kernel.IDict) {
 	e.payload = d
 }
 
 // Payload returns the event's payload data.
-func (e *Event) Payload() kernel.IData {
+func (e *Event) Payload() kernel.IDict {
 	return e.payload
 }

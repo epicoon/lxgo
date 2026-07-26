@@ -6,13 +6,13 @@ import (
 
 	"github.com/epicoon/lxgo/jspp"
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 	kernelConfig "github.com/epicoon/lxgo/kernel/config"
-	"github.com/epicoon/lxgo/kernel/conv"
 )
 
 type absConfig struct {
 	plugin jspp.IPlugin
-	data   *kernel.Config
+	data   *kernel.Dict
 }
 
 // Config is the default jspp.IPluginConfig implementation - a parsed lx-plugin.yaml.
@@ -76,17 +76,21 @@ func (c *Config) SetPlugin(plugin jspp.IPlugin) {
 
 // Load reads and parses the lx-plugin.yaml file at path.
 func (c *Config) Load(path string) error {
-	data, err := kernelConfig.Load(path)
+	raw, err := kernelConfig.Load(path)
 	if err != nil {
 		return err
 	}
 
+	data, ok := raw.(*kernel.Dict)
+	if !ok {
+		return fmt.Errorf("unexpected config type %T for plugin config at '%s'", raw, path)
+	}
 	c.data = data
 
 	if !kernelConfig.HasParam(c.data, "server") {
-		c.server.data = &kernel.Config{}
+		c.server.data = &kernel.Dict{}
 	} else {
-		res, err := kernelConfig.GetParam[kernel.Config](c.data, "server")
+		res, err := kernelConfig.GetParam[kernel.Dict](c.data, "server")
 		if err != nil {
 			return fmt.Errorf("can not get config param 'server' for plugin '%s': %v", path, err)
 		}
@@ -94,9 +98,9 @@ func (c *Config) Load(path string) error {
 	}
 
 	if !kernelConfig.HasParam(c.data, "client") {
-		c.client.data = &kernel.Config{}
+		c.client.data = &kernel.Dict{}
 	} else {
-		res, err := kernelConfig.GetParam[kernel.Config](c.data, "client")
+		res, err := kernelConfig.GetParam[kernel.Dict](c.data, "client")
 		if err != nil {
 			return fmt.Errorf("can not get config param 'client' for plugin '%s': %v", path, err)
 		}
@@ -104,9 +108,9 @@ func (c *Config) Load(path string) error {
 	}
 
 	if !kernelConfig.HasParam(c.data, "page") {
-		c.page.data = &kernel.Config{}
+		c.page.data = &kernel.Dict{}
 	} else {
-		res, err := kernelConfig.GetParam[kernel.Config](c.data, "page")
+		res, err := kernelConfig.GetParam[kernel.Dict](c.data, "page")
 		if err != nil {
 			return fmt.Errorf("can not get config param 'page' for plugin '%s': %v", path, err)
 		}
@@ -143,7 +147,7 @@ func (c *Config) Images() (result map[string]string) {
 		}
 	}
 
-	res, err := kernelConfig.GetParam[kernel.Config](c.data, "images")
+	res, err := kernelConfig.GetParam[kernel.Dict](c.data, "images")
 	if err != nil {
 		img, err := kernelConfig.GetParam[string](c.data, "images")
 		if err == nil {
@@ -254,7 +258,7 @@ func (c *serverConfig) SnippetsMap() map[string]string {
 		return c.snippetsMap
 	}
 
-	raw := get[kernel.Config](&c.absConfig, "snippetsMap", kernel.Config{}, "server")
+	raw := get[kernel.Dict](&c.absConfig, "snippetsMap", kernel.Dict{}, "server")
 	if len(raw) == 0 {
 		c.snippetsMap = make(map[string]string)
 		return c.snippetsMap
@@ -300,7 +304,7 @@ func (c *clientConfig) Core() string {
 
 // GuiNodes returns the plugin's configured GUI node class names, keyed by node name.
 func (c *clientConfig) GuiNodes() map[string]string {
-	list := get[kernel.Config](&c.absConfig, "guiNodes", kernel.Config{}, "client")
+	list := get[kernel.Dict](&c.absConfig, "guiNodes", kernel.Dict{}, "client")
 	if len(list) == 0 {
 		return make(map[string]string, 0)
 	}
@@ -338,7 +342,7 @@ func (c *pageConfig) Template() *jspp.PluginTemplate {
 	}
 
 	if c.tpl == nil {
-		raw := get[kernel.Config](&c.absConfig, "template", nil, "page")
+		raw := get[kernel.Dict](&c.absConfig, "template", nil, "page")
 		if raw == nil {
 			c.noTpl = true
 			return nil
@@ -346,7 +350,7 @@ func (c *pageConfig) Template() *jspp.PluginTemplate {
 
 		c.tpl = &jspp.PluginTemplate{}
 		dict := kernel.Dict(raw)
-		conv.DictToStruct(&dict, c.tpl)
+		cast.DictToStruct(&dict, c.tpl)
 	}
 	return c.tpl
 }
@@ -362,7 +366,7 @@ func (sc *serverConfig) serializePath(pathData any) string {
 		return sc.plugin.Pathfinder().GetAbsPath(sPath)
 	}
 
-	mPath, ok := pathData.(kernel.Config)
+	mPath, ok := pathData.(kernel.Dict)
 	if !ok {
 		return ""
 	}

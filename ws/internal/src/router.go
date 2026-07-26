@@ -49,9 +49,9 @@ func (router *Router) Handle(route string, params map[string]any) kernel.IHttpRe
 	ctx.SetParams(params)
 	res.SetContext(ctx)
 
-	router.server.App().Events().Trigger(kernel.EVENT_APP_BEFORE_HANDLE_REQUEST, kernel.NewData(map[string]any{
+	router.server.App().Events().Trigger(kernel.EVENT_APP_BEFORE_HANDLE_REQUEST, kernel.Dict{
 		"context": ctx,
-	}))
+	})
 
 	var resp kernel.IHttpResponse
 	cReq := res.CRequestForm()
@@ -79,10 +79,10 @@ func (router *Router) Handle(route string, params map[string]any) kernel.IHttpRe
 	resp = res.Run()
 
 	if resp != nil {
-		router.server.App().Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.NewData(map[string]any{
+		router.server.App().Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.Dict{
 			"context":  ctx,
 			"response": resp,
-		}))
+		})
 	}
 
 	return resp

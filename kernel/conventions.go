@@ -1,7 +1,7 @@
 // Package kernel provides the core web-server application - components,
 // routing and request handling - for lxgo-based applications. See the
 // package README for a step-by-step tutorial; public subpackages (app,
-// http, config, conv, errors, events, template, utils, cmd) extend this
+// http, config, cast, errors, events, template, utils, cmd) extend this
 // core with ready-made implementations and helpers.
 package kernel
 
@@ -21,11 +21,26 @@ import (
  * APP
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// Dict is a generic string-keyed bag of values - see also Config, Data.
-type Dict map[string]any
+// IDict is a generic string-keyed value-bag interface - implemented by Dict.
+type IDict interface {
+	// Set stores val under key.
+	Set(key string, val any)
 
-// Config is an application's parsed configuration (from config.yaml) - see IApp.Config.
-type Config Dict
+	// Get returns the value stored under key, or nil.
+	Get(key string) any
+
+	// Has reports whether key is set.
+	Has(key string) bool
+
+	// ToMap coerces to a plain map[string]any
+	ToMap() map[string]any
+}
+
+// Dict is a generic string-keyed bag of values, implementing IDict - also
+// used as the application's parsed configuration (from config.yaml), see
+// IApp.Config. Must be created via make(Dict) or a literal before Set is
+// called - a nil Dict panics on assignment, same as a nil map.
+type Dict map[string]any
 
 // IApp is the web-server application itself - owns the DB connection,
 // router, components, DI container, templates and events, and drives the
@@ -41,7 +56,7 @@ type IApp interface {
 	ConfigPath() string
 
 	// SetConfig replaces the application's config.
-	SetConfig(c *Config)
+	SetConfig(c IDict)
 
 	// SetConfigParam sets a single top-level config key.
 	SetConfigParam(key string, val any)
@@ -51,7 +66,7 @@ type IApp interface {
 	ConfigParam(key string) any
 
 	// Config returns the application's config.
-	Config() *Config
+	Config() IDict
 
 	// SetComponent registers a component under key.
 	SetComponent(key any, c IAppComponent)
@@ -191,7 +206,7 @@ type IConnection interface {
 	SetApp(app IApp)
 
 	// SetConfig sets the connection's config.
-	SetConfig(cfg *Config)
+	SetConfig(cfg IDict)
 
 	// DB returns the underlying *sql.DB.
 	DB() *sql.DB
@@ -461,11 +476,17 @@ type IHttpResource interface {
 	// BeforeRunCallbacks returns hooks to run right before Run.
 	BeforeRunCallbacks() []func(res IHttpResource)
 
-	// Run handles the request and returns the response - implement this in your resource.
+	// Run handles the request and returns the response - implement this in
+	// your resource. Run executes even if the request form failed
+	// validation and ProcessRequestErrors wasn't overridden (returned nil)
+	// - check RequestForm().HasErrors() yourself here if Run needs to react
+	// to that instead of relying on ProcessRequestErrors' short-circuit.
 	Run() IHttpResponse
 
 	// ProcessRequestErrors is called when the request form failed
-	// validation - override it to return a custom error response.
+	// validation - override it to return a custom error response and
+	// short-circuit Run. Returning nil (the default) does NOT block Run -
+	// it still executes, with a request form that may carry errors.
 	ProcessRequestErrors() IHttpResponse
 
 	// Lang returns the request's resolved language.
@@ -570,10 +591,8 @@ type IForm interface {
 	// Required returns the currently required fields.
 	Required() []string
 
-	// Fill populates the form from d.
-	Fill(d *Dict) error
-
-	// AfterFill runs after Fill succeeds - override it for cross-field logic.
+	// AfterFill runs once the form's fields have been populated - override
+	// it for cross-field logic.
 	AfterFill()
 
 	// Validate reports whether the filled form is valid.
@@ -669,7 +688,7 @@ type IEventManager interface {
 	Handle(eventName string, handler IEventHandler)
 
 	// Trigger fires eventName with the given payload data.
-	Trigger(eventName string, d ...IData)
+	Trigger(eventName string, d ...IDict)
 }
 
 // IEvent is a single firing of a named event, carrying an optional payload.
@@ -681,10 +700,10 @@ type IEvent interface {
 	App() IApp
 
 	// SetPayload sets the event's payload data.
-	SetPayload(d IData)
+	SetPayload(d IDict)
 
 	// Payload returns the event's payload data.
-	Payload() IData
+	Payload() IDict
 }
 
 // IEventHandler is a reusable, app-bound handler for one or more events -
@@ -698,21 +717,4 @@ type IEventHandler interface {
 
 	// Run handles the event.
 	Run(e IEvent)
-}
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * COMMON
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-// IData is a generic string-keyed value bag - see Data for the default
-// implementation, used e.g. as an IEvent's payload.
-type IData interface {
-	// Set stores val under key.
-	Set(key string, val any)
-
-	// Get returns the value stored under key, or nil.
-	Get(key string) any
-
-	// Has reports whether key is set.
-	Has(key string) bool
 }

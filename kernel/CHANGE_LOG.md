@@ -1,4 +1,35 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.27
+Version: v0.1.0-alpha.26
+Changes:
+- add: `cast` package - a single reflect-based coercion API (`cast.Value`/`cast.To[T]`/`cast.DictToStruct`/
+  `cast.JsonToStruct`/`cast.MapToStruct`/`cast.FieldName`), replacing four independent, partially-inconsistent
+  coercion implementations previously scattered across `app.SetConfigParam`, `config.GetParam`, `conv.GetDictItem`
+  and `conv.setFieldValue` - fixes real inconsistencies found while consolidating them (e.g. `float64` from a numeric
+  string used to fail via `GetDictItem` while working via `GetParam`/`SetConfigParam`; an `int` coerced into a
+  `string` field could silently produce a garbage single-character string via Go's rune-conversion rule instead of
+  the decimal value)
+- remove: `conv` package - fully superseded by `cast`
+- add: `kernel.IDict` interface (`Set`/`Get`/`Has`) - `kernel.Dict` now implements it
+- remove: `kernel.Config` type - replaced by `kernel.IDict` across the public API (`IApp.SetConfig`/`Config()`,
+  `IConnection.SetConfig`, `config.Load`/`GetParam`/`HasParam`/`SetParam`) and by `kernel.Dict` where a concrete map
+  is actually needed; `Config.ToMap()`/`ToDict()` removed with it
+- remove: `kernel.IData`/`kernel.Data`/`kernel.NewData`/`kernel.NewEmptyData` - replaced by `kernel.IDict`/
+  `kernel.Dict` (`IEventManager.Trigger`, `IEvent.SetPayload`/`Payload` now take/return `kernel.IDict`)
+- remove: `kernel.IForm.Fill(d *Dict) error` - dead code that was never called (form filling has always gone through
+  `cast.DictToStruct`/tag matching) and never overridden anywhere in this workspace
+- add: `apptest` package - `apptest.New`/`apptest.Server` build a minimal `kernel.IApp` (and, optionally, a real
+  HTTP test server around its router) for other lxgo-* packages' integration tests, without needing a `config.yaml`
+  file on disk
+- fix: `internal/manage/reconf` config diffing (`manage:refresh-config`) panicked when comparing a newly-added array
+  against a previously-empty one (e.g. `Servers: []` followed by `manage:inject-config --add Servers=[...]`)
+- fix: `internal/manage/inconf` (`manage:inject-config --test`) no longer prints raw request params to stdout
+- docs: clarified that `Run` still executes even when the request form failed validation and
+  `ProcessRequestErrors` wasn't overridden - previously undocumented, easy to misread as a gap
+- test: added unit tests for `cast`, `http` (form filling, request handling), `internal/manage/reconf`,
+  `internal/manage/inconf` and `apptest` - previously the package had zero tests
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.25
 Changes:

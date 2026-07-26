@@ -24,7 +24,7 @@ func (h *proxyHandler) Run() kernel.IHttpResponse {
 
 	target, err := url.Parse(server)
 	if err != nil {
-		h.LogError(fmt.Sprintf("can not make proxy request to '%s': %v", server, err), "Handling")
+		h.LogError(fmt.Sprintf("can not make proxy request to '%s': %v", server, err), "HttpHandling")
 		return h.JsonResponse(kernel.JsonResponseConfig{
 			Code: http.StatusInternalServerError,
 			Dict: kernel.Dict{"details": "something went wrong"},

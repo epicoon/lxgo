@@ -1,4 +1,12 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.27
+Version: v0.1.0-alpha.30
+Changes:
+- internal: adapted to `lxgo-kernel`'s `Config`→`IDict`/`Dict` refactor and its `conv`→`cast` package rename
+  (`plugins.Config`, `internal/utils.targetBuilder`, `plugins.pluginRenderer`/`snippetRenderer`) - no change to
+  `jspp`'s own public API
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.29
 Changes:

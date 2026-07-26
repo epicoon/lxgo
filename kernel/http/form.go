@@ -10,8 +10,9 @@ import (
 /** @interface kernel.IForm */
 
 // Form is the base kernel.IForm implementation - embed it in your own form
-// struct and override at least Fill/Validate (and Config, to declare
-// required fields).
+// struct and override at least Validate (and Config, to declare required
+// fields). Fields are populated automatically (via cast.DictToStruct,
+// matched by "dict"/"json" tag or field name).
 type Form struct {
 	*errors.ErrorsCollector
 	required []string
@@ -33,7 +34,7 @@ func FormToMap(f kernel.IForm) map[string]any {
 	result := make(map[string]any)
 
 	val := reflect.ValueOf(f)
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 
@@ -102,15 +103,8 @@ func (f *Form) Required() []string {
 
 /** @abstract */
 
-// Fill is a no-op - override it to populate the form from d.
-func (f *Form) Fill(d *kernel.Dict) error {
-	// Pass
-	return nil
-}
-
-/** @abstract */
-
-// AfterFill is a no-op - override it for cross-field logic after Fill succeeds.
+// AfterFill is a no-op - override it for cross-field logic after the form's
+// fields have been populated.
 func (f *Form) AfterFill() {
 	// Pass
 }

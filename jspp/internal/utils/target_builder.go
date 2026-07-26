@@ -8,7 +8,7 @@ import (
 
 	"github.com/epicoon/lxgo/jspp"
 	"github.com/epicoon/lxgo/jspp/internal/base"
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 )
 
 type targetBuilder struct {
@@ -87,7 +87,7 @@ func (tb *targetBuilder) renderCss(c jspp.ICompiler) string {
 		return ""
 	}
 
-	conv.MapToStruct(rawRes.Result().(map[string]any), &res)
+	cast.MapToStruct(rawRes.Result().(map[string]any), &res)
 	css, err := json.Marshal(res.Css)
 	if err != nil {
 		tb.pp.LogError("can not encode css for '%s': %v", tb.path, err)

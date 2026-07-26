@@ -1,4 +1,4 @@
-// Package config loads and reads a kernel.Config from YAML - Load reads the
+// Package config loads and reads a kernel.Dict from YAML - Load reads the
 // file at path, merges in a local override file (the "Local" key) if
 // present, and substitutes "${VAR}"/"${VAR:-default}" placeholders from a
 // .env file and the process environment (the "Env" key). GetParam/HasParam/
@@ -11,18 +11,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"gopkg.in/yaml.v3"
 )
 
 // Load reads and parses the YAML config file at path, merging in a local
 // override file and applying environment-variable substitution - see the
 // package doc comment for the full behavior.
-func Load(path string) (*kernel.Config, error) {
+func Load(path string) (kernel.IDict, error) {
 	conf, err := load(path)
 	if err != nil {
 		return nil, err
@@ -66,77 +65,30 @@ func Load(path string) (*kernel.Config, error) {
 }
 
 // SetParam sets a single top-level config parameter.
-func SetParam(c *kernel.Config, param string, val any) {
-	(*c)[param] = val
+func SetParam(c kernel.IDict, param string, val any) {
+	c.Set(param, val)
 }
 
 // HasParam reports whether param is set at the top level of c.
-func HasParam(c *kernel.Config, param string) bool {
-	_, exists := (*c)[param]
-	return exists
+func HasParam(c kernel.IDict, param string) bool {
+	return c.Has(param)
 }
 
-// GetParam returns param's value from c, coerced to T - handling the
-// common YAML mismatches (numeric strings into int/int64/float64, string
-// slices into typed slices) that come up when reading env-substituted values.
-func GetParam[T any](c *kernel.Config, param string) (T, error) {
-	val, exists := (*c)[param]
-	if !exists {
+// GetParam returns param's value from c, coerced to T - see cast.Value for
+// the supported conversions.
+func GetParam[T any](c kernel.IDict, param string) (T, error) {
+	if !c.Has(param) {
 		return *new(T), fmt.Errorf("config does not contain parameter '%s'", param)
 	}
 
-	typedVal, ok := val.(T)
-	if ok {
-		return typedVal, nil
+	result, err := cast.To[T](c.Get(param))
+	if err != nil {
+		return *new(T), fmt.Errorf("wrong value type for config %q param: %w", param, err)
 	}
-
-	if reflect.TypeOf(val).Kind() == reflect.Slice && reflect.TypeOf((*new(T))).Kind() == reflect.Slice {
-		input := reflect.ValueOf(val)
-		output := reflect.MakeSlice(reflect.TypeOf(*new(T)), input.Len(), input.Len())
-
-		for i := 0; i < input.Len(); i++ {
-			item := input.Index(i).Interface()
-			convertedItem, ok := item.(string)
-			if !ok {
-				return *new(T), fmt.Errorf("invalid type in slice for config param %q: expected string, got %T", param, item)
-			}
-			output.Index(i).Set(reflect.ValueOf(convertedItem))
-		}
-
-		return output.Interface().(T), nil
-	}
-
-	switch any(*new(T)).(type) {
-	case int:
-		if s, ok := val.(string); ok {
-			num, err := strconv.Atoi(s)
-			if err != nil {
-				return *new(T), fmt.Errorf("cannot convert config param %q value %q to int: %w", param, s, err)
-			}
-			return any(num).(T), nil
-		}
-	case int64:
-		if s, ok := val.(string); ok {
-			num, err := strconv.ParseInt(s, 10, 64)
-			if err != nil {
-				return *new(T), fmt.Errorf("cannot convert config param %q value %q to int64: %w", param, s, err)
-			}
-			return any(num).(T), nil
-		}
-	case float64:
-		if s, ok := val.(string); ok {
-			num, err := strconv.ParseFloat(s, 64)
-			if err != nil {
-				return *new(T), fmt.Errorf("cannot convert config param %q value %q to float64: %w", param, s, err)
-			}
-			return any(num).(T), nil
-		}
-	}
-
-	return *new(T), fmt.Errorf("wrong value type for config %q param: %v, type: %T", param, val, val)
+	return result, nil
 }
 
-func load(path string) (*kernel.Config, error) {
+func load(path string) (*kernel.Dict, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("can not open config file: %w", err)
@@ -144,7 +96,7 @@ func load(path string) (*kernel.Config, error) {
 	defer file.Close()
 
 	decoder := yaml.NewDecoder(file)
-	config := make(kernel.Config)
+	config := make(kernel.Dict)
 	if err := decoder.Decode(config); err != nil {
 		return nil, fmt.Errorf("cannot decode config file: %w", err)
 	}
@@ -152,11 +104,11 @@ func load(path string) (*kernel.Config, error) {
 	return &config, nil
 }
 
-func mergeRecursive(dst, src kernel.Config) {
+func mergeRecursive(dst, src kernel.Dict) {
 	for key, srcVal := range src {
 		if dstVal, ok := dst[key]; ok {
-			dstMap, okDst := dstVal.(kernel.Config)
-			srcMap, okSrc := srcVal.(kernel.Config)
+			dstMap, okDst := dstVal.(kernel.Dict)
+			srcMap, okSrc := srcVal.(kernel.Dict)
 			if okDst && okSrc {
 				mergeRecursive(dstMap, srcMap)
 				continue
@@ -166,7 +118,7 @@ func mergeRecursive(dst, src kernel.Config) {
 	}
 }
 
-func applyEnv(conf *kernel.Config, filename string, required bool) error {
+func applyEnv(conf *kernel.Dict, filename string, required bool) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -216,7 +168,7 @@ func applyEnv(conf *kernel.Config, filename string, required bool) error {
 	return scanner.Err()
 }
 
-func envToConfig(conf *kernel.Config, env map[string]any) error {
+func envToConfig(conf *kernel.Dict, env map[string]any) error {
 	for k, v := range *conf {
 		str, ok := v.(string)
 		if ok {
@@ -241,7 +193,7 @@ func envToConfig(conf *kernel.Config, env map[string]any) error {
 }
 
 func envToSet(set any, env map[string]any) error {
-	subConf, ok := set.(kernel.Config)
+	subConf, ok := set.(kernel.Dict)
 	if ok {
 		return envToConfig(&subConf, env)
 	}

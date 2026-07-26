@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.27
+Version: v0.1.0-alpha.4
+Changes:
+- internal: `BaseRepo.CreateFromMap` now builds the entity via `lxgo-kernel`'s new `cast.MapToStruct` instead of the
+  now-removed `conv.MapToStruct` - same behavior, no change to `CreateFromMap`'s signature or semantics
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.3
 Changes:

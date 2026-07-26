@@ -7,17 +7,14 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 )
 
 func checkParams(app kernel.IApp, params map[string]any, report *[]string) {
-
-	fmt.Printf("Params: %v\n", params)
-
 	cfg := app.Config()
-	mp := cfg.ToMap()
 
 	for name, val := range params {
-		existing, found := getNestedValue(mp, name)
+		existing, found := getNestedValue(cfg, name)
 		if !found {
 			*report = append(*report, fmt.Sprintf("%s: параметр не найден, будет создан", name))
 			continue
@@ -31,9 +28,6 @@ func checkParams(app kernel.IApp, params map[string]any, report *[]string) {
 }
 
 func checkArrAdd(app kernel.IApp, list map[string][]any, report *[]string) {
-
-	fmt.Printf("Add: %v\n", list)
-
 	cfg := app.Config()
 	for name, arr := range list {
 		existing, found := getNestedValue(cfg, name)
@@ -64,9 +58,6 @@ func checkArrAdd(app kernel.IApp, list map[string][]any, report *[]string) {
 }
 
 func checkArrRemove(app kernel.IApp, list map[string][]any, report *[]string) {
-
-	fmt.Printf("Remove: %v\n", list)
-
 	cfg := app.Config()
 	for name, arr := range list {
 		existing, found := getNestedValue(cfg, name)
@@ -108,17 +99,9 @@ func getNestedValue(cfg any, path string) (any, bool) {
 		// Check indexes — example: "Servers[0]"
 		key, idx := parseArrayAccess(part)
 
-		// is current value is map
-		var ok bool
-		var m map[string]any
-		m, ok = cur.(map[string]any)
-		if !ok {
-			var c kernel.Config
-			c, ok = cur.(kernel.Config)
-			if !ok {
-				return nil, false
-			}
-			m = c.ToMap()
+		m, err := cast.To[map[string]any](cur)
+		if err != nil {
+			return nil, false
 		}
 
 		val, exists := m[key]

@@ -113,18 +113,18 @@ func (pf *appPathfinder) getAliases() map[string]string {
 		return pf.aliases
 	}
 
-	pfConf, err := config.GetParam[kernel.Config](c, "Pathfinder")
+	pfConf, err := config.GetParam[kernel.Dict](c, "Pathfinder")
 	if err != nil {
 		pf.app.LogError(fmt.Sprintf("can not get application config parameter 'Pathfinder': %v", err), "App")
 		pf.aliases = make(map[string]string)
 		return pf.aliases
 	}
-	if !config.HasParam(&pfConf, "Aliases") {
+	if !config.HasParam(pfConf, "Aliases") {
 		pf.aliases = make(map[string]string)
 		return pf.aliases
 	}
 
-	aliases, err := config.GetParam[kernel.Config](&pfConf, "Aliases")
+	aliases, err := config.GetParam[kernel.Dict](pfConf, "Aliases")
 	if err != nil {
 		pf.app.LogError(fmt.Sprintf("can not get application config parameter 'Pathfinder.Aliases': %v", err), "App")
 		pf.aliases = make(map[string]string)

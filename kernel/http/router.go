@@ -107,10 +107,10 @@ func (router *Router) RegisterFileAssets(assets map[string]string) {
 				filePath = filepath.Join(dir, r.URL.Path)
 			} else {
 				filePath = filepath.Join(router.app.Pathfinder().GetAbsPath(dir), r.URL.Path)
-				router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_ASSET, kernel.NewData(map[string]any{
+				router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_ASSET, kernel.Dict{
 					"request": r,
 					"file":    filePath,
-				}))
+				})
 			}
 			http.ServeFile(w, r, filePath)
 		})))
@@ -167,9 +167,9 @@ func (router *Router) Handle(res kernel.IHttpResource, route string, w http.Resp
 	)
 
 	if router.app != nil {
-		router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_HANDLE_REQUEST, kernel.NewData(map[string]any{
+		router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_HANDLE_REQUEST, kernel.Dict{
 			"context": res.Context(),
-		}))
+		})
 	}
 
 	return processResource(router, res)
@@ -209,10 +209,10 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if response := router.Handle(res, requestedRoute, w, r); response != nil {
 		ctx := res.Context()
 		if router.app != nil {
-			router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.NewData(map[string]any{
+			router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_RESPONSE, kernel.Dict{
 				"context":  ctx,
 				"response": response,
-			}))
+			})
 		}
 		response.Send(ctx.ResponseWriter())
 	}

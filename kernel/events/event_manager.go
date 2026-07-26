@@ -44,7 +44,7 @@ func (em *EventManager) Handle(eventName string, handler kernel.IEventHandler) {
 }
 
 // Trigger fires eventName, running every subscribed function and IEventHandler with the given payload data.
-func (em *EventManager) Trigger(eventName string, d ...kernel.IData) {
+func (em *EventManager) Trigger(eventName string, d ...kernel.IDict) {
 	e := NewEvent(em.app, eventName)
 	if len(d) == 1 {
 		e.SetPayload(d[0])

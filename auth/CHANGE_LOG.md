@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.27
+Version: v0.1.0-alpha.5
+Changes:
+- internal: adapted to `lxgo-kernel`'s `Config` removal - `cvn.IApp.Settings()` now returns `kernel.IDict` instead of
+  `*kernel.Config`; no visible change to the CLI (everything touched lives under `internal/`)
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.4
 Changes:

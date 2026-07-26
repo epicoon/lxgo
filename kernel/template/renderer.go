@@ -11,7 +11,7 @@ import (
 	"text/template"
 
 	"github.com/epicoon/lxgo/kernel"
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 )
 
 /** @interface kernel.ITemplateBulder */
@@ -117,9 +117,9 @@ func (r *renderer) Render() (string, error) {
 		tplWrapper = "layout"
 	}
 
-	r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.NewData(map[string]any{
+	r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.Dict{
 		"renderer": r,
-	}))
+	})
 
 	templates := template.New("layout")
 	templates, err := templates.Parse(r.layout)
@@ -157,9 +157,9 @@ func (r *renderer) renderByName() (string, error) {
 		return "", fmt.Errorf("can no read file '%s': %v", tplPath, err)
 	}
 
-	r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.NewData(map[string]any{
+	r.holder.app.Events().Trigger(kernel.EVENT_RENDERER_BEFORE_RENDER, kernel.Dict{
 		"renderer": r,
-	}))
+	})
 
 	tpl := r.name
 	var templates *template.Template
@@ -187,8 +187,13 @@ func (r *renderer) renderTpl(templates *template.Template, tplName string) (stri
 	if r.params == nil {
 		params = r.paramsMap
 	} else {
-		params = conv.ToMap(r.params)
-		maps.Copy(params, r.paramsMap)
+		pp, err := cast.To[map[string]any](r.params)
+		if err != nil {
+			r.holder.app.LogError(fmt.Sprintf("invalid renderer params %v: %v", r.params, err), "TemplateRendering")
+		} else {
+			params = pp
+			maps.Copy(params, r.paramsMap)
+		}
 	}
 
 	var buf bytes.Buffer

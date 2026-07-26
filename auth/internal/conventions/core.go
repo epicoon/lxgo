@@ -7,7 +7,7 @@ import (
 
 type IApp interface {
 	kernel.IApp
-	Settings() *kernel.Config
+	Settings() kernel.IDict
 	Gorm() *gorm.DB
 	ClientsRepo() IClientsRepo
 	UsersRepo() IUsersRepo

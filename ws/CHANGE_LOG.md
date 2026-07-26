@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.27
+Version: v0.1.0-alpha.6
+Changes:
+- internal: `internal/src.Connection`/`Router` adapted to `lxgo-kernel`'s `conv`→`cast` package rename and its
+  `kernel.NewData(...)` removal (now `kernel.Dict{...}` literals) - no change to `ws`'s own public API
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.5
 Changes:

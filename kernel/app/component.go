@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"github.com/epicoon/lxgo/kernel/config"
-	"github.com/epicoon/lxgo/kernel/conv"
 )
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -115,13 +115,13 @@ func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) er
 	c.SetApp(app)
 
 	path := strings.Split(configKey, ".")
-	conf := app.Config()
+	var conf kernel.IDict = app.Config()
 	for _, step := range path {
-		tryConf, err := config.GetParam[kernel.Config](conf, step)
+		tryConf, err := config.GetParam[kernel.Dict](conf, step)
 		if err != nil {
 			return fmt.Errorf("can not init application component '%s': %s", c.Name(), err)
 		}
-		conf = &tryConf
+		conf = tryConf
 	}
 
 	cConf := c.CConfig()
@@ -130,7 +130,11 @@ func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) er
 		if compConf.IsMap() {
 			//TODO
 		} else {
-			if err := conv.DictToStruct((*kernel.Dict)(conf), compConf); err != nil {
+			dict, ok := conf.(kernel.Dict)
+			if !ok {
+				return fmt.Errorf("can not set config for application component '%s': config is not a dict", c.Name())
+			}
+			if err := cast.DictToStruct(&dict, compConf); err != nil {
 				return fmt.Errorf("can not set config for application component '%s': %s", c.Name(), err)
 			}
 		}

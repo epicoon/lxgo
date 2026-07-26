@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"github.com/epicoon/lxgo/ws"
 )
 
@@ -811,31 +811,25 @@ func (c *Connection) leaveChannel(message map[string]any) {
 }
 
 func (c *Connection) processRequest(message map[string]any) {
-	// message
-	// 	["__lxws_request__"]
-	// 		["route"] string
-	// 		["key"]   string
-	// 	["__data__"] any
-
-	reqRaw := message["__lxws_request__"]
-	req, ok := reqRaw.(map[string]any)
-	if !ok {
-		c.server.LifecycleError("invalid __lxws_request__ format")
-		return
-	}
-	route, err := conv.GetMapItem[string](req, "route")
-	if err != nil {
-		c.server.LifecycleError("can not get request route: %v", err)
-		return
-	}
-	reqKey, err := conv.GetMapItem[string](req, "key")
-	if err != nil {
-		c.server.LifecycleError("can not get request key: %v", err)
+	// Parse message struct
+	msgStruct := new(struct {
+		Request struct {
+			Route string `dict:"route"`
+			Key   string `dict:"key"`
+		} `dict:"__lxws_request__"`
+		Data any `dict:"__data__"`
+	})
+	if err := cast.MapToStruct(message, &msgStruct); err != nil {
+		c.server.LifecycleError("invalid __lxws_request__ struct format: %v", err)
 		return
 	}
 
-	rawParams := message["__data__"]
+	route := msgStruct.Request.Route
+	reqKey := msgStruct.Request.Key
+
+	rawParams := msgStruct.Data
 	var params map[string]any
+	var ok bool
 	if rawParams == nil {
 		params = make(map[string]any)
 	} else {
@@ -884,7 +878,7 @@ func (c *Connection) processChannelMsg(message map[string]any) {
 	//		["event"] string|nil
 
 	op := &chMsgOptions{}
-	conv.MapToStruct(message, op)
+	cast.MapToStruct(message, op)
 
 	if _, exists := c.channels[op.Meta.Channel]; !exists {
 		return

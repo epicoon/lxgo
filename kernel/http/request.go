@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 )
 
 // RequestBuilder starts a fluent outgoing HTTP request: chain Set*/AddHeader
@@ -76,7 +76,8 @@ func (b *Request) Send() (*http.Response, any, error) {
 		if len(b.params) > 0 {
 			query := make([]string, 0, len(b.params))
 			for key, value := range b.params {
-				query = append(query, key+"="+url.QueryEscape(conv.ToString(value)))
+				sValue, _ := cast.To[string](value)
+				query = append(query, key+"="+url.QueryEscape(sValue))
 			}
 			urlWithParams += "?" + strings.Join(query, "&")
 		}
@@ -117,7 +118,7 @@ func (b *Request) Send() (*http.Response, any, error) {
 
 	if b.respForm != nil {
 		// Parse JSON-response
-		if err = conv.JsonToStruct(body, b.respForm); err != nil {
+		if err = cast.JsonToStruct(body, b.respForm); err != nil {
 			return nil, nil, err
 		}
 	}

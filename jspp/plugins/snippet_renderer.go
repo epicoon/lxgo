@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 )
 
 type snippetRenderer struct {
@@ -129,7 +129,7 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 		return false
 	}
 
-	err = conv.MapToStruct(rawRes.Result().(map[string]any), &res)
+	err = cast.MapToStruct(rawRes.Result().(map[string]any), &res)
 	if err != nil {
 		sr.pp.LogError("can not get snippet '%s' render result: %v", sr.path, err)
 		return false
@@ -195,7 +195,7 @@ func (sr *snippetRenderer) fillSnippet(data map[string]any) {
 			Path   string         `dict:"path"`
 			Params map[string]any `dict:"params"`
 		}{}
-		if err := conv.MapToStruct(rawSnippetInfo.(map[string]any), &inf); err != nil {
+		if err := cast.MapToStruct(rawSnippetInfo.(map[string]any), &inf); err != nil {
 			sr.pp.LogError("wrong snippet settings '%v' for plugin '%s': %v", rawSnippetInfo, sr.plugin.Name(), err)
 		}
 

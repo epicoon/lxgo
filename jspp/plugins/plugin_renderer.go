@@ -14,7 +14,7 @@ import (
 
 	"github.com/epicoon/lxgo/jspp"
 	"github.com/epicoon/lxgo/jspp/internal/compiler"
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 	lxErrors "github.com/epicoon/lxgo/kernel/errors"
 	"github.com/epicoon/lxgo/kernel/utils"
 )
@@ -382,7 +382,7 @@ func (r *pluginRenderer) applyBuildData(rawConf map[string]any) {
 		Data   map[string]any `dict:"data"`
 		OnLoad []string       `dict:"onLoad"`
 	}{}
-	conv.MapToStruct(rawConf, &conf)
+	cast.MapToStruct(rawConf, &conf)
 
 	if conf.Title != "" && r.title != "" {
 		r.pp.LogError("Plugin %s already had title %s", r.plugin.Name(), r.title)

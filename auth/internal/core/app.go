@@ -23,12 +23,12 @@ func NewApp() cvn.IApp {
 	return &App{App: lxApp.NewApp()}
 }
 
-func (app *App) Settings() *kernel.Config {
-	s, err := config.GetParam[kernel.Config](app.Config(), "Settings")
+func (app *App) Settings() kernel.IDict {
+	s, err := config.GetParam[kernel.Dict](app.Config(), "Settings")
 	if err != nil {
-		return &kernel.Config{}
+		return kernel.Dict{}
 	}
-	return &s
+	return s
 }
 
 func (app *App) Gorm() *gorm.DB {

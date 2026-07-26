@@ -68,6 +68,10 @@ func (r *Resource) Init() {
 /** @abstract */
 
 // Run returns nil - override it to handle the request and return a response.
+// Run executes even if the request form failed validation and
+// ProcessRequestErrors wasn't overridden (returned nil) - check
+// RequestForm().HasErrors() yourself here if Run needs to react to that
+// instead of relying on ProcessRequestErrors' short-circuit.
 func (r *Resource) Run() kernel.IHttpResponse {
 	// Pass
 	return nil
@@ -76,7 +80,9 @@ func (r *Resource) Run() kernel.IHttpResponse {
 /** @abstract */
 
 // ProcessRequestErrors returns nil - override it to return a custom
-// response when the request form fails validation.
+// response when the request form fails validation, short-circuiting Run.
+// Returning nil (the default) does NOT block Run - it still executes, with
+// a request form that may carry errors.
 func (r *Resource) ProcessRequestErrors() kernel.IHttpResponse {
 	// Pass
 	return nil

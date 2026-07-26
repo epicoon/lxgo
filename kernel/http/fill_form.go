@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 )
 
 /** @interface kernel.IFormFiller */
@@ -109,7 +109,7 @@ func fillFormByDict(f kernel.IForm, dict kernel.Dict) {
 		return
 	}
 
-	if err := conv.DictToStruct(&dict, f); err != nil {
+	if err := cast.DictToStruct(&dict, f); err != nil {
 		f.CollectErrorf(err.Error())
 	}
 }
@@ -162,11 +162,11 @@ func checkMissingParams(f kernel.IForm, data kernel.Dict) {
 	}
 
 	v := reflect.ValueOf(f)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
-	//TODO cache?
-	m := buildJSONFieldMap(v)
+
+	m := buildFieldMap(v)
 
 	missingParams := []string{}
 	for _, param := range f.Required() {
@@ -183,8 +183,8 @@ func checkMissingParams(f kernel.IForm, data kernel.Dict) {
 	}
 }
 
-func buildJSONFieldMap(v reflect.Value) map[string]reflect.Value {
-	if v.Kind() == reflect.Ptr {
+func buildFieldMap(v reflect.Value) map[string]reflect.Value {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 
@@ -196,23 +196,17 @@ func buildJSONFieldMap(v reflect.Value) map[string]reflect.Value {
 		value := v.Field(i)
 
 		if field.Anonymous {
-			for k, v2 := range buildJSONFieldMap(value) {
+			for k, v2 := range buildFieldMap(value) {
 				fieldMap[k] = v2
 			}
 			continue
 		}
 
-		tag := field.Tag.Get("json")
-		if tag == "-" {
+		if field.Tag.Get("json") == "-" {
 			continue
 		}
 
-		jsonName := strings.Split(tag, ",")[0]
-		if jsonName == "" {
-			jsonName = field.Name
-		}
-
-		fieldMap[jsonName] = value
+		fieldMap[cast.FieldName(field)] = value
 	}
 
 	return fieldMap
@@ -224,7 +218,7 @@ func isZeroValue(field reflect.Value) bool {
 	}
 
 	switch field.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		return field.IsNil()
 	case reflect.String:
 		return field.Len() == 0

@@ -27,13 +27,13 @@ func NewMigratorCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 		return nil
 	}
 
-	dbConf, err := config.GetParam[kernel.Config](conf, "Database")
+	dbConf, err := config.GetParam[kernel.Dict](conf, "Database")
 	if err != nil {
 		fmt.Printf("can not read Database config: %s", err)
 		return nil
 	}
 	connection := app.NewConnection()
-	connection.SetConfig(&dbConf)
+	connection.SetConfig(dbConf)
 	err = connection.Connect()
 	if err != nil {
 		fmt.Printf("Can not connect to DB. Cause: %q", err)

@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"github.com/epicoon/lxgo/kernel/config"
 	"github.com/epicoon/lxgo/kernel/events"
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
@@ -28,7 +29,7 @@ import (
 type App struct {
 	port         int
 	pathfinder   kernel.IPathfinder
-	config       *kernel.Config
+	config       kernel.IDict
 	manageSocket *manageSocket
 	components   map[any]kernel.IAppComponent
 	logger       kernel.ILogger
@@ -75,7 +76,7 @@ func Configure(app kernel.IApp) error {
 // InitApp sets up app from an already-loaded config: port, optional manage
 // socket, optional DB connection, and router - see Configure for the
 // usual entry point that also loads the config file.
-func InitApp(app kernel.IApp, c *kernel.Config) error {
+func InitApp(app kernel.IApp, c kernel.IDict) error {
 	port, err := config.GetParam[int](c, "Port")
 	if err != nil {
 		return fmt.Errorf("can not create new application: %s", err)
@@ -95,13 +96,13 @@ func InitApp(app kernel.IApp, c *kernel.Config) error {
 	}
 
 	if config.HasParam(c, "Database") {
-		dbConf, err := config.GetParam[kernel.Config](c, "Database")
+		dbConf, err := config.GetParam[kernel.Dict](c, "Database")
 		if err != nil {
 			return fmt.Errorf("can not read Database config: %s", err)
 		}
 		app.SetConnection(NewConnection())
 		app.Connection().SetApp(app)
-		app.Connection().SetConfig(&dbConf)
+		app.Connection().SetConfig(dbConf)
 	}
 
 	app.SetRouter(lxHttp.NewRouter(app))
@@ -125,7 +126,7 @@ func (app *App) SetPort(p int) {
 }
 
 // SetConfig replaces the application's config.
-func (app *App) SetConfig(c *kernel.Config) {
+func (app *App) SetConfig(c kernel.IDict) {
 	app.config = c
 }
 
@@ -137,69 +138,27 @@ func (app *App) SetConfigParam(key string, val any) {
 		return
 	}
 
-	conf := *app.config
-	oldVal, exists := conf[key]
-	if !exists {
-		conf[key] = val
+	if !app.config.Has(key) {
+		app.config.Set(key, val)
 		return
 	}
 
-	oldType := reflect.TypeOf(oldVal)
-	newType := reflect.TypeOf(val)
-	if oldType == newType {
-		conf[key] = val
+	oldVal := app.config.Get(key)
+	coerced, err := cast.Value(val, reflect.TypeOf(oldVal))
+	if err != nil {
+		app.LogWarning(fmt.Sprintf(
+			"Config param '%s' type mismatch: old=%T, new=%T — not replaced",
+			key, oldVal, val,
+		), "Config")
 		return
 	}
-
-	switch oldVal.(type) {
-	case int:
-		switch v := val.(type) {
-		case string:
-			if num, err := strconv.Atoi(v); err == nil {
-				conf[key] = num
-				return
-			}
-		case int64:
-			conf[key] = int(v)
-			return
-		case float64:
-			conf[key] = int(v)
-			return
-		}
-	case float64:
-		switch v := val.(type) {
-		case string:
-			if f, err := strconv.ParseFloat(v, 64); err == nil {
-				conf[key] = f
-				return
-			}
-		case int:
-			conf[key] = float64(v)
-			return
-		}
-	case bool:
-		switch v := val.(type) {
-		case string:
-			if b, err := strconv.ParseBool(v); err == nil {
-				conf[key] = b
-				return
-			}
-		}
-	case string:
-		conf[key] = fmt.Sprintf("%v", val)
-		return
-	}
-
-	app.LogWarning(fmt.Sprintf(
-		"Config param '%s' type mismatch: old=%T, new=%T — not replaced",
-		key, oldVal, val,
-	), "Config")
+	app.config.Set(key, coerced)
 }
 
 // ConfigParam returns a config value by dotted path (e.g. "Database.Host"),
 // or nil if any segment is missing.
 func (app *App) ConfigParam(key string) any {
-	conf := app.Config()
+	var conf kernel.IDict = app.Config()
 	path := strings.Split(key, ".")
 	for i, step := range path {
 		if !config.HasParam(conf, step) {
@@ -209,17 +168,17 @@ func (app *App) ConfigParam(key string) any {
 			val, _ := config.GetParam[any](conf, step)
 			return val
 		}
-		tryConf, err := config.GetParam[kernel.Config](conf, step)
+		tryConf, err := config.GetParam[kernel.Dict](conf, step)
 		if err != nil {
 			return nil
 		}
-		conf = &tryConf
+		conf = tryConf
 	}
 	return nil
 }
 
 // Config returns the application's config.
-func (app *App) Config() *kernel.Config {
+func (app *App) Config() kernel.IDict {
 	return app.config
 }
 

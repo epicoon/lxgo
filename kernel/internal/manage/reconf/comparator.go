@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"github.com/epicoon/lxgo/kernel/utils"
 )
 
@@ -25,9 +26,11 @@ type report struct {
 	changed []diff
 }
 
-func compareConfigs(orig, new *kernel.Config) *report {
+func compareConfigs(orig, new kernel.IDict) *report {
 	rep := &report{}
-	compareRecursive(orig.ToMap(), new.ToMap(), "", rep)
+	origMap, _ := cast.To[map[string]any](orig)
+	newMap, _ := cast.To[map[string]any](new)
+	compareRecursive(origMap, newMap, "", rep)
 	return rep
 }
 
@@ -53,8 +56,8 @@ func compareRecursive(orig, new map[string]any, prefix string, diffs *report) {
 			continue
 		}
 		// If configs
-		oldConf, okOld := oldVal.(kernel.Config)
-		newConf, okNew := newVal.(kernel.Config)
+		oldConf, okOld := oldVal.(kernel.Dict)
+		newConf, okNew := newVal.(kernel.Dict)
 		if okOld && okNew {
 			compareRecursive(oldConf.ToMap(), newConf.ToMap(), fullKey, diffs)
 			continue
@@ -130,10 +133,16 @@ func compareSlices(oldVal, newVal any, prefix string, diffs *report) {
 	for _, v := range uniqNew {
 		i := inxMapNew[v]
 		key := fmt.Sprintf("%s[]", prefix)
-
-		expl := oldSlice.Index(0).Interface()
 		newEl := newSlice.Index(i).Interface()
 
+		// No old element to infer an expected type from (e.g. old slice is
+		// empty) - nothing to compare against, so it's just an addition.
+		if lOld == 0 {
+			diffs.added = append(diffs.added, diff{Path: key, New: newEl})
+			continue
+		}
+
+		expl := oldSlice.Index(0).Interface()
 		if reflect.TypeOf(expl) != reflect.TypeOf(newEl) {
 			diffs.errs = append(diffs.errs, diff{
 				Path:    key,

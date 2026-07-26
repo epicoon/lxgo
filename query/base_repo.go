@@ -1,7 +1,7 @@
 package query
 
 import (
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"gorm.io/gorm"
 )
 
@@ -81,7 +81,7 @@ func (r *BaseRepo[T]) Create(entity *T) error {
 // CreateFromMap builds a T from m and inserts it.
 func (r *BaseRepo[T]) CreateFromMap(m map[string]any) (*T, error) {
 	var entity T
-	if err := conv.MapToStruct(m, &entity); err != nil {
+	if err := cast.MapToStruct(m, &entity); err != nil {
 		return nil, err
 	}
 

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/epicoon/lxgo/kernel"
-	"github.com/epicoon/lxgo/kernel/conv"
+	"github.com/epicoon/lxgo/kernel/cast"
 
 	_ "github.com/lib/pq"
 )
@@ -49,9 +49,13 @@ func (c *Connection) SetApp(app kernel.IApp) {
 }
 
 // SetConfig converts cfg into a ConnectionConfig.
-func (c *Connection) SetConfig(cfg *kernel.Config) {
+func (c *Connection) SetConfig(cfg kernel.IDict) {
 	c.cfg = new(ConnectionConfig)
-	conv.DictToStruct((*kernel.Dict)(cfg), c.cfg)
+	dict, err := cast.To[kernel.Dict](cfg)
+	if err != nil {
+		return
+	}
+	cast.DictToStruct(dict, c.cfg)
 }
 
 // DB returns the underlying *sql.DB, or nil before Connect succeeds.

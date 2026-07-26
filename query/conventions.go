@@ -18,7 +18,7 @@ type IBaseRepo[T any] interface {
 	Count() (uint64, error)
 	// Create inserts entity.
 	Create(entity *T) error
-	// CreateFromMap builds a T from m (see conv.MapToStruct) and inserts it.
+	// CreateFromMap builds a T from m (see cast.MapToStruct) and inserts it.
 	CreateFromMap(m map[string]any) (*T, error)
 
 	// ExistsByID reports whether a row with this ID exists.

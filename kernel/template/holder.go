@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/epicoon/lxgo/kernel"
+	"github.com/epicoon/lxgo/kernel/cast"
 	"github.com/epicoon/lxgo/kernel/config"
-	"github.com/epicoon/lxgo/kernel/conv"
 )
 
 /** @interface kernel.ITemplateHolder */
@@ -101,13 +101,13 @@ func (h *holder) promiseConf() error {
 
 	h.conf = make(map[string]tplScope, len(raw))
 	for _, rawVal := range raw {
-		dict := kernel.Dict(rawVal.(kernel.Config))
+		dict := rawVal.(kernel.Dict)
 		info := struct {
 			Dir       string
 			Namespace string
 			Layout    string
 		}{}
-		err := conv.DictToStruct(&dict, &info)
+		err := cast.DictToStruct(&dict, &info)
 		if err != nil {
 			h.app.LogError(fmt.Sprintf("wrong app config for option 'Templates': %v", err), "TemplateRendering")
 			return err
