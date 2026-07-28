@@ -1,6 +1,6 @@
 # The package helps to work with DB
 
-> Actual version: `v0.1.0-alpha.4`. [Details](https://github.com/epicoon/lxgo/tree/master/query/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.5`. [Details](https://github.com/epicoon/lxgo/tree/master/query/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 

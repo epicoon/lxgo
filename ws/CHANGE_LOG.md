@@ -1,4 +1,24 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.7
+Changes:
+- fix: `Connection`'s own fields (status, channels, shared data, the underlying `net.Conn`, `isReadyToClose`, etc.)
+  were read/written from multiple goroutines without synchronization - e.g. one connection's channel broadcast
+  could read a mate's `Status`/call its `Send` concurrently with that connection's own goroutine writing them - now
+  guarded by a `sync.RWMutex`
+- fix: `ConnRepo.Reconnect` mutated the connections map under a read lock (a data race) and could deadlock by
+  holding one lock while re-entering the repo through a channel broadcast - rewritten to take the write lock for
+  mutations and release every lock before calling out
+- fix: `ConnRepo.GetAll()` returned the live internal map instead of a copy, letting callers race with concurrent
+  connects/disconnects
+- fix: `component.WSServer.listener` raced between `Start()` and `Stop()` (different goroutines) - guarded with a
+  mutex; `Stop()` no longer errors out if called before `Start()` ever ran
+- fix: go.mod was missing its `require` block entirely - the module could not be resolved/built standalone outside
+  this monorepo's `go.work`
+- test: unit and integration tests across the package (channels, connections, connection/channel repos, router,
+  component)
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.27
 Version: v0.1.0-alpha.6
 Changes:

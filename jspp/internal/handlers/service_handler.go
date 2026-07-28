@@ -80,7 +80,7 @@ func modulesCodeResponse(h *ServiceHandler, list map[string]any) kernel.IHttpRes
 	param := h.Context().Get("jspp")
 	pp, ok := param.(jspp.IPreprocessor)
 	if !ok {
-		pp.LogError("Context params work wrong: can not get 'jspp'")
+		h.LogError("Context params work wrong: can not get 'jspp'", "JSPreprocessor")
 		return serverErrorResponse(h)
 	}
 
@@ -97,13 +97,9 @@ func modulesCodeResponse(h *ServiceHandler, list map[string]any) kernel.IHttpRes
 		}
 	}
 
-	except := make([]string, len(have))
-	for _, val := range have {
-		name, ok := val.(string)
-		if !ok {
-			return errorResponse(h, "Wrong 'have' module name type")
-		}
-		except = append(except, name)
+	except, err := namesFromAny(have)
+	if err != nil {
+		return errorResponse(h, "Wrong 'have' module name type")
 	}
 
 	if needReset {
@@ -157,4 +153,18 @@ func errorResponse(h kernel.IHttpResource, msg string) kernel.IHttpResponse {
 			"data":    msg,
 		},
 	})
+}
+
+// namesFromAny converts a []any of strings (as decoded from JSON) into
+// []string, erroring on the first element that isn't one.
+func namesFromAny(items []any) ([]string, error) {
+	names := make([]string, 0, len(items))
+	for _, val := range items {
+		name, ok := val.(string)
+		if !ok {
+			return nil, fmt.Errorf("wrong module name type: %v", val)
+		}
+		names = append(names, name)
+	}
+	return names, nil
 }

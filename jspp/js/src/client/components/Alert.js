@@ -1,7 +1,23 @@
 let alerts = null;
 
 function initAlerts() {
-    alerts = lx.Box.rise(lx.app.domSelector.getAlertsElement());
+    let wrapper = lx.app.domSelector.getElementByAttrs({lxid: 'lx-alerts'});
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.setAttribute('lxid', 'lx-alerts');
+        Object.assign(wrapper.style, {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+        });
+        const body = document.body;
+        if (body.firstChild) body.insertBefore(wrapper, body.firstChild);
+        else body.appendChild(wrapper);
+    }
+
+    alerts = lx.Box.rise(wrapper);
     alerts.key = 'alerts';
 }
 
@@ -15,12 +31,12 @@ class Alert extends lx.AppComponent {
         if (!alerts) initAlerts();
         lx.app.dependencies.promiseModules({
             modules: ['lx.ActiveBox'],
-            callback: ()=>__print(msg)
+            callback: ()=>_print(msg)
         });
     }
 }
 
-function __print(msg) {
+function _print(msg) {
     var el = new lx.ActiveBox({
         parent: alerts,
         geom: [10, 5, 80, 80],

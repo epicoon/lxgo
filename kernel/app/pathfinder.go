@@ -66,6 +66,10 @@ func NewAppPathfinder(app kernel.IApp) kernel.IPathfinder {
 }
 
 func (pf *appPathfinder) GetAbsPath(path string) string {
+	if path == "" {
+		return pf.Pathfinder.GetAbsPath(path)
+	}
+
 	// Process aliases
 	if path[0] == '@' {
 		re := regexp.MustCompile(`^@([^/]+)/?(.*)$`)

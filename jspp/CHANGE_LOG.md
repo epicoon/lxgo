@@ -1,4 +1,34 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.31
+Changes:
+- fix: `ElemHandler`/`ServiceHandler`/`PluginHandler` called the nil preprocessor's own `LogError` instead of the
+  resource's when `"jspp"` was missing from the request context, panicking on exactly the error path meant to
+  report that
+- fix: `PluginManager.Save()` never populated its in-memory cache from the saved data - `Has()`/`Get()` in the same
+  process saw empty entries right after `Save()`, even though the on-disk file was written correctly
+- fix: `ServiceHandler`'s `except` list (`get-modules`'s `have` param) came out twice its intended length, padded
+  with empty strings ahead of the real names
+- fix: `pathfinder.GetAbsPath("")` panicked (indexed into an empty string)
+- fix: an LXML block link (`<&Name>`) to a never-defined block (`<*Name>`) silently compiled to a literal, invalid
+  `[|Name|]` placeholder instead of raising a compile error; `lxmlParser.AddError` itself could also panic when
+  called from the compile phase (out-of-range line lookup) - both fixed
+- fix: `checkPluginPath` panicked on a plugin's `client.file` config field of the wrong YAML type - now falls back
+  to `Plugin.js`, like its `key` sibling already did
+- fix: a widget's repeated `#method()` call in LXML overwrote the previous call's args instead of keeping each
+  call's own - `WidgetNode.Methods` is now one entry per call, not one per method name
+- fix: `lx.import`ing a bare module name from inside a GuiNode (a file itself pulled in by path) could silently
+  drop the import whenever more than one such file was involved - the asset-discovery compile pass overwrote its
+  accumulated module list on each nested file instead of merging into it
+- fix: a widget with only a `{data}` attribute and no other config lost its data entirely - the compiler's
+  early-out for "nothing to configure" didn't check for it
+- fix: `lx.alert()` called a DOM-selector method that never existed anywhere in the codebase, throwing on first use
+  - rewritten to the same find-or-create pattern already used by `Toast.js`
+- remove: dead code (`extractModuleNames`, `nodeStack.Pop()`)
+- test: unit and integration tests across the package (directive/macro/import compiler, LXML parser round-trips,
+  i18n, executor, HTTP handlers, plugin manager/config)
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.27
 Version: v0.1.0-alpha.30
 Changes:

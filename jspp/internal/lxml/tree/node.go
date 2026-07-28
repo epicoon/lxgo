@@ -83,9 +83,12 @@ type WidgetNode struct {
 	Text     string
 
 	//TODO do we need to parse this into map[string]any ?
-	Config     string
-	Data       string
-	Methods    map[string]string
+	Config string
+	Data   string
+	// Methods holds each method's args, in call order, keyed by method
+	// name - a method called more than once (`#m(a) #m(b)`) gets one entry
+	// per call, consumed in order via MethodsSeq (see widgetCompiler.getActionsCode).
+	Methods    map[string][]string
 	MethodsSeq []string
 }
 
@@ -94,7 +97,7 @@ func NewWidgetNode(depth int) *WidgetNode {
 	return &WidgetNode{
 		node:    newNode(cvt.NodeTypeWidget, depth),
 		Css:     make([]string, 0),
-		Methods: make(map[string]string, 0),
+		Methods: make(map[string][]string, 0),
 	}
 }
 

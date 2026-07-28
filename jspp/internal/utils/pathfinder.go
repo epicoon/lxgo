@@ -20,6 +20,9 @@ func NewPathfinder(pp jspp.IPreprocessor) kernel.IPathfinder {
 }
 
 func (pf *pathfinder) GetAbsPath(path string) string {
+	if path == "" {
+		return ""
+	}
 
 	if path[0] == '{' {
 		//TODO

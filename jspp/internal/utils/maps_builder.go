@@ -323,7 +323,13 @@ func checkPluginPath(pp jspp.IPreprocessor, path string, info os.FileInfo, ppMap
 		rawFile, exists := config.Client["file"]
 		var file string
 		if exists {
-			file = rawFile.(string)
+			val, ok := rawFile.(string)
+			if ok {
+				file = val
+			} else {
+				pp.LogError("invalid client file value '%v' for plugin '%s'", rawFile, config.Name)
+				file = "Plugin.js"
+			}
 		} else {
 			file = "Plugin.js"
 		}

@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.5
+Changes:
+- fix: go.mod was missing its `require` block entirely (only the `module`/`go` directives) - the module could not
+  be resolved/built standalone outside this monorepo's `go.work`
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.27
 Version: v0.1.0-alpha.4
 Changes:

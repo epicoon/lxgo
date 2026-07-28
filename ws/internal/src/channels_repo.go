@@ -230,9 +230,9 @@ func (r *ChannelRepo) sweeper() {
 				// Close() itself, right below, is reached through the plain
 				// IChannel interface.
 				if concrete, ok := ch.(*Channel); ok {
-                    if concrete.isAutoCloseDue(ttl) {
-                        due = append(due, ch)
-                    }
+					if concrete.isAutoCloseDue(ttl) {
+						due = append(due, ch)
+					}
 				}
 			}
 			r.mu.RUnlock()

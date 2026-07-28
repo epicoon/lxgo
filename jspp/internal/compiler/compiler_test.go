@@ -1,0 +1,218 @@
+package compiler
+
+import (
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/epicoon/lxgo/jspp/internal/base"
+)
+
+func TestCutComments(t *testing.T) {
+	cases := []struct {
+		name, in, want string
+	}{
+		{"single_line", "a();\n// comment\nb();\n", "a();\nb();\n"},
+		{"multi_line", "a();/* comment\nspanning */b();", "a();b();"},
+		{"trailing_single_line_no_newline", "a(); // trailing", "a(); // trailing"},
+	}
+	c := &Compiler{}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := c.cutComments(tc.in)
+			if got != tc.want {
+				t.Fatalf("cutComments(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestApplyContext(t *testing.T) {
+	src := "before\n@lx:<context CLIENT:\nclientCode();\n@lx:context>\n@lx:<context SERVER:\nserverCode();\n@lx:context>\nafter"
+
+	c := &Compiler{context: contextClient}
+	got := c.applyContext(src)
+	if !strings.Contains(got, "clientCode();") || strings.Contains(got, "serverCode();") {
+		t.Fatalf("CLIENT context: expected clientCode kept and serverCode dropped, got %q", got)
+	}
+	if !strings.HasPrefix(got, "before\n") || !strings.HasSuffix(got, "after") {
+		t.Fatalf("expected the surrounding text preserved, got %q", got)
+	}
+
+	c = &Compiler{context: contextServer}
+	got = c.applyContext(src)
+	if !strings.Contains(got, "serverCode();") || strings.Contains(got, "clientCode();") {
+		t.Fatalf("SERVER context: expected serverCode kept and clientCode dropped, got %q", got)
+	}
+}
+
+func TestApplyMode(t *testing.T) {
+	src := "@lx:<mode DEV:\ndevCode();\n@lx:mode>\nrest"
+
+	c := &Compiler{config: fakeConfig("DEV")}
+	got := c.applyMode(src)
+	if got != "devCode();\n\nrest" {
+		t.Fatalf("DEV mode: unexpected result: %q", got)
+	}
+
+	c = &Compiler{config: fakeConfig("PROD")}
+	got = c.applyMode(src)
+	if got != "\nrest" {
+		t.Fatalf("PROD mode: unexpected result: %q", got)
+	}
+}
+
+func TestCutCoordinationDirectives(t *testing.T) {
+	c := &Compiler{}
+	src := "before @lx:module myMod; middle @lx:module-data: {\"a\":1}; after"
+	got := c.cutCoordinationDirectives(src)
+	if got != "before  middle  after" {
+		t.Fatalf("unexpected result: %q", got)
+	}
+}
+
+func TestClearI18n(t *testing.T) {
+	got := clearI18n(`x = lx.i18n('module-mymod-greeting');`)
+	if got != `x = 'greeting';` {
+		t.Fatalf("unexpected result: %q", got)
+	}
+
+	got = clearI18n(`x = lx.i18n(plain);`)
+	if got != `x = 'plain';` {
+		t.Fatalf("unexpected result for bare identifier: %q", got)
+	}
+}
+
+func TestDeepCopyMap(t *testing.T) {
+	src := map[string]any{
+		"a": 1,
+		"b": map[string]any{"c": 2},
+	}
+	got := deepCopyMap(src)
+	if !reflect.DeepEqual(got, src) {
+		t.Fatalf("expected an equal copy, got %#v", got)
+	}
+
+	// Mutating the nested map in the copy must not affect the original.
+	got["b"].(map[string]any)["c"] = 99
+	if src["b"].(map[string]any)["c"] != 2 {
+		t.Fatalf("deepCopyMap did not actually deep-copy the nested map")
+	}
+
+	if deepCopyMap(nil) != nil {
+		t.Fatalf("expected deepCopyMap(nil) to return nil")
+	}
+}
+
+func TestMergeRecursive(t *testing.T) {
+	dst := map[string]any{
+		"a": 1,
+		"nested": map[string]any{
+			"x": 1,
+			"y": 2,
+		},
+	}
+	src := map[string]any{
+		"a": 2, // overwrite scalar
+		"b": 3, // new key
+		"nested": map[string]any{
+			"y": 20, // overwrite nested scalar
+			"z": 30, // new nested key
+		},
+	}
+	mergeRecursive(dst, src)
+
+	want := map[string]any{
+		"a": 2,
+		"b": 3,
+		"nested": map[string]any{
+			"x": 1,
+			"y": 20,
+			"z": 30,
+		},
+	}
+	if !reflect.DeepEqual(dst, want) {
+		t.Fatalf("mergeRecursive result = %#v, want %#v", dst, want)
+	}
+}
+
+func TestMergeRecursive_NilArgsAreNoOps(t *testing.T) {
+	// Must not panic.
+	mergeRecursive(nil, map[string]any{"a": 1})
+	dst := map[string]any{"a": 1}
+	mergeRecursive(dst, nil)
+	if len(dst) != 1 {
+		t.Fatalf("expected dst unchanged, got %#v", dst)
+	}
+}
+
+func TestProcessLxml_PlainTemplate(t *testing.T) {
+	pp := newFakePreprocessor()
+	c := &Compiler{pp: pp}
+
+	got := c.processLxml("before lx.ml(`<lx.Box> #text('hi')`) after")
+	if got == "before  after" || got == "" {
+		t.Fatalf("expected the lx.ml(...) call to be replaced with compiled LXML, got %q", got)
+	}
+	if len(pp.errs) != 0 {
+		t.Fatalf("expected no errors, got %v", pp.errs)
+	}
+}
+
+func TestProcessLxml_AssignmentAbsorption(t *testing.T) {
+	pp := newFakePreprocessor()
+	c := &Compiler{pp: pp}
+
+	got := c.processLxml("const tree = lx.ml(`<lx.Box>`);")
+	if got == "" {
+		t.Fatalf("expected non-empty output")
+	}
+	// The "const tree = " prefix must be absorbed into the generated
+	// output (the LXML compiler assigns to it), not left dangling before a
+	// separate expression statement.
+	if !strings.HasPrefix(got, "const tree=") {
+		t.Fatalf("expected the const assignment absorbed at the start of the output, got %q", got)
+	}
+}
+
+func TestProcessLxml_EscapedBacktick(t *testing.T) {
+	pp := newFakePreprocessor()
+	c := &Compiler{pp: pp}
+
+	// The escaped backtick inside the template must not be treated as the
+	// template's closing delimiter.
+	got := c.processLxml("lx.ml(`<lx.Box> #text('a\\`b')`)")
+	if len(pp.errs) != 0 {
+		t.Fatalf("expected no errors (escaped backtick should not end the template early), got %v", pp.errs)
+	}
+	if got == "" {
+		t.Fatalf("expected non-empty output")
+	}
+}
+
+func TestProcessLxml_UnterminatedTemplate_LogsError(t *testing.T) {
+	pp := newFakePreprocessor()
+	c := &Compiler{pp: pp}
+
+	c.processLxml("lx.ml(`<lx.Box> #text('unterminated')")
+	if len(pp.errs) == 0 {
+		t.Fatalf("expected an error for an unterminated template literal")
+	}
+}
+
+func TestProcessLxml_NotAFunctionCallIsLeftAlone(t *testing.T) {
+	pp := newFakePreprocessor()
+	c := &Compiler{pp: pp}
+
+	// "xlx.ml(" - "lx.ml(" is preceded by an identifier byte, so this must
+	// not be treated as a real lx.ml(...) call.
+	src := "xlx.ml(`abc`)"
+	got := c.processLxml(src)
+	if got != src {
+		t.Fatalf("expected the identifier-prefixed occurrence to be left untouched, got %q", got)
+	}
+}
+
+func fakeConfig(mode string) *base.JSPreprocessorConfig {
+	return &base.JSPreprocessorConfig{Mode: mode}
+}

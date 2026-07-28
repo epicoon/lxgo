@@ -134,7 +134,7 @@ func (c *widgetCompiler) getConfigCode() string {
 	html := n.HTML()
 
 	if n.Key == "" && n.Field == "" && !n.IsVolume && len(n.Css) == 0 &&
-		n.Config == "" && len(n.Geom) == 0 && n.Text == "" && html == "" {
+		n.Config == "" && len(n.Geom) == 0 && n.Text == "" && html == "" && n.Data == "" {
 		return ""
 	}
 
@@ -211,13 +211,25 @@ func (c *widgetCompiler) getConfigCode() string {
 
 func (c *widgetCompiler) getActionsCode(varName string) string {
 	n := c.node
-	if len(n.Methods) == 0 {
+	if len(n.MethodsSeq) == 0 {
 		return ""
 	}
 
+	// n.Methods[method] holds one args entry per call to that method name,
+	// in call order - callIdx tracks how many of each name have already
+	// been consumed while walking MethodsSeq, so repeated calls
+	// (`#m(a) #m(b)`) each get their own args instead of all resolving to
+	// the same (last-written) one.
+	callIdx := make(map[string]int, len(n.Methods))
 	code := ""
 	for _, method := range n.MethodsSeq {
-		args := n.Methods[method]
+		i := callIdx[method]
+		callIdx[method] = i + 1
+
+		var args string
+		if argsList := n.Methods[method]; i < len(argsList) {
+			args = argsList[i]
+		}
 		if args != "" {
 			re := regexp.MustCompile(`^[\w\d_]+?:`)
 			if re.MatchString(args) {

@@ -128,13 +128,3 @@ func (c *Compiler) applyModuleI18n(mData jspp.IJSModuleData, i18n string) {
 		}
 	}
 }
-
-func extractModuleNames(matches [][]string) []string {
-	var names []string
-	for _, match := range matches {
-		if len(match) > 1 {
-			names = append(names, match[1])
-		}
-	}
-	return names
-}

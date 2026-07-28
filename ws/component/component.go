@@ -25,7 +25,13 @@ import (
 type WSServer struct {
 	*lxApp.AppComponent
 
+	// listener is guarded by mu - Start() (meant to run in its own
+	// goroutine, per its doc-comment) sets it, while Stop() (called from
+	// whatever goroutine is coordinating shutdown - a different one) reads
+	// it to close it.
+	mu       sync.Mutex
 	listener net.Listener
+
 	conns    ws.IConnRepo
 	router   ws.IRouter
 	channels ws.IChannelRepo
@@ -218,7 +224,9 @@ func (s *WSServer) Start() error {
 	if err != nil {
 		return fmt.Errorf("error creating socket: %w", err)
 	}
+	s.mu.Lock()
 	s.listener = ln
+	s.mu.Unlock()
 	log.Printf("WS Server started on %s", addr)
 
 	for {
@@ -242,8 +250,13 @@ func (s *WSServer) Start() error {
 // Stop closes the listener and waits for in-flight connections and
 // background sweepers to finish.
 func (s *WSServer) Stop() {
-	if err := s.listener.Close(); err != nil {
-		log.Printf("listener close error: %v", err)
+	s.mu.Lock()
+	ln := s.listener
+	s.mu.Unlock()
+	if ln != nil {
+		if err := ln.Close(); err != nil {
+			log.Printf("listener close error: %v", err)
+		}
 	}
 	s.wg.Wait()
 	s.conns.Close()

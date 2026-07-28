@@ -106,7 +106,15 @@ func (p *lxmlParser) ParseText(text string) (string, error) {
 }
 
 func (p *lxmlParser) AddError(msg string) {
-	p.err = fmt.Sprintf("error while parsing line[%d]: \"%s\" - %s", p.currentLine, p.lines[p.currentLine], msg)
+	// currentLine can be past the end of lines by the time this is called
+	// from the compile phase (tree/node compilers also call AddError, after
+	// the line-by-line parsing loop that owns currentLine has finished) -
+	// guard the lookup instead of indexing blindly.
+	line := ""
+	if p.currentLine >= 0 && p.currentLine < len(p.lines) {
+		line = p.lines[p.currentLine]
+	}
+	p.err = fmt.Sprintf("error while parsing line[%d]: \"%s\" - %s", p.currentLine, line, msg)
 }
 
 func (p *lxmlParser) HasError() bool {
@@ -595,15 +603,6 @@ func (s *nodeStack) Drop(count int) {
 	}
 
 	s.stack = s.stack[:len(s.stack)-count]
-}
-
-func (s *nodeStack) Pop() cvt.INode {
-	if len(s.stack) == 0 {
-		return nil
-	}
-	last := s.stack[len(s.stack)-1]
-	s.stack = s.stack[:len(s.stack)-1]
-	return last
 }
 
 func (s *nodeStack) Peek() cvt.INode {

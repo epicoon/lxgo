@@ -225,7 +225,17 @@ func (c *Compiler) processImport(code, rootPath string) (string, error) {
 
 	if len(allModuleNames) > 0 {
 		if !c.buildModules {
-			c.compiledModules = allModuleNames
+			// A plain assignment here used to clobber whatever an earlier,
+			// nested processImport call (e.g. for a previously-included
+			// GuiNode-style file in the same compileFileGroup pass) had
+			// already recorded - only the last file's bare lx.import(Name)
+			// references would survive into the page's asset manifest,
+			// silently dropping the rest (see the 0080 investigation).
+			for _, m := range allModuleNames {
+				if !slices.Contains(c.compiledModules, m) {
+					c.compiledModules = append(c.compiledModules, m)
+				}
+			}
 		} else {
 			var filePaths []string
 			var modulesForBuild []string

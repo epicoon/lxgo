@@ -192,7 +192,7 @@ func (p *WidgetParser) getOctothorpe(line string, n *tree.WidgetNode) string {
 		}
 		f := line[1:end]
 		arr := strings.SplitN(f, "(", 2)
-		n.Methods[matches[1]] = arr[1]
+		n.Methods[matches[1]] = append(n.Methods[matches[1]], arr[1])
 		n.MethodsSeq = append(n.MethodsSeq, matches[1])
 
 		re := regexp.MustCompile(`^#` + regexp.QuoteMeta(f) + `\)\s*`)
@@ -207,7 +207,7 @@ func (p *WidgetParser) getOctothorpe(line string, n *tree.WidgetNode) string {
 		return ""
 	}
 
-	n.Methods[matches[1]] = ""
+	n.Methods[matches[1]] = append(n.Methods[matches[1]], "")
 	n.MethodsSeq = append(n.MethodsSeq, matches[1])
 	re = regexp.MustCompile(`^#\b[\w\d_]+\b\s*`)
 	line = re.ReplaceAllString(line, "")

@@ -1,6 +1,7 @@
 package src
 
 import (
+	"maps"
 	"sync"
 	"time"
 
@@ -103,29 +104,29 @@ func (r *ConnRepo) MarkDisconnected(c ws.IConnection) {
 
 func (r *ConnRepo) Reconnect(conn ws.IConnection, ID string) bool {
 	r.tombsMu.Lock()
-	defer r.tombsMu.Unlock()
-
 	tConn := r.tombstones[ID]
 	if tConn == nil || tConn.conn.IP() != conn.IP() {
+		r.tombsMu.Unlock()
 		return false
 	}
-
 	delete(r.tombstones, ID)
+	r.tombsMu.Unlock()
 
 	r.reqMu.Lock()
-	defer r.reqMu.Unlock()
 	r.reqStat[ID] = r.reqStat[conn.ID()]
 	delete(r.reqStat, conn.ID())
+	r.reqMu.Unlock()
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
+	r.mu.Lock()
 	r.conns[ID] = r.conns[conn.ID()]
 	delete(r.conns, conn.ID())
+	r.mu.Unlock()
 
 	conn.SetID(tConn.conn.ID())
 	conn.SetStatus(ws.ConnStatusReconnecting)
 
+	// Runs with none of the repo's own locks held - AddConnection broadcasts
+	// to existing channel mates via r.Get(), which takes mu itself.
 	chs := map[string]map[string]any{}
 	for key, val := range tConn.channels {
 		ch := r.server.Channels().Get(key)
@@ -153,7 +154,11 @@ func (r *ConnRepo) Get(id string) ws.IConnection {
 }
 
 func (r *ConnRepo) GetAll() map[string]ws.IConnection {
-	return r.conns
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make(map[string]ws.IConnection, len(r.conns))
+	maps.Copy(out, r.conns)
+	return out
 }
 
 func (r *ConnRepo) CheckRequestLimit(c ws.IConnection) bool {

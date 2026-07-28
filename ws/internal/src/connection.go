@@ -15,6 +15,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/epicoon/lxgo/kernel/cast"
 	"github.com/epicoon/lxgo/ws"
@@ -33,11 +34,22 @@ const (
 )
 
 /** @interface ws.IConnection */
+
+// Connection's mutable fields (everything below ip) are guarded by mu -
+// unlike a Channel/ChannelRepo/ConnRepo, which only ever see their own kind
+// touched from many goroutines at once, a single Connection's own fields get
+// read/written cross-goroutine too: other connections' channel broadcasts
+// call Send/SharedDataForChannel/Channels/Status on it, and ConnRepo's
+// sweeper directly calls SetChannels/Close on a tombstoned one once its
+// reconnection window expires - both from a different goroutine than
+// whatever last touched it.
 type Connection struct {
-	server          ws.IWSServer
-	conn            net.Conn
+	server ws.IWSServer
+	conn   net.Conn
+	ip     string
+
+	mu              sync.RWMutex
 	id              string
-	ip              string
 	status          int
 	sharedData      map[string]any
 	channels        map[string]map[string]any
@@ -64,7 +76,9 @@ func NewConnection(s ws.IWSServer, conn net.Conn) ws.IConnection {
 }
 
 func (c *Connection) SetID(ID string) {
+	c.mu.Lock()
 	c.id = ID
+	c.mu.Unlock()
 }
 
 func (c *Connection) SetStatus(stat int) {
@@ -72,15 +86,22 @@ func (c *Connection) SetStatus(stat int) {
 		c.server.LifecycleError("wrong connection status: %d", stat)
 		return
 	}
-	c.server.LifecycleLog("connection '%s' status changed from %d to %d", c.ID(), c.status, stat)
+	c.mu.Lock()
+	id, old := c.id, c.status
 	c.status = stat
+	c.mu.Unlock()
+	c.server.LifecycleLog("connection '%s' status changed from %d to %d", id, old, stat)
 }
 
 func (c *Connection) SetChannels(keys map[string]map[string]any) {
+	c.mu.Lock()
 	c.channels = keys
+	c.mu.Unlock()
 }
 
 func (c *Connection) ID() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.id
 }
 
@@ -89,42 +110,59 @@ func (c *Connection) IP() string {
 }
 
 func (c *Connection) Status() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.status
 }
 
 func (c *Connection) SharedData() map[string]any {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.sharedData
 }
 
 func (c *Connection) CreatedChannelsCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.createdChannels
 }
 
 func (c *Connection) IncrementCreatedChannels() {
+	c.mu.Lock()
 	c.createdChannels++
+	c.mu.Unlock()
 }
 
 func (c *Connection) DecrementCreatedChannels() {
+	c.mu.Lock()
 	if c.createdChannels > 0 {
 		c.createdChannels--
 	}
+	c.mu.Unlock()
 }
 
 func (c *Connection) SetCreatedChannelsCount(n int) {
+	c.mu.Lock()
 	c.createdChannels = n
+	c.mu.Unlock()
 }
 
 func (c *Connection) SharedDataForChannel(ch ws.IChannel) map[string]any {
-	if _, exists := c.channels[ch.Key()]; !exists {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	overlay, exists := c.channels[ch.Key()]
+	if !exists {
 		return c.sharedData
 	}
 	temp := map[string]any{}
 	maps.Copy(temp, c.sharedData)
-	maps.Copy(temp, c.channels[ch.Key()])
+	maps.Copy(temp, overlay)
 	return temp
 }
 
 func (c *Connection) Channels() map[string]map[string]any {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.channels
 }
 
@@ -145,13 +183,13 @@ func (c *Connection) Handle() {
 	}
 
 	// Successful handshake
-	c.server.LifecycleLog("handshake done for %s", c.id)
+	c.server.LifecycleLog("handshake done for %s", c.ID())
 
 	// Origin check - runs right after the WS upgrade so a real close code
 	// (1002) can be delivered to the client; a raw HTTP-level rejection
 	// wouldn't carry a meaningful CloseEvent.code in a browser.
 	if !c.checkOrigin(origin) {
-		c.server.LifecycleLog("access denied for %s: origin %q not allowed", c.id, origin)
+		c.server.LifecycleLog("access denied for %s: origin %q not allowed", c.ID(), origin)
 		c.sendCloseFrame(CloseCodeAccessError, "origin not allowed")
 		return
 	}
@@ -163,7 +201,7 @@ func (c *Connection) Handle() {
 	}
 	c.server.Connections().Add(c)
 	if err := c.Send(hsResp, "text", false); err != nil {
-		c.server.LifecycleError("handshake response send error for %s: %v", c.id, err)
+		c.server.LifecycleError("handshake response send error for %s: %v", c.ID(), err)
 	}
 
 	// Waiting for messages
@@ -195,7 +233,7 @@ func (c *Connection) Handle() {
 		case 0x9:
 			// ping -> pong
 			if err := c.Send(payload, "pong", false); err != nil {
-				c.server.LifecycleError("pong send error for %s: %v", c.id, err)
+				c.server.LifecycleError("pong send error for %s: %v", c.ID(), err)
 			}
 		case 0xA:
 			// pong
@@ -243,8 +281,18 @@ func (c *Connection) Send(payload any, typ string, masked bool) error {
 		return err
 	}
 
+	// c.conn itself is guarded too - Send can be called cross-goroutine (a
+	// channel broadcast sending to a mate that isn't the caller's own
+	// connection) concurrently with that mate's own Close() nil-ing it out.
+	c.mu.RLock()
+	conn := c.conn
+	c.mu.RUnlock()
+	if conn == nil {
+		return errors.New("write error: connection already closed")
+	}
+
 	// Write frame to the TCP-connection
-	n, err := c.conn.Write(frame)
+	n, err := conn.Write(frame)
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
@@ -265,8 +313,13 @@ func (c *Connection) Close() {
 		return
 	}
 
-	if c.server.Connections().Has(c.id) {
-		if c.isReadyToClose {
+	id := c.ID()
+	c.mu.RLock()
+	readyToClose := c.isReadyToClose
+	c.mu.RUnlock()
+
+	if c.server.Connections().Has(id) {
+		if readyToClose {
 			c.server.Connections().RemoveImmediate(c)
 			c.SetStatus(ws.ConnStatusClosed)
 		} else {
@@ -277,16 +330,21 @@ func (c *Connection) Close() {
 
 	c.LeaveAllChannels()
 
-	if err := c.conn.Close(); err != nil {
-		c.server.LifecycleError("close error for %s: %v", c.id, err)
-	}
+	c.mu.Lock()
+	conn := c.conn
 	c.conn = nil
-	c.server.LifecycleLog("closed %s", c.id)
+	c.mu.Unlock()
+	if conn != nil {
+		if err := conn.Close(); err != nil {
+			c.server.LifecycleError("close error for %s: %v", id, err)
+		}
+	}
+	c.server.LifecycleLog("closed %s", id)
 }
 
 func (c *Connection) Break(msg string) {
 	if err := c.Send(map[string]any{"error": msg}, "close", false); err != nil {
-		c.server.LifecycleError("break send error for %s: %v", c.id, err)
+		c.server.LifecycleError("break send error for %s: %v", c.ID(), err)
 	}
 	c.Close()
 }
@@ -301,12 +359,15 @@ func (c *Connection) EnterChannel(ch ws.IChannel, message map[string]any) (bool,
 		return false, reason
 	}
 
-	c.channels[ch.Key()] = map[string]any{}
+	overlay := map[string]any{}
 	if raw, ok := message["sharedData"]; ok {
 		if m, ok := raw.(map[string]any); ok {
-			c.channels[ch.Key()] = m
+			overlay = m
 		}
 	}
+	c.mu.Lock()
+	c.channels[ch.Key()] = overlay
+	c.mu.Unlock()
 	return true, ""
 }
 
@@ -314,16 +375,31 @@ func (c *Connection) LeaveChannel(ch ws.IChannel) {
 	if !c.IsChannelMate(ch) {
 		return
 	}
+	c.mu.Lock()
 	delete(c.channels, ch.Key())
+	c.mu.Unlock()
 	ch.Leave(c)
 }
 
+// LeaveAllChannels snapshots and clears c.channels under lock, then calls
+// out to each Channel.Leave without holding it - Leave can broadcast to
+// other connections, and this package's lock-ordering rule (see the
+// ConnRepo.Reconnect deadlock this same audit fixed) is to never hold one
+// lock while acquiring another's.
 func (c *Connection) LeaveAllChannels() {
+	c.mu.Lock()
+	keys := make([]string, 0, len(c.channels))
 	for key := range c.channels {
-		ch := c.server.Channels().Get(key)
-		ch.Leave(c)
+		keys = append(keys, key)
 	}
 	c.channels = map[string]map[string]any{}
+	c.mu.Unlock()
+
+	for _, key := range keys {
+		if ch := c.server.Channels().Get(key); ch != nil {
+			ch.Leave(c)
+		}
+	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -444,11 +520,17 @@ func (c *Connection) sendCloseFrame(code uint16, reason string) {
 
 	frame, err := hybi10Encode(payload, 0x8, false)
 	if err != nil {
-		c.server.LifecycleError("close frame encode error for %s: %v", c.id, err)
+		c.server.LifecycleError("close frame encode error for %s: %v", c.ID(), err)
 		return
 	}
-	if _, err := c.conn.Write(frame); err != nil {
-		c.server.LifecycleError("close frame send error for %s: %v", c.id, err)
+	c.mu.RLock()
+	conn := c.conn
+	c.mu.RUnlock()
+	if conn == nil {
+		return
+	}
+	if _, err := conn.Write(frame); err != nil {
+		c.server.LifecycleError("close frame send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -554,14 +636,16 @@ func (c *Connection) processAction(message map[string]any) {
 		c.createChannel(message)
 
 	case "close":
+		c.mu.Lock()
 		c.isReadyToClose = true
+		c.mu.Unlock()
 		if err := c.Send(map[string]any{"__lxws_action__": "close"}, "text", false); err != nil {
-			c.server.LifecycleError("close action send error for %s: %v", c.id, err)
+			c.server.LifecycleError("close action send error for %s: %v", c.ID(), err)
 		}
 
 	case "break":
 		if err := c.Send(map[string]any{"__lxws_action__": "break"}, "text", false); err != nil {
-			c.server.LifecycleError("break action send error for %s: %v", c.id, err)
+			c.server.LifecycleError("break action send error for %s: %v", c.ID(), err)
 		}
 
 	default:
@@ -580,14 +664,16 @@ func (c *Connection) sendActionError(action, message string) {
 		"error":           message,
 	}
 	if err := c.Send(data, "text", false); err != nil {
-		c.server.LifecycleError("action error send error for %s: %v", c.id, err)
+		c.server.LifecycleError("action error send error for %s: %v", c.ID(), err)
 	}
 }
 
 func (c *Connection) extractSharedData(message map[string]any) {
 	shared, ok := message["shared"].(map[string]any)
 	if ok {
+		c.mu.Lock()
 		c.sharedData = shared
+		c.mu.Unlock()
 	}
 }
 
@@ -597,7 +683,7 @@ func (c *Connection) connect() {
 	if c.server.DefaultChannelKey() != "" {
 		defaultChannel := c.server.Channels().Get(c.server.DefaultChannelKey())
 		if ok, reason := c.EnterChannel(defaultChannel, map[string]any{}); !ok {
-			c.server.LifecycleLog("connect: default channel entry denied for %s: %s", c.id, reason)
+			c.server.LifecycleLog("connect: default channel entry denied for %s: %s", c.ID(), reason)
 		}
 	}
 	if channels := availableChannelsData(c.server, c); len(channels) > 0 {
@@ -606,7 +692,7 @@ func (c *Connection) connect() {
 
 	c.SetStatus(ws.ConnStatusActive)
 	if err := c.Send(data, "text", false); err != nil {
-		c.server.LifecycleError("connect send error for %s: %v", c.id, err)
+		c.server.LifecycleError("connect send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -651,7 +737,7 @@ func (c *Connection) reconnect() {
 
 	c.SetStatus(ws.ConnStatusActive)
 	if err := c.Send(data, "text", false); err != nil {
-		c.server.LifecycleError("reconnect send error for %s: %v", c.id, err)
+		c.server.LifecycleError("reconnect send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -675,7 +761,7 @@ func (c *Connection) enterChannel(message map[string]any) {
 	}
 
 	if ok, reason := c.EnterChannel(ch, message); !ok {
-		c.server.LifecycleLog("enterChannel: denied for %s on '%s': %s", c.id, channelKey, reason)
+		c.server.LifecycleLog("enterChannel: denied for %s on '%s': %s", c.ID(), channelKey, reason)
 		c.sendActionError("enterChannel", reason)
 		return
 	}
@@ -692,7 +778,7 @@ func (c *Connection) enterChannel(message map[string]any) {
 		},
 	}
 	if err := c.Send(data, "text", false); err != nil {
-		c.server.LifecycleError("enterChannel send error for %s: %v", c.id, err)
+		c.server.LifecycleError("enterChannel send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -755,13 +841,13 @@ func (c *Connection) createChannel(message map[string]any) {
 
 	ch, reason := c.server.Channels().CreateChannel(builder)
 	if ch == nil {
-		c.server.LifecycleLog("createChannel: denied for %s: %s", c.id, reason)
+		c.server.LifecycleLog("createChannel: denied for %s: %s", c.ID(), reason)
 		c.sendActionError("createChannel", reason)
 		return
 	}
 
 	if ok, reason := c.EnterChannel(ch, message); !ok {
-		c.server.LifecycleLog("createChannel: entry denied for creator %s on '%s': %s", c.id, ch.Key(), reason)
+		c.server.LifecycleLog("createChannel: entry denied for creator %s on '%s': %s", c.ID(), ch.Key(), reason)
 		c.sendActionError("createChannel", reason)
 		return
 	}
@@ -775,7 +861,7 @@ func (c *Connection) createChannel(message map[string]any) {
 		},
 	}
 	if err := c.Send(data, "text", false); err != nil {
-		c.server.LifecycleError("createChannel send error for %s: %v", c.id, err)
+		c.server.LifecycleError("createChannel send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -806,7 +892,7 @@ func (c *Connection) leaveChannel(message map[string]any) {
 		"channelKey":      channelKey,
 	}
 	if err := c.Send(data, "text", false); err != nil {
-		c.server.LifecycleError("leaveChannel send error for %s: %v", c.id, err)
+		c.server.LifecycleError("leaveChannel send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -850,7 +936,7 @@ func (c *Connection) processRequest(message map[string]any) {
 		"body":              resp.Data(),
 	}
 	if err := c.Send(msg, "text", false); err != nil {
-		c.server.LifecycleError("response send error for %s: %v", c.id, err)
+		c.server.LifecycleError("response send error for %s: %v", c.ID(), err)
 	}
 }
 
@@ -880,7 +966,10 @@ func (c *Connection) processChannelMsg(message map[string]any) {
 	op := &chMsgOptions{}
 	cast.MapToStruct(message, op)
 
-	if _, exists := c.channels[op.Meta.Channel]; !exists {
+	c.mu.RLock()
+	_, isMember := c.channels[op.Meta.Channel]
+	c.mu.RUnlock()
+	if !isMember {
 		return
 	}
 	ch := c.server.Channels().Get(op.Meta.Channel)
@@ -901,10 +990,13 @@ func (c *Connection) processChannelMsg(message map[string]any) {
 		ws.SendMessage(msg)
 
 	case "sharedData":
-		c.channels[ch.Key()] = map[string]any{}
+		overlay := map[string]any{}
 		if data, ok := op.Data.(map[string]any); ok {
-			c.channels[ch.Key()] = data
+			overlay = data
 		}
+		c.mu.Lock()
+		c.channels[ch.Key()] = overlay
+		c.mu.Unlock()
 
 		for _, id := range ch.MateIDs() {
 			if id == c.ID() {

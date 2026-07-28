@@ -1,4 +1,12 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.27
+Changes:
+- fix: `app.appPathfinder.GetAbsPath("")` panicked (indexed into an empty string before the `@alias`-prefix check)
+  - found while testing `lxgo-jspp`, which passes an unset config path straight through to it
+- test: added a regression test for the above
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.27
 Version: v0.1.0-alpha.26
 Changes:

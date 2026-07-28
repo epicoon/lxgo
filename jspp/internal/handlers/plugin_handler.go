@@ -60,7 +60,7 @@ func (h *PluginHandler) Run() kernel.IHttpResponse {
 	param := h.Context().Get("jspp")
 	pp, ok := param.(jspp.IPreprocessor)
 	if !ok {
-		pp.LogError("Context params work wrong: can not get 'jspp'")
+		h.LogError("Context params work wrong: can not get 'jspp'", "JSPreprocessor")
 		return serverErrorResponse(h)
 	}
 

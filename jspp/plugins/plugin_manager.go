@@ -149,6 +149,13 @@ func (m *PluginManager) Save(plugins []jspp.IPluginData) error {
 	}
 
 	dataSlice := make([]pluginData, len(plugins))
+	for i, p := range plugins {
+		entry := pluginData{Epath: p.Path(), Ename: p.Name()}
+		if pd, ok := p.(*pluginData); ok {
+			entry.Eplugin = pd.Eplugin
+		}
+		dataSlice[i] = entry
+	}
 	m.data = mapping(dataSlice)
 
 	return nil
