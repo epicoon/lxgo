@@ -148,7 +148,7 @@ func Up() {
 }
 
 // Down rolls back the last steps applied migrations, in one transaction,
-// printing progress and errors to stdout; steps == 0 rolls back just the
+// printing progress and errors to stdout; steps <= 0 rolls back just the
 // last one.
 func Down(steps int) {
 	appliedMigrations, err := getMigrations(cGET_APPLIED_ONLY)
@@ -164,7 +164,7 @@ func Down(steps int) {
 
 	if steps > len(appliedMigrations) {
 		steps = len(appliedMigrations)
-	} else if steps == 0 {
+	} else if steps <= 0 {
 		steps = 1
 	}
 

@@ -39,10 +39,10 @@ func newJSONTestContext(t *testing.T, app kernel.IApp, res kernel.IHttpResource,
 	return ctx
 }
 
-// TestElemHandler_MissingJSPPInContext_DoesNotPanic is a regression test for
-// task 0100: when the "jspp" context key isn't the expected type, the error
-// branch used to call pp.LogError on a nil pp and panic instead of
-// reporting a clean 500.
+// TestElemHandler_MissingJSPPInContext_DoesNotPanic is a regression test:
+// when the "jspp" context key isn't the expected type, the error branch
+// used to call pp.LogError on a nil pp and panic instead of reporting a
+// clean 500.
 func TestElemHandler_MissingJSPPInContext_DoesNotPanic(t *testing.T) {
 	app := newTestApp(t)
 	res := NewElemHandler()
@@ -75,9 +75,9 @@ func TestServiceHandler_MissingJSPPInContext_DoesNotPanic(t *testing.T) {
 	}
 }
 
-// TestNamesFromAny is a regression test for task 0102: except used to be
-// built via make([]string, len(have)) followed by append, doubling its
-// length with a run of empty strings in front.
+// TestNamesFromAny is a regression test: except used to be built via
+// make([]string, len(have)) followed by append, doubling its length with
+// a run of empty strings in front.
 func TestNamesFromAny(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		got, err := namesFromAny(nil)

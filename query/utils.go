@@ -2,21 +2,19 @@ package query
 
 import (
 	"reflect"
-	"strings"
+
+	"gorm.io/gorm/schema"
 )
+
+// namingStrategy is gorm's own default naming strategy - tableName and
+// compiler.column/query_builder.go's JOIN-building call it directly
+// instead of hand-rolling snake_case/pluralization, so raw SQL fragments
+// built here (QueryBuilder's table alias, compiler.column's column
+// references) can never diverge from the table/column names gorm itself
+// uses for BaseRepo's Model(new(T))-based queries and migrations.
+var namingStrategy = schema.NamingStrategy{}
 
 func tableName[T any]() string {
 	t := reflect.TypeOf((*T)(nil)).Elem()
-	return toSnake(t.Name()) + "s"
-}
-
-func toSnake(str string) string {
-	var result []rune
-	for i, r := range str {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			result = append(result, '_')
-		}
-		result = append(result, r)
-	}
-	return strings.ToLower(string(result))
+	return namingStrategy.TableName(t.Name())
 }

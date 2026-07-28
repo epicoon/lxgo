@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/epicoon/lxgo/kernel"
 )
 
 /** @interface IProvider */
@@ -43,11 +41,11 @@ func (p *BaseProvider) AddSession(sess ISession, sid string) {
 }
 
 // SessionInit creates and stores a new session under sid.
-func (p *BaseProvider) SessionInit(sid string, ctx kernel.IHandleContext) (ISession, error) {
+func (p *BaseProvider) SessionInit(sid string) (ISession, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	session := NewSession(sid, ctx)
+	session := NewSession(sid)
 	p.sessions[sid] = session
 
 	return session, nil
@@ -55,6 +53,8 @@ func (p *BaseProvider) SessionInit(sid string, ctx kernel.IHandleContext) (ISess
 
 // SessionExists reports whether a session with the given ID is stored.
 func (p *BaseProvider) SessionExists(sid string) bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
 	_, exists := p.sessions[sid]
 	return exists
 }
@@ -98,10 +98,14 @@ func (p *BaseProvider) SessionGC(maxLifeTime int) {
 }
 
 func (p *BaseProvider) len() int {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
 	return len(p.sessions)
 }
 
 func (p *BaseProvider) content() string {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
 	str := "Current sessions:\n"
 	for sid, session := range p.sessions {
 		str += "* SessionID = " + sid + "\n"

@@ -28,7 +28,7 @@ var _ kernel.IHttpResource = (*LogoutHandler)(nil)
 
 // NewLogoutHandler constructs a LogoutHandler.
 func NewLogoutHandler() kernel.IHttpResource {
-	return &LogoutHandler{Resource: &lxHttp.Resource{}}
+	return &LogoutHandler{Resource: lxHttp.NewResource()}
 }
 
 // Run revokes the caller's access token on the authorization service.

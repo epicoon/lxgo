@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -63,7 +65,9 @@ func TestUserDataHandler_Success(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -108,7 +112,9 @@ func TestUserDataHandler_NoDataYet(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -154,7 +160,9 @@ func TestUserDataHandler_ProfileScopeHidesData(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -193,7 +201,9 @@ func TestUserDataHandler_ClientNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -222,7 +232,9 @@ func TestUserDataHandler_NoAuthHeader(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -252,7 +264,9 @@ func TestUserDataHandler_TokenNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -303,7 +317,9 @@ func TestUserDataHandler_TokenExpired(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetUserHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

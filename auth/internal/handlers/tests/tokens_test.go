@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -49,7 +51,9 @@ func TestTokensHandler_Success(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewTokensHandler()
-	app.Router().Handle(handler, "/tokens", w, req)
+	if httpResp := app.Router().Handle(handler, "/tokens", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -115,7 +119,9 @@ func TestTokensHandler_CodeNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewTokensHandler()
-	app.Router().Handle(handler, "/tokens", w, req)
+	if httpResp := app.Router().Handle(handler, "/tokens", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -158,7 +164,9 @@ func TestTokensHandler_InvalidCode(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewTokensHandler()
-	app.Router().Handle(handler, "/tokens", w, req)
+	if httpResp := app.Router().Handle(handler, "/tokens", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

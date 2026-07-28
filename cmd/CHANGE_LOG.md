@@ -1,4 +1,12 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.8
+Changes:
+- fix: typo in error messages - "undefind (default) command" -> "undefined (default) command"
+- refactor: argument parsing split out into a standalone `parseArgs` so it's testable without touching `os.Args`
+- test: added unit tests for `parseArgs`, `defineConstructor`, `GetOptions[T]`, `Prepare`, `validate`
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.7
 Changes:

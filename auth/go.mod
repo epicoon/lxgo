@@ -3,11 +3,11 @@ module github.com/epicoon/lxgo/auth
 go 1.23.2
 
 require (
-	github.com/epicoon/lxgo/auth_client v0.1.0-alpha.3
-	github.com/epicoon/lxgo/cmd v0.1.0-alpha.7
+	github.com/epicoon/lxgo/auth_client v0.1.0-alpha.4
+	github.com/epicoon/lxgo/cmd v0.1.0-alpha.8
 	github.com/epicoon/lxgo/kernel v0.1.0-alpha.27
-	github.com/epicoon/lxgo/migrator v0.1.0-alpha.6
-	github.com/epicoon/lxgo/session v0.1.0-alpha.5
+	github.com/epicoon/lxgo/migrator v0.1.0-alpha.7
+	github.com/epicoon/lxgo/session v0.1.0-alpha.6
 	github.com/stretchr/testify v1.10.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.1

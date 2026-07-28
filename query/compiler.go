@@ -39,7 +39,7 @@ func (c *compiler) column(field string) string {
 	parts := strings.Split(field, ".")
 
 	if len(parts) == 1 {
-		return fmt.Sprintf("%s.%s", c.tableAlias, toSnake(parts[0]))
+		return fmt.Sprintf("%s.%s", c.tableAlias, namingStrategy.ColumnName("", parts[0]))
 	}
 
 	// relation.field
@@ -49,7 +49,7 @@ func (c *compiler) column(field string) string {
 	alias := c.relationAlias(relation)
 	c.joins[relation] = alias
 
-	return fmt.Sprintf("%s.%s", alias, toSnake(column))
+	return fmt.Sprintf("%s.%s", alias, namingStrategy.ColumnName("", column))
 }
 
 func (c *compiler) compileNode(n Node) (string, []any) {

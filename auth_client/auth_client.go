@@ -203,8 +203,12 @@ func (c *AuthClient) ExchangeCodeForTokens(code string) (*Tokens, error) {
 	if err != nil {
 		return nil, err
 	}
+	form := tokensResp.(*tokensForm)
+	if !form.Success {
+		return nil, errors.New(form.ErrorMessage)
+	}
 	tokens := new(Tokens)
-	tokens.Set(tokensResp.(*tokensForm))
+	tokens.Set(form)
 	return tokens, nil
 }
 

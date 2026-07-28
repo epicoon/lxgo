@@ -33,8 +33,8 @@ func newTestPreprocessor(t *testing.T) jspp.IPreprocessor {
 	return pp
 }
 
-// TestPathfinder_GetAbsPath_Empty is a regression test for task 0103:
-// GetAbsPath("") used to panic on path[0] with no length check first.
+// TestPathfinder_GetAbsPath_Empty is a regression test: GetAbsPath("")
+// used to panic on path[0] with no length check first.
 func TestPathfinder_GetAbsPath_Empty(t *testing.T) {
 	pp := newTestPreprocessor(t)
 

@@ -5,6 +5,7 @@
 package session
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -33,8 +34,9 @@ type IStorage interface {
 	// session, creating a new one (and setting the cookie) if none exists yet.
 	StartSession(ctx kernel.IHandleContext) (ISession, error)
 
-	// DestroySession removes sess from storage and clears its cookie.
-	DestroySession(ISession)
+	// DestroySession removes sess from storage and clears its cookie by
+	// writing an expiring Set-Cookie to w - the current response writer.
+	DestroySession(w http.ResponseWriter, sess ISession)
 
 	// SessionByID looks up a session by ID, returning (nil, nil) if it
 	// doesn't exist.
@@ -59,9 +61,6 @@ type ISession interface {
 
 	// SetID changes the session's ID.
 	SetID(sid string)
-
-	// Context returns the kernel.IHandleContext the session was created for.
-	Context() kernel.IHandleContext
 
 	// Set stores value under key, failing if key is already set.
 	Set(key any, value any) error
@@ -99,7 +98,7 @@ type IProvider interface {
 	AddSession(sess ISession, sid string)
 
 	// SessionInit creates and stores a new session under sid.
-	SessionInit(sid string, ctx kernel.IHandleContext) (ISession, error)
+	SessionInit(sid string) (ISession, error)
 
 	// SessionExists reports whether a session with the given ID is stored.
 	SessionExists(sid string) bool

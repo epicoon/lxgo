@@ -171,6 +171,20 @@ type preloadItem struct {
 	scope    func(*gorm.DB) *gorm.DB
 }
 
+// groupByClause resolves each GroupBy field through comp (same as OrderBy's
+// fields) and joins them into a SQL GROUP BY clause - "" if there's nothing
+// to group by.
+func (qb *QueryBuilder[T]) groupByClause(comp *compiler) string {
+	if len(qb.groupBy) == 0 {
+		return ""
+	}
+	cols := make([]string, len(qb.groupBy))
+	for i, f := range qb.groupBy {
+		cols[i] = comp.column(f)
+	}
+	return strings.Join(cols, ",")
+}
+
 type orderClause struct {
 	field string
 	desc  bool
@@ -188,13 +202,15 @@ func (qb *QueryBuilder[T]) build() *gorm.DB {
 
 	// JOINS
 	for rel, alias := range comp.joins {
+		joinTable := namingStrategy.TableName(rel)
+		fk := namingStrategy.ColumnName("", rel+"ID")
 		db = db.Joins(
 			fmt.Sprintf(
-				"LEFT JOIN %ss %s ON %s.%s_id = %s.id",
-				toSnake(rel),
+				"LEFT JOIN %s %s ON %s.%s = %s.id",
+				joinTable,
 				alias,
 				qb.alias,
-				toSnake(rel),
+				fk,
 				alias,
 			),
 		)
@@ -215,8 +231,8 @@ func (qb *QueryBuilder[T]) build() *gorm.DB {
 	}
 
 	// GROUP BY
-	if len(qb.groupBy) > 0 {
-		db = db.Group(strings.Join(qb.groupBy, ","))
+	if clause := qb.groupByClause(comp); clause != "" {
+		db = db.Group(clause)
 	}
 
 	// HAVING

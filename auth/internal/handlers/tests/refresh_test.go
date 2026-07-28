@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -61,7 +63,9 @@ func TestRefreshHandler_Success(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewRefreshHandler()
-	app.Router().Handle(handler, "/refresh", w, req)
+	if httpResp := app.Router().Handle(handler, "/refresh", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -128,7 +132,9 @@ func TestRefreshHandler_ClientNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewRefreshHandler()
-	app.Router().Handle(handler, "/refresh", w, req)
+	if httpResp := app.Router().Handle(handler, "/refresh", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -162,7 +168,9 @@ func TestRefreshHandler_TokenNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewRefreshHandler()
-	app.Router().Handle(handler, "/refresh", w, req)
+	if httpResp := app.Router().Handle(handler, "/refresh", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -217,7 +225,9 @@ func TestRefreshHandler_TokenExpired(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewRefreshHandler()
-	app.Router().Handle(handler, "/refresh", w, req)
+	if httpResp := app.Router().Handle(handler, "/refresh", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -231,4 +241,60 @@ func TestRefreshHandler_TokenExpired(t *testing.T) {
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	assert.NoError(t, err, "Response decoding failed")
 	assert.Equal(t, handlers.ERR_TOKEN_EXPIRED, response.ErrorCode, fmt.Sprintf("Expected response code %v", handlers.ERR_TOKEN_EXPIRED))
+}
+
+// TestRefreshHandler_ScopeExceedsGranted is a security-relevant test of the
+// RFC 6749 §6 rule enforced in refresh.go: a /refresh request may narrow
+// scope, never broaden it. A token granted only "profile" must not be
+// refreshable into "profile:data".
+func TestRefreshHandler_ScopeExceedsGranted(t *testing.T) {
+	app := testutils.App()
+	if app == nil {
+		log.Fatalf("Cannot create test application")
+	}
+	defer testutils.CleanupUsersTable()
+	defer testutils.CleanupTokensTable()
+
+	client, err := app.ClientsRepo().FindByID(testutils.TestClientID)
+	if err != nil {
+		log.Fatalf("Can not get client: %v", err)
+	}
+	user, err := app.UsersRepo().Create("scope_test_user", "Password123!")
+	assert.NoError(t, err)
+	if _, err := app.TokensRepo().CreateAccessToken(client, user, models.SCOPE_PROFILE); err != nil {
+		log.Fatalf("Can not create access token: %s", err)
+	}
+	refreshToken, err := app.TokensRepo().CreateRefreshToken(client, user, models.SCOPE_PROFILE)
+	if err != nil {
+		log.Fatalf("Can not create refresh token: %s", err)
+	}
+
+	reqData := map[string]any{
+		"grant_type":    "refresh_token",
+		"client_id":     testutils.TestClientID,
+		"client_secret": testutils.TestClientSecret,
+		"refresh_token": refreshToken.Value,
+		"scope":         models.SCOPE_PROFILE_DATA,
+	}
+	jsonData, _ := json.Marshal(reqData)
+	req := httptest.NewRequest(http.MethodPost, "/tokens", bytes.NewReader(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler := handlers.NewRefreshHandler()
+	if httpResp := app.Router().Handle(handler, "/refresh", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	var response handlers.FailResponse
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	assert.NoError(t, err, "Response decoding failed")
+	assert.Equal(t, handlers.ERR_INVAL_SCOPE, response.ErrorCode)
+
+	// The refresh token must still be usable afterwards (rejected, not consumed).
+	_, _, err = app.TokensRepo().FindTokensByRefresh(client, refreshToken.Value)
+	assert.NoError(t, err, "expected the refresh token to remain valid after a rejected scope-broadening attempt")
 }

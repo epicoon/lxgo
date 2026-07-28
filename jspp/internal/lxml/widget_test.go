@@ -7,12 +7,12 @@ import (
 	"github.com/epicoon/lxgo/jspp/internal/lxml"
 )
 
-// TestParseText_RepeatedMethodCall is a regression test for backlog task
-// 0077: calling the same method twice in a row (`#method(a) #method(b)`)
-// used to compile both calls with the SAME (last-written) args, since
-// WidgetNode.Methods was a plain map[string]string keyed by method name -
-// the second call's args silently overwrote the first's before compilation
-// ever ran. Methods now holds one args entry per call, consumed in order.
+// TestParseText_RepeatedMethodCall is a regression test: calling the same
+// method twice in a row (`#method(a) #method(b)`) used to compile both
+// calls with the SAME (last-written) args, since WidgetNode.Methods was a
+// plain map[string]string keyed by method name - the second call's args
+// silently overwrote the first's before compilation ever ran. Methods now
+// holds one args entry per call, consumed in order.
 func TestParseText_RepeatedMethodCall(t *testing.T) {
 	pp := newTestPreprocessor(t)
 	src := "<*root>\n" +

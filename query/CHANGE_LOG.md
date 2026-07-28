@@ -1,5 +1,16 @@
 ------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
+Version: v0.1.0-alpha.6
+Changes:
+- fix: table/column/foreign-key names were built by a hand-rolled `toSnake` + naive `+"s"` pluralization instead of
+  gorm's own naming strategy - could silently diverge from the names gorm itself uses for `BaseRepo`'s
+  `Model(new(T))`-based queries and migrations (irregular plurals, acronyms in CamelCase, join foreign-key naming)
+- refactor: `GROUP BY` clause building split out into a standalone `groupByClause`, testable without a DB connection
+- test: added unit tests for `groupByClause` and the compiler/condition-building internals; added integration tests
+  against a real Postgres
+
+------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
 Version: v0.1.0-alpha.5
 Changes:
 - fix: go.mod was missing its `require` block entirely (only the `module`/`go` directives) - the module could not

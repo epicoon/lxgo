@@ -2,17 +2,26 @@ Port: 0
 
 Settings:
   AdminPanel: "enable"
+  # ID of the Client that represents this service to itself - only tokens
+  # issued to this specific client can carry admin privileges (see
+  # authenticateAdmin, internal/handlers/common.go). testutils.go creates a
+  # matching Client row with this exact ID during test setup.
+  AdminClientID: 3
 
 Database:
   Host: "localhost"
-  Port: 5432
+  # A throwaway Postgres container spun up just for this test run - see
+  # .claude/skills/testing/scripts/pg-integration.sh lxgoauthtest 55435 -
+  # not a persistently-running local Postgres.
+  Port: 55435
   User: "lx"
   Password: "123456"
   DBName: "lxgoauthtest"
   SSLMode: "disable"
 
 Templates:
-  - templates
+  - Dir: templates
+    Layout: layout
 
 Components:
   SessionStorage:

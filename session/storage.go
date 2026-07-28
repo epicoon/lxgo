@@ -125,7 +125,7 @@ func (c *Storage) Config() *Config {
 func (s *Storage) Scanner() IScanner {
 	return &Scanner{
 		storage:  s,
-		provider: s.provider,
+		provider: s.getProvider(),
 	}
 }
 
@@ -143,14 +143,14 @@ func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession, err
 	provider := s.getProvider()
 	if cookieErr != nil || cookie.Value == "" {
 		sid := s.sessionId()
-		session, err = provider.SessionInit(sid, ctx)
+		session, err = provider.SessionInit(sid)
 		if err != nil {
 			return nil, fmt.Errorf("can not init session: %s", err)
 		}
 		newCookie := http.Cookie{Name: s.Config().CookieName, Value: url.QueryEscape(sid), Path: "/", HttpOnly: true, MaxAge: int(s.Config().MaxLifeTime)}
 		http.SetCookie(ctx.ResponseWriter(), &newCookie)
 	} else if sid, _ := url.QueryUnescape(cookie.Value); cookie.Value != "" && !provider.SessionExists(sid) {
-		session, err = provider.SessionInit(sid, ctx)
+		session, err = provider.SessionInit(sid)
 		if err != nil {
 			return nil, fmt.Errorf("can not init session: %s", err)
 		}
@@ -164,19 +164,16 @@ func (s *Storage) StartSession(ctx kernel.IHandleContext) (session ISession, err
 	return session, nil
 }
 
-// DestroySession removes sess from storage and clears its cookie.
-func (s *Storage) DestroySession(sess ISession) {
+// DestroySession removes sess from storage and clears its cookie by
+// writing an expiring Set-Cookie to w - the current response writer.
+func (s *Storage) DestroySession(w http.ResponseWriter, sess ISession) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.getProvider().DestroySession(sess.ID())
 
-	cookie, err := sess.Context().Request().Cookie(s.Config().CookieName)
-	if err != nil || cookie.Value == "" {
-		return
-	}
 	expiration := time.Now()
 	newCookie := http.Cookie{Name: s.Config().CookieName, Path: "/", HttpOnly: true, Expires: expiration, MaxAge: -1}
-	http.SetCookie(sess.Context().ResponseWriter(), &newCookie)
+	http.SetCookie(w, &newCookie)
 }
 
 // SessionByID looks up a session by ID, returning (nil, nil) if it doesn't exist.

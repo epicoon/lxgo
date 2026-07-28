@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -58,7 +60,9 @@ func TestLogoutHandler_Success(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewLogoutHandler()
-	app.Router().Handle(handler, "/logout", w, req)
+	if httpResp := app.Router().Handle(handler, "/logout", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -109,7 +113,9 @@ func TestLogoutHandler_ClientNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewLogoutHandler()
-	app.Router().Handle(handler, "/logout", w, req)
+	if httpResp := app.Router().Handle(handler, "/logout", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -140,7 +146,9 @@ func TestLogoutHandler_NoAuthHeader(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewLogoutHandler()
-	app.Router().Handle(handler, "/logout", w, req)
+	if httpResp := app.Router().Handle(handler, "/logout", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -172,7 +180,9 @@ func TestLogoutHandler_TokenNotFound(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewLogoutHandler()
-	app.Router().Handle(handler, "/logout", w, req)
+	if httpResp := app.Router().Handle(handler, "/logout", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

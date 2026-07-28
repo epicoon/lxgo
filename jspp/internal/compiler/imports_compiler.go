@@ -230,7 +230,7 @@ func (c *Compiler) processImport(code, rootPath string) (string, error) {
 			// GuiNode-style file in the same compileFileGroup pass) had
 			// already recorded - only the last file's bare lx.import(Name)
 			// references would survive into the page's asset manifest,
-			// silently dropping the rest (see the 0080 investigation).
+			// silently dropping the rest.
 			for _, m := range allModuleNames {
 				if !slices.Contains(c.compiledModules, m) {
 					c.compiledModules = append(c.compiledModules, m)

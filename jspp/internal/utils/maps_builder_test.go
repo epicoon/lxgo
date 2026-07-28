@@ -80,8 +80,8 @@ func (p *fakePreprocessor) PluginManager() jspp.IPluginManager         { return 
 func (p *fakePreprocessor) CompilerBuilder() jspp.ICompilerBuilder     { return nil }
 func (p *fakePreprocessor) JSExecutorBuilder() jspp.IJSExecutorBuilder { return nil }
 
-// TestCheckPluginPath_InvalidClientFileType is a regression test for task
-// 0105: `file = rawFile.(string)` in checkPluginPath used to panic on a
+// TestCheckPluginPath_InvalidClientFileType is a regression test:
+// `file = rawFile.(string)` in checkPluginPath used to panic on a
 // non-string `client.file` value in lx-plugin.yaml, instead of logging and
 // falling back to "Plugin.js" like the sibling `key` field does.
 func TestCheckPluginPath_InvalidClientFileType(t *testing.T) {

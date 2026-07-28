@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	authClient "github.com/epicoon/lxgo/auth_client"
 	cvn "github.com/epicoon/lxgo/auth/internal/conventions"
 	"github.com/epicoon/lxgo/auth/internal/repos"
+	authClient "github.com/epicoon/lxgo/auth_client"
 	"github.com/epicoon/lxgo/kernel"
 	lxHttp "github.com/epicoon/lxgo/kernel/http"
 )
@@ -52,11 +52,11 @@ func NewLogoutHandler() kernel.IHttpResource {
 
 func (handler *LogoutHandler) ProcessRequestErrors() kernel.IHttpResponse {
 	return errorResponse(
-	    handler,
-	    http.StatusBadRequest,
-	    ERR_NO_CLIENT_ID,
-	    fmt.Sprintf("Invalid request: %v", handler.RequestForm().GetFirstError()),
-    )
+		handler,
+		http.StatusBadRequest,
+		ERR_NO_CLIENT_ID,
+		fmt.Sprintf("Invalid request: %v", handler.RequestForm().GetFirstError()),
+	)
 }
 
 func (handler *LogoutHandler) Run() kernel.IHttpResponse {

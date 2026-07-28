@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -43,7 +45,9 @@ func TestReturnHandler_Success(t *testing.T) {
 		})
 		sess.SetForce("lxgo_auth_code", "auth_code_123")
 	})
-	app.Router().Handle(handler, "/return", w, req)
+	if httpResp := app.Router().Handle(handler, "/return", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -69,7 +73,9 @@ func TestReturnHandler_MissingAuthParams(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewReturnHandler()
-	app.Router().Handle(handler, "/return", w, req)
+	if httpResp := app.Router().Handle(handler, "/return", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -107,7 +113,9 @@ func TestReturnHandler_MissingAuthCode(t *testing.T) {
 			State:        "test_state",
 		})
 	})
-	app.Router().Handle(handler, "/return", w, req)
+	if httpResp := app.Router().Handle(handler, "/return", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

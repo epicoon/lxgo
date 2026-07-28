@@ -1,3 +1,5 @@
+//go:build integration
+
 package testutils
 
 import (
@@ -26,6 +28,12 @@ const TestClientID = 2
 const TestClientSecret = "testsecret"
 const TestClientRedirectUri = "test_redirect"
 
+// TestAdminClientID must match config.yaml's Settings.AdminClientID -
+// authenticateAdmin (internal/handlers/common.go) only grants admin access
+// to tokens issued through this specific client, never TestClientID.
+const TestAdminClientID = 3
+const TestAdminClientSecret = "admintestsecret"
+
 // Test application
 var app cvn.IApp
 
@@ -41,11 +49,16 @@ func SetupTests(m *testing.M) {
 	// Preparing
 	actualizeMigrations(app)
 	prepareTestClient(app)
+	prepareAdminClient(app)
+	// TestClientID/TestAdminClientID are inserted with explicit IDs,
+	// bypassing the "clients" table's own serial sequence entirely - left
+	// alone, the sequence stays at its initial value and the next
+	// auto-assigned client (e.g. via CreateClientHandler in a test) can
+	// collide with one of these explicit IDs. Advance it past both.
+	app.Gorm().Exec("SELECT SETVAL(pg_get_serial_sequence('clients', 'id'), (SELECT MAX(id) FROM clients))")
 
 	// Start tests
 	code := m.Run()
-
-	//TODO Clear resources
 
 	// Return result
 	os.Exit(code)
@@ -98,7 +111,9 @@ func RunMissingReqParamsTest(t *testing.T, method, url string, cRes kernel.CHttp
 
 		// Run handler
 		handler := cRes()
-		app.Router().Handle(handler, url, w, req)
+		if httpResp := app.Router().Handle(handler, url, w, req); httpResp != nil {
+			httpResp.Send(w)
+		}
 		resp := w.Result()
 
 		// Clear data
@@ -142,6 +157,40 @@ func CleanupTokensTable() {
 	db.Exec("ALTER SEQUENCE tokens_id_seq RESTART WITH 1")
 }
 
+func CleanupAdminsTable() {
+	db := app.Gorm()
+	if err := db.Exec("DELETE FROM admins").Error; err != nil {
+		log.Fatalf("Failed to clean up admins table: %v", err)
+	}
+	db.Exec("ALTER SEQUENCE admins_id_seq RESTART WITH 1")
+}
+
+// CreateAdminUser creates a User, gives them an Admin record, and issues an
+// access token for TestAdminClientID (the one authenticateAdmin actually
+// checks for admin-gated endpoints - a token from TestClientID, even for
+// the same admin User, must NOT work there). Returns the access token
+// value to use as a bearer token.
+func CreateAdminUser(login, password string) (*models.User, string) {
+	user, err := app.UsersRepo().Create(login, password)
+	if err != nil {
+		log.Fatalf("can not create admin test user: %v", err)
+	}
+	if _, err := app.AdminsRepo().Create(user.ID, models.ROLE_ADMIN); err != nil {
+		log.Fatalf("can not create admin record: %v", err)
+	}
+
+	adminClient, err := app.ClientsRepo().FindByID(TestAdminClientID)
+	if err != nil {
+		log.Fatalf("can not find admin client: %v", err)
+	}
+	accessToken, err := app.TokensRepo().CreateAccessToken(adminClient, user, models.SCOPE_PROFILE)
+	if err != nil {
+		log.Fatalf("can not create admin access token: %v", err)
+	}
+
+	return user, accessToken.Value
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -176,6 +225,33 @@ func prepareTestClient(app cvn.IApp) {
 		_, err := repo.Create(testClient)
 		if err != nil {
 			log.Fatalf("can not create test client: %v", err)
+		}
+	}
+}
+
+// prepareAdminClient creates the Client that config.yaml's
+// Settings.AdminClientID (TestAdminClientID) points at - the one
+// authenticateAdmin requires admin-gated endpoints' bearer tokens to have
+// been issued through, distinct from the plain TestClientID.
+func prepareAdminClient(app cvn.IApp) {
+	_, err := app.ClientsRepo().FindByID(TestAdminClientID)
+	if err != nil {
+		if !errors.Is(err, repos.ErrClientNotFound) {
+			log.Fatalf("error while admin client searching: %v", err)
+		}
+
+		adminClient := &models.Client{
+			Model:                gorm.Model{ID: TestAdminClientID},
+			Secret:               TestAdminClientSecret,
+			AccessTokenLifetime:  models.DefaultAccessTokenLifetime,
+			RefreshTokenLifetime: models.DefaultRefreshTokenLifetime,
+			RedirectUri:          "admin_test_redirect",
+		}
+		db := app.Gorm().Session(&gorm.Session{AllowGlobalUpdate: true})
+		repo := app.ClientsRepo()
+		repo.SetTx(db)
+		if _, err := repo.Create(adminClient); err != nil {
+			log.Fatalf("can not create admin client: %v", err)
 		}
 	}
 }

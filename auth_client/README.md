@@ -1,6 +1,6 @@
 # Authentication client for lxgo/kernel applications
 
-> Actual version: `v0.1.0-alpha.3`. [Details](https://github.com/epicoon/lxgo/tree/master/auth_client/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.4`. [Details](https://github.com/epicoon/lxgo/tree/master/auth_client/CHANGE_LOG.md)
 
 This package is the client-side counterpart of the
 [lxgo/auth](https://github.com/epicoon/lxgo/tree/master/auth) authentication microservice — it wires an

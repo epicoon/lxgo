@@ -125,18 +125,16 @@ func TestCompiledModules_RuntimeNeedRoundTrip_ResolvesTransitively(t *testing.T)
 }
 
 // TestCompiledModules_MultipleIncludedFiles_AllContribute is a regression
-// test for backlog task 0080 ("lx.import from a GuiNode doesn't work"): with
-// BuildModules(false) (compileMainJs's own pattern), each file pulled in via
-// a path-based lx.import('some/file.js') runs its own nested processImport
-// call on the same *Compiler instance - processImport's bare-module branch
-// used to do a plain assignment (c.compiledModules = allModuleNames)
-// instead of accumulating, so if two different included files (e.g. two
-// different GuiNode client files) each had their own bare lx.import(Name),
-// only the LAST one processed survived - the first one's module silently
-// vanished from the page's asset manifest and was never fetched at runtime.
-// This matched the reported symptom shape exactly: some GuiNode-originated
-// imports work, others don't, depending on include order - not "GuiNode
-// imports never work".
+// test: with BuildModules(false) (compileMainJs's own pattern), each file
+// pulled in via a path-based lx.import('some/file.js') runs its own nested
+// processImport call on the same *Compiler instance - processImport's
+// bare-module branch used to do a plain assignment
+// (c.compiledModules = allModuleNames) instead of accumulating, so if two
+// different included files each had their own bare lx.import(Name), only
+// the LAST one processed survived - the first one's module silently
+// vanished from the page's asset manifest and was never fetched at
+// runtime. Symptom shape: some imports from included files work, others
+// don't, depending on include order.
 func TestCompiledModules_MultipleIncludedFiles_AllContribute(t *testing.T) {
 	pp := newTestPreprocessor(t)
 	clientDir := t.TempDir()

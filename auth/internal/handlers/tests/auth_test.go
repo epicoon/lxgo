@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -47,7 +49,9 @@ func TestAuthHandler_GetAuth_Success(t *testing.T) {
 			State:        "test_state",
 		})
 	})
-	app.Router().Handle(handler, "/auth", w, req)
+	if httpResp := app.Router().Handle(handler, "/auth", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -71,7 +75,9 @@ func TestAuthHandler_GetAuth_MissingAuthParams(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewGetAuthHandler()
-	app.Router().Handle(handler, "/auth", w, req)
+	if httpResp := app.Router().Handle(handler, "/auth", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -107,7 +113,9 @@ func TestAuthHandler_GetAuth_InvalidClientID(t *testing.T) {
 			State:        "test_state",
 		})
 	})
-	app.Router().Handle(handler, "/auth", w, req)
+	if httpResp := app.Router().Handle(handler, "/auth", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -142,7 +150,9 @@ func TestAuthHandler_PostAuth_Success(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewPostAuthHandler()
-	app.Router().Handle(handler, "/auth", w, req)
+	if httpResp := app.Router().Handle(handler, "/auth", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -168,6 +178,32 @@ func TestAuthHandler_PostAuth_Success(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Auth")
 }
 
+// TestAuthHandler_PostAuth_RedirectUriMismatch is a security-relevant test:
+// redirect_uri must match the client's registered one exactly (RFC 6749) -
+// a request with a different one must be rejected, not silently accepted.
+func TestAuthHandler_PostAuth_RedirectUriMismatch(t *testing.T) {
+	app := testutils.App()
+	if app == nil {
+		log.Fatalf("Cannot create test application")
+	}
+
+	payload := fmt.Sprintf(`{"response_type": "code", "client_id": %d, "redirect_uri": "https://attacker.example/callback", "state": "test_state"}`, testutils.TestClientID)
+	req := httptest.NewRequest(http.MethodPost, "/auth", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler := handlers.NewPostAuthHandler()
+	if httpResp := app.Router().Handle(handler, "/auth", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
+	resp := w.Result()
+	defer resp.Body.Close()
+	defer testutils.CleanupSession()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Contains(t, w.Body.String(), "Invalid redirect_uri")
+}
+
 func TestAuthHandler_PostAuth_MissingAuthParams(t *testing.T) {
 	testutils.RunMissingReqParamsTest(t, http.MethodPost, "/auth", handlers.NewPostAuthHandler, map[string]any{
 		"response_type": "code",
@@ -191,7 +227,9 @@ func TestAuthHandler_PostAuth_InvalidClientID(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewPostAuthHandler()
-	app.Router().Handle(handler, "/auth", w, req)
+	if httpResp := app.Router().Handle(handler, "/auth", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

@@ -83,18 +83,7 @@ func getMigrations(mode int) ([]*migration, error) {
 				return nil, fmt.Errorf("error parsing filename '%s': %w", file.Name(), err)
 			}
 			mig.setApplied(appliedData.checkMigration(mig))
-			switch mode {
-			case cGET_ALL:
-				migrations = append(migrations, mig)
-			case cGET_APPLIED_ONLY:
-				if mig.isApplied() {
-					migrations = append(migrations, mig)
-				}
-			case cGET_UNAPPLIED_ONLY:
-				if !mig.isApplied() {
-					migrations = append(migrations, mig)
-				}
-			}
+			migrations = append(migrations, mig)
 		}
 	}
 
@@ -102,5 +91,28 @@ func getMigrations(mode int) ([]*migration, error) {
 		return migrations[i].timestamp < migrations[j].timestamp
 	})
 
-	return migrations, nil
+	return filterMigrations(migrations, mode), nil
+}
+
+// filterMigrations keeps only the migrations matching mode
+// (cGET_ALL/cGET_APPLIED_ONLY/cGET_UNAPPLIED_ONLY) - split out from
+// getMigrations so this branching can be tested without a DB connection
+// (each migration's applied flag is set independently, via setApplied).
+func filterMigrations(migrations []*migration, mode int) []*migration {
+	var result []*migration
+	for _, mig := range migrations {
+		switch mode {
+		case cGET_ALL:
+			result = append(result, mig)
+		case cGET_APPLIED_ONLY:
+			if mig.isApplied() {
+				result = append(result, mig)
+			}
+		case cGET_UNAPPLIED_ONLY:
+			if !mig.isApplied() {
+				result = append(result, mig)
+			}
+		}
+	}
+	return result
 }

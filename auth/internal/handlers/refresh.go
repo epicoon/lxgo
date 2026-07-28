@@ -122,7 +122,9 @@ func (handler *RefreshHandler) Run() kernel.IHttpResponse {
 	// Refresh tokens
 	accessToken.Refresh(client)
 	refreshToken.Refresh(client)
-	if err := coreApp.TokensRepo().SaveTokens(accessToken, refreshToken); err != nil {
+	tokensRepo := coreApp.TokensRepo()
+	tokensRepo.SetTx(tx)
+	if err := tokensRepo.SaveTokens(accessToken, refreshToken); err != nil {
 		tx.Rollback()
 		return serverErrorResponse(handler, fmt.Sprintf("Can not save tokens %s, %s for client '%d': %s", accessToken.Value, refreshToken.Value, req.ClientID, req.ClientSecret))
 	}

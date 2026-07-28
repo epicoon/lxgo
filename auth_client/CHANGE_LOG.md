@@ -1,4 +1,16 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.4
+Changes:
+- fix: `NewLogoutHandler()` built its `Resource` via a bare `&lxHttp.Resource{}` instead of `lxHttp.NewResource()`,
+  skipping its constructor-side initialization and panicking as soon as the handler ran
+- fix: `ExchangeCodeForTokens` ignored a failed exchange's `Success: false` response and built `Tokens` out of its
+  empty fields anyway instead of returning the server's actual error message
+- test: added unit tests for `GetBearer`, `Tokens.Set`, `AuthConfig`, and `ExchangeCodeForTokens`/`RefreshTokens`/
+  `LogOut`; added integration tests for `StateHandler`/`AuthCallbackHandler`/`RefreshHandler`/`LogoutHandler` via full
+  HTTP round trips
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.3
 Changes:

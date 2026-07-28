@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -49,7 +51,9 @@ func TestSetUserDataHandler_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewSetUserDataHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	defer resp.Body.Close()
@@ -98,7 +102,9 @@ func TestSetUserDataHandler_Upsert(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewSetUserDataHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	defer resp.Body.Close()
@@ -145,7 +151,9 @@ func TestSetUserDataHandler_InvalidJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewSetUserDataHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	defer resp.Body.Close()
@@ -183,7 +191,9 @@ func TestSetUserDataHandler_InsufficientScope(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewSetUserDataHandler()
-	app.Router().Handle(handler, "/user-data", w, req)
+	if httpResp := app.Router().Handle(handler, "/user-data", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	defer resp.Body.Close()

@@ -83,9 +83,9 @@ func NewPostAuthHandler() kernel.IHttpResource {
 // doesn't have CRequestForm set, so the router never calls this for it.
 func (handler *AuthHandler) ProcessRequestErrors() kernel.IHttpResponse {
 	return handler.ErrorResponse(
-	    http.StatusBadRequest,
-	    fmt.Sprintf("Invalid request: %s", handler.RequestForm().GetFirstError()),
-    )
+		http.StatusBadRequest,
+		fmt.Sprintf("Invalid request: %s", handler.RequestForm().GetFirstError()),
+	)
 }
 
 func (handler *AuthHandler) Run() kernel.IHttpResponse {

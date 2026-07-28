@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -49,7 +51,9 @@ func TestSignupHandler_Success(t *testing.T) {
 			State:        "test_secret",
 		})
 	})
-	app.Router().Handle(handler, "/signup", w, req)
+	if httpResp := app.Router().Handle(handler, "/signup", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -78,7 +82,9 @@ func TestSignupHandler_MissingFields(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewSignupHandler()
-	app.Router().Handle(handler, "/signup", w, req)
+	if httpResp := app.Router().Handle(handler, "/signup", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -98,7 +104,9 @@ func TestSignupHandler_MissingFields(t *testing.T) {
 	w = httptest.NewRecorder()
 
 	handler = handlers.NewSignupHandler()
-	app.Router().Handle(handler, "/signup", w, req)
+	if httpResp := app.Router().Handle(handler, "/signup", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp = w.Result()
 
 	// Clear data
@@ -141,7 +149,9 @@ func TestSignupHandler_InvalidLoginFormat(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		handler := handlers.NewSignupHandler()
-		app.Router().Handle(handler, "/signup", w, req)
+		if httpResp := app.Router().Handle(handler, "/signup", w, req); httpResp != nil {
+			httpResp.Send(w)
+		}
 		resp := w.Result()
 
 		// Clear data
@@ -183,7 +193,9 @@ func TestSignupHandler_InvalidPasswordFormat(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		handler := handlers.NewSignupHandler()
-		app.Router().Handle(handler, "/signup", w, req)
+		if httpResp := app.Router().Handle(handler, "/signup", w, req); httpResp != nil {
+			httpResp.Send(w)
+		}
 		resp := w.Result()
 
 		// Clear data
@@ -219,7 +231,9 @@ func TestSignupHandler_UserAlreadyExists(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewSignupHandler()
-	app.Router().Handle(handler, "/signup", w, req)
+	if httpResp := app.Router().Handle(handler, "/signup", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

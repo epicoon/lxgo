@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.07.28
+Version: v0.1.0-alpha.7
+Changes:
+- fix: `Down(steps)` only clamped `steps` to 1 when it was exactly `0` - a negative `steps` fell through unclamped
+  and could roll back far more migrations than intended
+- refactor: `getMigrations`'s applied/unapplied filtering split out into a standalone `filterMigrations`, testable
+  without a DB connection
+- test: added unit tests for `filterMigrations`; added integration tests against a real Postgres
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.25
 Version: v0.1.0-alpha.6
 Changes:

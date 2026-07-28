@@ -52,10 +52,10 @@ func TestParseText_LinkToDefinedBlock_Compiles(t *testing.T) {
 	}
 }
 
-// TestParseText_LinkToUndefinedBlock_Errors is a regression test for task
-// 0104: a link to a block with no matching definition used to compile
-// "successfully" into invalid JS (a literal, unsubstituted "[|Name|]"
-// placeholder left in the output) instead of raising a compile error.
+// TestParseText_LinkToUndefinedBlock_Errors is a regression test: a link
+// to a block with no matching definition used to compile "successfully"
+// into invalid JS (a literal, unsubstituted "[|Name|]" placeholder left
+// in the output) instead of raising a compile error.
 func TestParseText_LinkToUndefinedBlock_Errors(t *testing.T) {
 	pp := newTestPreprocessor(t)
 	src := "<&neverDefined>\n"

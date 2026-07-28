@@ -44,7 +44,7 @@ func (handler *ReturnHandler) Run() kernel.IHttpResponse {
 	if err != nil {
 		return serverErrorResponse(handler, "server configuration is wrong: sessions support required")
 	}
-	sessStorage.DestroySession(sess)
+	sessStorage.DestroySession(handler.ResponseWriter(), sess)
 
 	// Redirect
 	return handler.PostRedirect(params.RedirectUri, map[string]any{

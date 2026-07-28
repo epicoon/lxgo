@@ -18,8 +18,11 @@ type manager struct {
 var m = new(manager)
 
 func (m *manager) prepare() {
-	args := os.Args[1:]
+	m.parseArgs(os.Args[1:])
+}
 
+// parseArgs fills in cmdRoute/cmdName/subName/params from args.
+func (m *manager) parseArgs(args []string) {
 	m.cmdRoute = ""
 	m.cmdName = ""
 	m.subName = ""
@@ -60,9 +63,9 @@ func (m *manager) defineConstructor() (CCommand, error) {
 	_, exists := m.list[m.cmdName]
 	if !exists {
 		if m.cmdName == "" {
-			return nil, errors.New("undefind default command")
+			return nil, errors.New("undefined default command")
 		} else {
-			return nil, fmt.Errorf("undefind command '%s'", m.cmdName)
+			return nil, fmt.Errorf("undefined command '%s'", m.cmdName)
 		}
 	}
 

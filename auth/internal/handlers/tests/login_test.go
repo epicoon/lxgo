@@ -1,3 +1,5 @@
+//go:build integration
+
 package handlers_test
 
 import (
@@ -54,7 +56,9 @@ func TestLoginHandler_Success(t *testing.T) {
 			State:        "test_secret",
 		})
 	})
-	app.Router().Handle(handler, "/login", w, req)
+	if httpResp := app.Router().Handle(handler, "/login", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -82,7 +86,9 @@ func TestLoginHandler_MissingFields(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	handler := handlers.NewLoginHandler()
-	app.Router().Handle(handler, "/login", w, req)
+	if httpResp := app.Router().Handle(handler, "/login", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data
@@ -102,7 +108,9 @@ func TestLoginHandler_MissingFields(t *testing.T) {
 	w = httptest.NewRecorder()
 
 	handler = handlers.NewLoginHandler()
-	app.Router().Handle(handler, "/login", w, req)
+	if httpResp := app.Router().Handle(handler, "/login", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp = w.Result()
 
 	// Clear data
@@ -131,7 +139,9 @@ func TestLoginHandler_WrongFields(t *testing.T) {
 
 	// Run handler
 	handler := handlers.NewLoginHandler()
-	app.Router().Handle(handler, "/login", w, req)
+	if httpResp := app.Router().Handle(handler, "/login", w, req); httpResp != nil {
+		httpResp.Send(w)
+	}
 	resp := w.Result()
 
 	// Clear data

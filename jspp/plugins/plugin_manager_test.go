@@ -34,11 +34,11 @@ func newTestPreprocessor(t *testing.T) jspp.IPreprocessor {
 	return pp
 }
 
-// TestPluginManager_Save_PopulatesInMemoryCache is a regression test for
-// task 0101: Save() used to allocate dataSlice at the right length but never
-// fill it from the plugins argument, leaving m.data full of zero-valued
-// entries (empty Name/Path/Plugin) after every Save() - Has()/Get() would
-// then misbehave for anything saved in the same process, even though the
+// TestPluginManager_Save_PopulatesInMemoryCache is a regression test:
+// Save() used to allocate dataSlice at the right length but never fill it
+// from the plugins argument, leaving m.data full of zero-valued entries
+// (empty Name/Path/Plugin) after every Save() - Has()/Get() would then
+// misbehave for anything saved in the same process, even though the
 // on-disk file was written correctly.
 func TestPluginManager_Save_PopulatesInMemoryCache(t *testing.T) {
 	pp := newTestPreprocessor(t)
