@@ -89,13 +89,18 @@ func (c *ManageCommand) Config() *cmd.Config {
 				},
 			},
 			"trigger": cmd.ActionConfig{
-				Description: "Trigger custom event (!NOT IMPLEMENTED YET!)",
+				Description: "Trigger a custom app event (app.Events().Trigger)",
 				Executor:    trigger,
 				Params: cmd.ParamsConfig{
 					"event": cmd.ParamConfig{
 						Description: "Event name",
 						Type:        cmd.ParamTypeString,
 						Required:    true,
+					},
+					"params": cmd.ParamConfig{
+						Description: "Event payload, example: --params=\"number:123,name:'some string'\"",
+						Type:        cmd.ParamTypeString,
+						Required:    false,
 					},
 				},
 			},
@@ -129,12 +134,7 @@ func injectConfig(c cmd.ICommand) error {
 
 /** @handler cmd.FAction */
 func trigger(c cmd.ICommand) error {
-	e := c.Param("event")
-
-	//TODO
-	_ = e
-	fmt.Println("Not implemented yet")
-
+	sendToSocket(c.(*ManageCommand).SocketPath, prepareMsg("trigger", c.Params()))
 	return nil
 }
 

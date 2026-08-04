@@ -121,6 +121,9 @@ You'll need it to build `code.js` and modules and plugins maps
   `go run . jspp:build-plugins-map`
   * command to build `core.js` and modules and plugins maps
   `go run . jspp:build`
+  * command to scaffold a new plugin's minimal skeleton (see
+  [Plugins](https://github.com/epicoon/lxgo/tree/master/jspp/doc/plugins.md))
+  `go run . jspp:scaffold-plugin --name=MyPlugin`
 
 
 ### <a name="link3">3. Build `core.js` and use it on the browser side</a>

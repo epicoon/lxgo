@@ -29,6 +29,16 @@ func (c *Compiler) plugRequire(requireName string, flags Flags, parentDir string
 	return c.compileFileGroup(filePaths, flags, rootPath)
 }
 
+// addModuleI18nPrefix rewrites lx.i18n('key') calls (also lx.i18n(key) with
+// no quotes, or lx.i18n("key")) into lx.i18n('module-{{moduleName}}-key') -
+// i.e. inserts the module-scoping prefix right after the opening quote,
+// preserving whichever quote character (or absence of one) was actually
+// used, so the call stays syntactically valid.
+func addModuleI18nPrefix(code string, moduleName string) string {
+	re := regexp.MustCompile(`lx\.i18n\((['"]?)`)
+	return re.ReplaceAllString(code, `lx.i18n(${1}module-`+moduleName+`-`)
+}
+
 func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath string) (string, error) {
 	type fileInfo struct {
 		Path         string
@@ -54,9 +64,7 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 		re := regexp.MustCompile(`@lx:module +?([^;]+?) *?;`)
 		match := re.FindStringSubmatch(originalCode)
 		if match != nil {
-			moduleName := match[1]
-			re := regexp.MustCompile(`lx\.i18n\(['"]?`)
-			originalCode = re.ReplaceAllString(originalCode, "lx.i18n(module-"+moduleName+"-")
+			originalCode = addModuleI18nPrefix(originalCode, match[1])
 		}
 
 		code, err := c.compileCodeInnerDirectives(originalCode, fileName)

@@ -12,6 +12,7 @@ func main() {
 		"admin":    authcmd.NewAdminCommand,
 		"migrator": authcmd.NewMigratorCommand,
 		"apidoc":   authcmd.NewApiDocCommand,
+		"assets":   authcmd.NewAssetsCommand,
 	})
 	cmd.Run()
 }

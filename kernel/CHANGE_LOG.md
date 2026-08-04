@@ -1,4 +1,30 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.05
+Version: v0.1.0-alpha.28
+Changes:
+- add: `manage:trigger --event=NAME [--params=...]` - fires a custom app event (`app.Events().Trigger`) from outside
+  the running process over the manage socket, as if it happened internally (was a stub before, always replying "Not
+  implemented yet")
+- add: nested forms - a named (non-embedded) `kernel.IForm`-typed field inside another form is now filled and
+  validated in place (its own required-fields check, `AfterFill`/`Validate`, errors folded into the parent's),
+  recursively for however many levels deep the nesting goes
+- fix: an anonymous (embedded) struct field's own fields weren't populated by `cast.DictToStruct` - only
+  `lxgo-kernel/http`'s separate field-mapping did that flattening, so a required field declared on an embedded (not
+  top-level) form struct validated as present but was never actually filled
+- fix: a required nested-form field was always treated as "present" by `checkMissingParams`, since its embedded
+  `*Form` is never nil once constructed - a request missing that block entirely passed validation instead of being
+  reported as missing
+- fix: `applyEnv` skipped `${VAR}` placeholder resolution entirely when no `.env` file existed (and none was
+  required) - placeholders were left unresolved literally instead of falling back to the process environment or
+  their own default
+- fix: `Router.defineResource` did a second, redundant "is this route registered" check (rebuilding the full list of
+  registered routes on every single request) after the map lookup just above it already covered the same case
+- remove: `IApp.SetRouter` dropped from the public interface - the router is now built directly in `NewApp()`
+  instead of being set later during `InitApp`
+- i18n: `manage:inconf`'s report messages translated from Russian to English, for consistency with the rest of the
+  package's user-facing text
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.27
 Changes:

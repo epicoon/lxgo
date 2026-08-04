@@ -1,6 +1,6 @@
 # Authentication microservice
 
-> Actual version: `v0.1.0-alpha.6`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.7`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
 
 There are ways to use the service:
 * [Full ready-to-use solution for lxgo/kernel applications](#full-sol)
@@ -149,7 +149,7 @@ of them talk to the authorization service's database directly.
 <a name="browser-imp"><h3>Implementation of integration for browser on the client side</h3></a>
 
 If you're not using the [ready-to-use JS bundle](#browser-sol) above, here's what it actually does internally
-(reference: `client/js/apps/client/src/App.js` and `AuthManager.js`) — a reimplementation needs to replicate this
+(reference: `client/js/client/src/App.js` and `AuthManager.js`) — a reimplementation needs to replicate this
 behavior:
 
 * On load, read and parse `window._lxauth_settings` (see "Data Structure" in [Ready-to-use solution for

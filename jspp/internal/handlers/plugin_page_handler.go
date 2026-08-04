@@ -33,8 +33,14 @@ func (h *PluginPageHandler) Run() kernel.IHttpResponse {
 		return h.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
 	}
 
+	plugin := pp.PluginManager().Get(pluginName)
+	if plugin == nil {
+		pp.LogError("can not render plugin as page - can not find plugin '%s'", pluginName)
+		return h.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
+	}
+
 	//TODO custom error response
-	html, err := pp.PluginManager().HtmlPage(pluginName, h.Lang())
+	html, err := pp.PluginManager().HtmlPage(plugin, h.Lang())
 	if err != nil {
 		pp.LogError("can not render plugin '%s' as page: %v", pluginName, err)
 		return h.ErrorResponse(http.StatusInternalServerError, "Something went wrong")

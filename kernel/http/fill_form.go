@@ -111,7 +111,137 @@ func fillFormByDict(f kernel.IForm, dict kernel.Dict) {
 
 	if err := cast.DictToStruct(&dict, f); err != nil {
 		f.CollectErrorf(err.Error())
+		return
 	}
+
+	fillNestedForms(f, dict)
+}
+
+var formInterfaceType = reflect.TypeOf((*kernel.IForm)(nil)).Elem()
+
+// fillNestedForms finds every named (non-anonymous) field of f that is
+// itself a kernel.IForm - a form nested inside another form, as opposed to
+// an anonymous/embedded one (buildFieldMap already flattens those into f's
+// own namespace). cast.DictToStruct deliberately skips kernel.IForm-typed
+// fields (see its own doc comment), so this fills each one in place (onto
+// the already-constructed instance, preserving its embedded
+// ErrorsCollector), then runs its own required-fields check, AfterFill/
+// Validate, and folds any errors it collects into f's own collection -
+// recursively, for however many levels deep the nesting goes.
+func fillNestedForms(f kernel.IForm, dict kernel.Dict) {
+	v := reflect.ValueOf(f)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	collectNestedForms(v, dict, f, "")
+}
+
+func collectNestedForms(v reflect.Value, dict kernel.Dict, into kernel.IErrorsCollector, pathPrefix string) {
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i)
+
+		if field.Anonymous {
+			ev := value
+			if ev.Kind() == reflect.Pointer {
+				if ev.IsNil() {
+					continue
+				}
+				ev = ev.Elem()
+			}
+			if ev.Kind() == reflect.Struct {
+				collectNestedForms(ev, dict, into, pathPrefix)
+			}
+			continue
+		}
+
+		nested, ok := asIForm(value)
+		if !ok {
+			continue
+		}
+
+		fName := cast.FieldName(field)
+		fullName := fName
+		if pathPrefix != "" {
+			fullName = pathPrefix + "." + fName
+		}
+
+		// Required, for a nested-form field, means the block itself must
+		// be present - checkMissingParams (called on f before this ever
+		// runs) already enforces that if fName is in f.Required(). If the
+		// block simply wasn't given and isn't required, there's nothing
+		// to fill or validate here.
+		if !dict.Has(fName) {
+			continue
+		}
+		subDict, ok := asDict(dict.Get(fName))
+		if !ok {
+			continue
+		}
+
+		checkMissingParams(nested, subDict)
+		if nested.HasErrors() {
+			into.CollectErrorf("%s: %s", fullName, nested.GetFirstError().Error())
+			continue
+		}
+
+		if err := cast.DictToStruct(&subDict, nested); err != nil {
+			into.CollectErrorf("%s: %s", fullName, err.Error())
+			continue
+		}
+
+		nested.AfterFill()
+		if !nested.Validate() {
+			if nested.HasErrors() {
+				into.CollectErrorf("%s: %s", fullName, nested.GetFirstError().Error())
+			} else {
+				into.CollectErrorf("%s: invalid", fullName)
+			}
+			continue
+		}
+		if nested.HasErrors() {
+			into.CollectErrorf("%s: %s", fullName, nested.GetFirstError().Error())
+			continue
+		}
+
+		nv := reflect.ValueOf(nested)
+		if nv.Kind() == reflect.Pointer {
+			nv = nv.Elem()
+		}
+		collectNestedForms(nv, subDict, into, fullName)
+	}
+}
+
+// asIForm reports whether value's address (or value itself, if it's
+// already a pointer) implements kernel.IForm - kernel.IForm's methods are
+// all pointer-receiver in the base Form, so a value-typed field needs
+// Addr() to reach them.
+func asIForm(value reflect.Value) (kernel.IForm, bool) {
+	if value.Kind() == reflect.Pointer {
+		if value.IsNil() || !value.Type().Implements(formInterfaceType) {
+			return nil, false
+		}
+		f, ok := value.Interface().(kernel.IForm)
+		return f, ok
+	}
+	if !value.CanAddr() || !reflect.PointerTo(value.Type()).Implements(formInterfaceType) {
+		return nil, false
+	}
+	f, ok := value.Addr().Interface().(kernel.IForm)
+	return f, ok
+}
+
+// asDict reads v as a kernel.Dict - directly, or converted from a plain
+// map[string]any (what a parsed JSON body's nested objects decode as).
+func asDict(v any) (kernel.Dict, bool) {
+	switch m := v.(type) {
+	case kernel.Dict:
+		return m, true
+	case map[string]any:
+		return kernel.Dict(m), true
+	}
+	return nil, false
 }
 
 func fillGetParams(f kernel.IForm, r *http.Request) {
@@ -171,7 +301,13 @@ func checkMissingParams(f kernel.IForm, data kernel.Dict) {
 	missingParams := []string{}
 	for _, param := range f.Required() {
 		field, exists := m[param]
-		if exists && !isZeroValue(field) {
+		// A nested form's own bookkeeping (its embedded *Form) is never
+		// nil once properly constructed, so isZeroValue's generic
+		// "already has a value" shortcut can never fire for it - which is
+		// exactly backwards for a required nested-form field: what matters
+		// is whether the caller's data included a block for it, not
+		// whether the (always-non-zero) struct happens to look unset.
+		if _, isNested := asIForm(field); !isNested && exists && !isZeroValue(field) {
 			continue
 		}
 		if _, ok := data[param]; !ok {

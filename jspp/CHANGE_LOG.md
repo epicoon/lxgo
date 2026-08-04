@@ -1,4 +1,28 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.05
+Version: v0.1.0-alpha.32
+Changes:
+- add: `{command}:scaffold-plugin` action - creates a minimal plugin skeleton (`lx-plugin.yaml`, `snippets/_root.js`,
+  `Plugin.js`) under one of the app's configured plugin source directories; `--full` generates a fuller starting
+  point instead (`assets/i18n`, `assets/css`, one GUI node), all wired together and using a valid JS namespace even
+  when the plugin's own name isn't one
+- fix: `procInserts` rewrote `${...}` interpolation everywhere in a compiled file, including inside backtick-quoted
+  raw HTML (LXML's `html:` template literal) where `${...}` is already valid JS interpolation - splicing in
+  `"+expr+"` there corrupted the literal instead of leaving it alone
+- fix: `cutComments` and `FindMatchingBrace` scanned code for `//`/`/* */` comments and brace nesting without
+  tracking whether they were inside a string or regex literal - a comment-like or brace-like character inside one
+  of those could be mistaken for a real comment boundary or throw off the brace count
+- fix: `addModuleI18nPrefix` (a module's `lx.i18n('key')` calls get scoped to `module-{name}-key`) dropped the
+  key's quote character when inserting the prefix, turning any quoted call inside a module into invalid syntax
+- refactor: `IPluginManager.HtmlPage`/`PluginManager.HtmlPage` now takes the already-resolved `IPlugin` instead of a
+  plugin name - the caller looks it up and reports "not found" itself, instead of the method doing both jobs
+- refactor: `CompileCommand`'s `build`/`build-core`/`build-maps`/`build-modules-map`/`build-plugins-map` actions
+  moved from manual `RegisterActions` to `Config().Actions`, matching the rest of the package's commands (and
+  gaining `--help` descriptions in the process)
+- internal: added missing `golang.org/x/sys`/`x/term` indirect requires to `go.mod` (Go's module-graph pruning needs
+  them explicit even under a local `go.work` replace) - fixes red/unresolved imports in some IDEs
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.31
 Changes:

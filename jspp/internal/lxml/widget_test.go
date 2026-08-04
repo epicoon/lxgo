@@ -34,6 +34,27 @@ func TestParseText_RepeatedMethodCall(t *testing.T) {
 	}
 }
 
+// TestParseText_MethodArgWithParenInsideStringIsNotCutShort is a regression
+// test: #method(...)'s closing paren is located via FindMatchingBrace,
+// which used to count ')' characters with no awareness of string literals
+// - an argument containing its own ')' (a string value, in real markup)
+// would cut the method call short.
+func TestParseText_MethodArgWithParenInsideStringIsNotCutShort(t *testing.T) {
+	pp := newTestPreprocessor(t)
+	src := "<*root>\n" +
+		"    <lx.Box> #method('a)b')\n" +
+		"<&root>\n"
+
+	code, err := lxml.NewParser(pp).ParseText(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(code, ".method('a)b')") {
+		t.Fatalf("expected the full method argument (including the ')' inside the string) in compiled code, got: %s", code)
+	}
+}
+
 // TestParseText_RepeatedMethodCall_MixedWithOtherMethod checks that
 // interleaving a repeated method with a different one doesn't confuse the
 // per-name call-index tracking.
@@ -52,5 +73,64 @@ func TestParseText_RepeatedMethodCall_MixedWithOtherMethod(t *testing.T) {
 		if !strings.Contains(code, want) {
 			t.Fatalf("expected %q in compiled code, got: %s", want, code)
 		}
+	}
+}
+
+// TestParseText_InterpolationInTextAttribute checks the already-documented
+// behavior (doc/lxml.md): ${expr} inside a quoted widget text attribute
+// compiles to double-quoted-string concatenation.
+func TestParseText_InterpolationInTextAttribute(t *testing.T) {
+	pp := newTestPreprocessor(t)
+	src := "<lx.Box> \"hello ${name}!\"\n"
+
+	code, err := lxml.NewParser(pp).ParseText(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(code, `text:"hello "+name+"!"`) {
+		t.Fatalf("expected interpolation compiled to string concatenation, got: %s", code)
+	}
+}
+
+// TestParseText_InterpolationInRawHTML is a regression test: raw HTML nested
+// under a widget compiles into a `html:` field wrapped in JS backticks
+// (a real template literal), so ${expr} there is already valid JS and needs
+// no rewriting - procInserts used to rewrite it into "+expr+" regardless of
+// context, splicing double-quote concatenation syntax into the middle of a
+// backtick string and corrupting it (e.g. `<div class="${cls}">` used to
+// come out as `<div class=""+cls>`, breaking the markup).
+func TestParseText_InterpolationInRawHTML(t *testing.T) {
+	pp := newTestPreprocessor(t)
+	src := "<lx.Box> @root\n" +
+		"  <div class=\"${cls}\">insert: ${val}</div>\n"
+
+	code, err := lxml.NewParser(pp).ParseText(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := "html:`  <div class=\"${cls}\">insert: ${val}</div>`"
+	if !strings.Contains(code, want) {
+		t.Fatalf("expected raw HTML's ${...} left untouched inside the backtick literal, got: %s", code)
+	}
+}
+
+// TestParseText_InterpolationInTextAttributeAndRawHTMLTogether covers both
+// contexts appearing in the same compiled widget - each must be resolved
+// independently by procInserts's quote-tracking (double-quoted text still
+// concatenated, backtick-quoted HTML left alone).
+func TestParseText_InterpolationInTextAttributeAndRawHTMLTogether(t *testing.T) {
+	pp := newTestPreprocessor(t)
+	src := "<lx.Box> \"hi ${name}\"\n" +
+		"  <div>insert: ${val}</div>\n"
+
+	code, err := lxml.NewParser(pp).ParseText(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(code, `text:"hi "+name,`) {
+		t.Fatalf("expected the text attribute's ${...} concatenated, got: %s", code)
+	}
+	if !strings.Contains(code, "html:`  <div>insert: ${val}</div>`") {
+		t.Fatalf("expected the raw HTML's ${...} left untouched, got: %s", code)
 	}
 }

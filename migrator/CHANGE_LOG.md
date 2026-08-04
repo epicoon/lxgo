@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.05
+Version: v0.1.0-alpha.8
+Changes:
+- internal: added missing `golang.org/x/sys`/`x/term` indirect requires to `go.mod` (Go's module-graph pruning needs
+  them explicit even under a local `go.work` replace) - fixes red/unresolved imports in some IDEs
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.7
 Changes:

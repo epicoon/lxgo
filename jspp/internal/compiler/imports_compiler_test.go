@@ -97,6 +97,22 @@ func TestFindImportCalls_PathsAndModules(t *testing.T) {
 	}
 }
 
+// TestFindImportCalls_ParenInsidePathIsNotMistakenForCallEnd is a
+// regression test: findImportCalls locates the call's closing paren via
+// FindMatchingBrace, which used to count ')' characters with no awareness
+// of string literals - a path argument containing its own ')' (a real,
+// if unusual, filename) would cut the call short, leaving the rest of the
+// path and the actual closing paren as leftover code.
+func TestFindImportCalls_ParenInsidePathIsNotMistakenForCallEnd(t *testing.T) {
+	calls := findImportCalls(`lx.import('a)b.js');`)
+	if len(calls) != 1 {
+		t.Fatalf("expected exactly 1 call, got %d: %#v", len(calls), calls)
+	}
+	if len(calls[0].paths) != 1 || calls[0].paths[0].Path != "a)b.js" {
+		t.Fatalf("unexpected paths: %#v", calls[0].paths)
+	}
+}
+
 func TestFindImportCalls_MultipleCalls(t *testing.T) {
 	code := `lx.import(A); const x = 1; lx.import(B);`
 	calls := findImportCalls(code)

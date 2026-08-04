@@ -1,4 +1,21 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.05
+Version: v0.1.0-alpha.9
+Changes:
+- add: interactive mode - a missing required parameter can be read from stdin instead of failing validation right
+  away, either automatically via `ParamConfig.Interactive` (command author marks a parameter as inherently
+  human-filled) or manually via `--interactive` on the call
+- add: `ParamTypeEnum` - a parameter restricted to a fixed set of options (`TypeDetails`, or lazily via
+  `FTypeDetails`; `ElemType` for a non-string element type), prompted with a `PromptSelect` picklist; `FTypeDetails`
+  (e.g. a filesystem scan) only ever runs once a missing, required, interactive enum parameter is actually being
+  prompted for - never for an already-supplied value
+- add: `PromptString`/`PromptSelect` - new interactive primitives usable directly from an action's own code, not
+  just through the automatic missing-parameter prompt above; `PromptSelect` is an arrow-key/Enter menu, falling back
+  to a plain numbered prompt when stdin isn't a real terminal
+- new dependency: `golang.org/x/term` (pinned to v0.34.0, matching `x/sys` v0.35.0, to keep `go 1.23.2` across every
+  exported package) - needed for `PromptSelect`'s raw-mode terminal input
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.8
 Changes:

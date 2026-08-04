@@ -360,8 +360,8 @@ type IPluginManager interface {
 	// Render renders plugin's snippets for lang and returns the result.
 	Render(plugin IPlugin, lang string) (*PluginRenderInfo, error)
 
-	// HtmlPage renders pluginName as a full HTML page for lang.
-	HtmlPage(pluginName, lang string) (string, error)
+	// HtmlPage renders plugin as a full HTML page for lang.
+	HtmlPage(plugin IPlugin, lang string) (string, error)
 }
 
 // IPluginData is one entry in the plugins map - a plugin's name, source

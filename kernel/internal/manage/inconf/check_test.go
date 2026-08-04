@@ -29,7 +29,6 @@ func (a *fakeApp) SetComponent(any, kernel.IAppComponent)     {}
 func (a *fakeApp) HasComponent(any) bool                      { return false }
 func (a *fakeApp) Component(any) kernel.IAppComponent         { return nil }
 func (a *fakeApp) SetConnection(kernel.IConnection)           {}
-func (a *fakeApp) SetRouter(kernel.IRouter)                   {}
 func (a *fakeApp) Pathfinder() kernel.IPathfinder             { return nil }
 func (a *fakeApp) DIContainer() kernel.IDIContainer           { return nil }
 func (a *fakeApp) Connection() kernel.IConnection             { return nil }
@@ -151,13 +150,13 @@ func TestCheckParams(t *testing.T) {
 
 	report = nil
 	checkParams(a, map[string]any{"Port": "8080"}, &report)
-	if len(report) != 1 || !strings.Contains(report[0], "не совпадает") {
+	if len(report) != 1 || !strings.Contains(report[0], "type mismatch") {
 		t.Fatalf("expected a type-mismatch line, got %v", report)
 	}
 
 	report = nil
 	checkParams(a, map[string]any{"Missing": 1}, &report)
-	if len(report) != 1 || !strings.Contains(report[0], "не найден") {
+	if len(report) != 1 || !strings.Contains(report[0], "not found") {
 		t.Fatalf("expected a not-found line, got %v", report)
 	}
 }
@@ -170,23 +169,23 @@ func TestCheckArrAdd(t *testing.T) {
 	if len(report) != 2 {
 		t.Fatalf("expected 2 lines, got %v", report)
 	}
-	if !strings.Contains(report[0], "уже существует") {
+	if !strings.Contains(report[0], "already exists") {
 		t.Errorf("expected 'a' to already exist, got %q", report[0])
 	}
-	if !strings.Contains(report[1], "будет добавлен") {
+	if !strings.Contains(report[1], "will be added") {
 		t.Errorf("expected 'c' to be reported as addable, got %q", report[1])
 	}
 
 	report = nil
 	checkArrAdd(a, map[string][]any{"Missing": {"x"}}, &report)
-	if len(report) != 1 || !strings.Contains(report[0], "будет создан") {
+	if len(report) != 1 || !strings.Contains(report[0], "will be created") {
 		t.Fatalf("expected a will-be-created line, got %v", report)
 	}
 
 	notArrApp := newTestApp(kernel.Dict{"NotAnArray": "scalar"})
 	report = nil
 	checkArrAdd(notArrApp, map[string][]any{"NotAnArray": {"x"}}, &report)
-	if len(report) != 1 || !strings.Contains(report[0], "не является массивом") {
+	if len(report) != 1 || !strings.Contains(report[0], "is not an array") {
 		t.Fatalf("expected a not-an-array line, got %v", report)
 	}
 }
@@ -199,10 +198,10 @@ func TestCheckArrRemove(t *testing.T) {
 	if len(report) != 2 {
 		t.Fatalf("expected 2 lines, got %v", report)
 	}
-	if !strings.Contains(report[0], "будет удалён") {
+	if !strings.Contains(report[0], "will be removed") {
 		t.Errorf("expected 'a' to be reported as removable, got %q", report[0])
 	}
-	if !strings.Contains(report[1], "элемента нет") {
+	if !strings.Contains(report[1], "element not found") {
 		t.Errorf("expected 'z' to be reported as absent, got %q", report[1])
 	}
 }

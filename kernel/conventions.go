@@ -80,9 +80,6 @@ type IApp interface {
 	// SetConnection sets the application's DB connection.
 	SetConnection(c IConnection)
 
-	// SetRouter sets the application's router.
-	SetRouter(r IRouter)
-
 	// Pathfinder returns the application's IPathfinder.
 	Pathfinder() IPathfinder
 

@@ -13,6 +13,7 @@ import (
 	"github.com/epicoon/lxgo/kernel/config"
 	"github.com/epicoon/lxgo/kernel/internal/manage/inconf"
 	"github.com/epicoon/lxgo/kernel/internal/manage/reconf"
+	"github.com/epicoon/lxgo/kernel/internal/manage/trigger"
 )
 
 type manageSocket struct {
@@ -99,8 +100,7 @@ func (m *manageSocket) handleConn(conn net.Conn) {
 		case "inconf":
 			inconf.Run(m.app, conn, cmdList[1:])
 		case "trigger":
-			//TODO trigger custom events
-			conn.Write([]byte("Not implemented yet\n"))
+			trigger.Run(m.app, conn, cmdList[1:])
 		default:
 			conn.Write([]byte("unknown command\n"))
 		}

@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.05
+Version: v0.1.0-alpha.7
+Changes:
+- add: `assets:build` command - compiles `client/js/{client,form}`'s bundles through `lxgo-jspp`'s own compiler
+  instead of a separate webpack/babel/npm toolchain
+- refactor: `client/js/apps/{client,form}` flattened to `client/js/{client,form}`; the committed `node_modules`,
+  `package-lock.json`, and webpack/babel config removed (superseded by `assets:build` above)
+- internal: added missing `golang.org/x/sys`/`x/term` indirect requires to `go.mod` (Go's module-graph pruning needs
+  them explicit even under a local `go.work` replace) - fixes red/unresolved imports in some IDEs
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.6
 Changes:

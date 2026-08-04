@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.05
+Version: v0.1.0-alpha.8
+Changes:
+- refactor: `RandHash`'s dead error-handling fallback removed - `crypto/rand.Read` never actually returns an error
+  in practice (a failure crashes the process outright, not a recoverable one), so that branch could never run
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.7
 Changes:

@@ -13,8 +13,7 @@ class FunctionHelper extends lx.AppComponent {
 
     createAndCallFunctionWithArguments(namedArgs, code, context=null) {
         code = code.replace(/(^[^{]+?{|}\s*$)/g, '');
-        let kstl = '}',
-            argsArr = [],
+        let argsArr = [],
             argNamesArr = [];
         for (let name in namedArgs) {
             argsArr.push(namedArgs[name]);

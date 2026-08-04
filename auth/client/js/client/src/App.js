@@ -1,4 +1,4 @@
-import AuthManager from './AuthManager';
+lx.import('./AuthManager.js', '-U');
 
 class App {
     constructor() {

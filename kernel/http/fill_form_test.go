@@ -2,6 +2,7 @@ package http
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -15,6 +16,74 @@ type testForm struct {
 
 func newTestForm() *testForm {
 	return &testForm{Form: NewForm()}
+}
+
+// EmbeddedFields is a stand-in for a real embedded (not nested-as-a-form)
+// struct with its own data field - exported, since Go reflection taints an
+// entire subtree read-only once it passes through an unexported
+// field/type (real forms only ever embed exported types like *Form
+// anyway).
+type EmbeddedFields struct {
+	Nested string `json:"nested"`
+}
+
+type formWithEmbeddedFields struct {
+	*Form
+	EmbeddedFields
+	Name string `json:"name"`
+}
+
+func newFormWithEmbeddedFields() *formWithEmbeddedFields {
+	return &formWithEmbeddedFields{Form: NewForm()}
+}
+
+// nestedTestForm is a small form meant to be nested (as a named field, not
+// embedded) inside another form - see the outer*TestForm types below.
+type nestedTestForm struct {
+	*Form
+	Value string `json:"value"`
+}
+
+func newNestedTestForm() *nestedTestForm {
+	f := &nestedTestForm{Form: NewForm()}
+	f.SetRequired([]string{"value"})
+	return f
+}
+
+func (f *nestedTestForm) Validate() bool {
+	if f.Value == "forbidden" {
+		f.CollectErrorf("value must not be 'forbidden'")
+		return false
+	}
+	return true
+}
+
+type outerNestedTestForm struct {
+	*Form
+	Name   string         `json:"name"`
+	Nested nestedTestForm `json:"nested"`
+}
+
+func newOuterNestedTestForm() *outerNestedTestForm {
+	return &outerNestedTestForm{
+		Form:   NewForm(),
+		Nested: *newNestedTestForm(),
+	}
+}
+
+// deepOuterTestForm nests outerNestedTestForm itself (two levels of named
+// nested-form fields), to check that error messages carry the full dotted
+// path down to whichever level actually failed.
+type deepOuterTestForm struct {
+	*Form
+	Mid outerNestedTestForm `json:"mid"`
+}
+
+func newDeepOuterTestForm() *deepOuterTestForm {
+	return &deepOuterTestForm{
+		Form: NewForm(),
+		Mid:  *newOuterNestedTestForm(),
+	}
 }
 
 func TestFormFiller_Fill_Errors(t *testing.T) {
@@ -52,6 +121,29 @@ func TestFormFiller_Fill_Dict(t *testing.T) {
 	}
 	if f.Name != "Alice" || f.Age != 30 {
 		t.Fatalf("got %+v, want Name=Alice Age=30", f)
+	}
+}
+
+// TestFormFiller_Fill_Dict_EmbeddedField is a regression test for the
+// buildFieldMap/cast.DictToStruct divergence: buildFieldMap already
+// flattened anonymous (embedded) fields into the form's own namespace, so
+// checkMissingParams was perfectly happy accepting a required field
+// declared on an embedded struct as "present" - but cast.DictToStruct
+// looked for a dict key matching the embedded field's own type name
+// (which real request data never sends), so the field was validated as
+// fine yet never actually got filled. Both now agree.
+func TestFormFiller_Fill_Dict_EmbeddedField(t *testing.T) {
+	f := newFormWithEmbeddedFields()
+	f.SetRequired([]string{"nested"})
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{"name": "Alice", "nested": "value"}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f.HasErrors() {
+		t.Fatalf("unexpected form errors: %v", f.GetFirstError())
+	}
+	if f.Name != "Alice" || f.Nested != "value" {
+		t.Fatalf("got %+v, want Name=Alice Nested=value", f)
 	}
 }
 
@@ -175,4 +267,123 @@ func TestIsZeroValue(t *testing.T) {
 			t.Fatal("expected false for an invalid reflect.Value")
 		}
 	})
+}
+
+func TestFillNestedForms_ValidNestedForm(t *testing.T) {
+	f := newOuterNestedTestForm()
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{
+		"name":   "Alice",
+		"nested": kernel.Dict{"value": "ok"},
+	}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f.HasErrors() {
+		t.Fatalf("unexpected form errors: %v", f.GetFirstError())
+	}
+	if f.Name != "Alice" || f.Nested.Value != "ok" {
+		t.Fatalf("got %+v, want Name=Alice Nested.Value=ok", f)
+	}
+}
+
+// TestFillNestedForms_NestedRequiredFieldMissing is a regression test: a
+// nested form's own required fields used to never be consulted at all -
+// cast.DictToStruct only fills fields, it doesn't know about
+// kernel.IForm's required-fields contract, and nothing else walked nested
+// form fields either.
+func TestFillNestedForms_NestedRequiredFieldMissing(t *testing.T) {
+	f := newOuterNestedTestForm()
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{
+		"name":   "Alice",
+		"nested": kernel.Dict{},
+	}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !f.HasErrors() {
+		t.Fatal("expected an error for the nested form's own missing required field")
+	}
+	msg := f.GetFirstError().Error()
+	if !strings.Contains(msg, "nested") || !strings.Contains(msg, "value") {
+		t.Fatalf("expected the error to mention the nested field's path and its own missing param, got %q", msg)
+	}
+}
+
+// TestFillNestedForms_NestedValidateFails is a regression test: a nested
+// form's own Validate() used to never be called, so it could never reject
+// the parent form.
+func TestFillNestedForms_NestedValidateFails(t *testing.T) {
+	f := newOuterNestedTestForm()
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{
+		"name":   "Alice",
+		"nested": kernel.Dict{"value": "forbidden"},
+	}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !f.HasErrors() {
+		t.Fatal("expected the nested form's Validate() failure to propagate to the parent")
+	}
+	msg := f.GetFirstError().Error()
+	if !strings.Contains(msg, "nested") || !strings.Contains(msg, "forbidden") {
+		t.Fatalf("expected the error to mention the nested field's path and its own message, got %q", msg)
+	}
+}
+
+// TestFillNestedForms_BlockAbsentAndNotRequired checks that a nested-form
+// field with no corresponding data, and not itself required at the outer
+// level, is silently left alone - its own required fields aren't enforced
+// against data that was never given at all.
+func TestFillNestedForms_BlockAbsentAndNotRequired(t *testing.T) {
+	f := newOuterNestedTestForm()
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{"name": "Alice"}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f.HasErrors() {
+		t.Fatalf("unexpected form errors: %v", f.GetFirstError())
+	}
+	if f.Nested.Value != "" {
+		t.Fatalf("expected the untouched nested form to stay zero-valued, got %q", f.Nested.Value)
+	}
+}
+
+// TestFillNestedForms_BlockRequiredButAbsent checks that requiring the
+// nested-form field itself (as a whole block) is enforced by the existing,
+// generic checkMissingParams on the outer form - before fillNestedForms
+// ever runs.
+func TestFillNestedForms_BlockRequiredButAbsent(t *testing.T) {
+	f := newOuterNestedTestForm()
+	f.SetRequired([]string{"nested"})
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{"name": "Alice"}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !f.HasErrors() {
+		t.Fatal("expected an error for the missing required nested block")
+	}
+}
+
+// TestFillNestedForms_DeepNesting_ErrorPathIsFullyDotted checks that an
+// error from a form nested two levels deep carries the full dotted path
+// (not just the innermost field name), so it's clear which nested block
+// actually failed.
+func TestFillNestedForms_DeepNesting_ErrorPathIsFullyDotted(t *testing.T) {
+	f := newDeepOuterTestForm()
+	err := FormFiller().SetForm(f).SetDict(kernel.Dict{
+		"mid": kernel.Dict{
+			"name":   "Alice",
+			"nested": kernel.Dict{"value": "forbidden"},
+		},
+	}).Fill()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !f.HasErrors() {
+		t.Fatal("expected the doubly-nested form's Validate() failure to propagate all the way up")
+	}
+	msg := f.GetFirstError().Error()
+	if !strings.Contains(msg, "mid.nested") {
+		t.Fatalf("expected the full dotted path 'mid.nested' in the error, got %q", msg)
+	}
 }

@@ -192,12 +192,8 @@ func (m *PluginManager) Render(plugin jspp.IPlugin, lang string) (*jspp.PluginRe
 	return res, nil
 }
 
-// HtmlPage renders pluginName as a full HTML page for lang.
-func (m *PluginManager) HtmlPage(pluginName, lang string) (string, error) {
-	plugin := m.pp.PluginManager().Get(pluginName)
-	if plugin == nil {
-		return "", fmt.Errorf("can not find plugin '%s'", pluginName)
-	}
+// HtmlPage renders plugin as a full HTML page for lang.
+func (m *PluginManager) HtmlPage(plugin jspp.IPlugin, lang string) (string, error) {
 	r := newRenderer(m, plugin, lang)
 	return r.render()
 }

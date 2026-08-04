@@ -15,6 +15,7 @@ import (
 	"github.com/epicoon/lxgo/jspp/internal/base"
 	"github.com/epicoon/lxgo/jspp/internal/i18n"
 	"github.com/epicoon/lxgo/jspp/internal/lxml"
+	"github.com/epicoon/lxgo/jspp/internal/utils"
 	"github.com/epicoon/lxgo/kernel"
 	"gopkg.in/yaml.v3"
 )
@@ -346,17 +347,83 @@ func findUnescapedBacktick(code string, from int) int {
 	return -1
 }
 
+// cutComments strips // line comments and /* */ block comments from code -
+// scanning character by character and tracking whether it's currently
+// inside a string literal ('...', "...", or `...`, with backslash-escape
+// support for all three) or a JS regex literal (/pattern/flags, which can
+// itself contain an unescaped "/*" or "//" inside a [...] character class -
+// e.g. /[/*]/ - without those being a real comment).
 func (c *Compiler) cutComments(code string) string {
-	// //...
-	singleLine1 := regexp.MustCompile(`(\r|\n|\r\n)//.*?(?:\r|\n|\r\n)`)
-	code = singleLine1.ReplaceAllString(code, "$1")
-	singleLine2 := regexp.MustCompile(`(?:^| +?)//.*?(?:\r|\n|\r\n)`)
-	code = singleLine2.ReplaceAllString(code, "")
-	// /* ... */
-	multiLine := regexp.MustCompile(`/\*[\s\S]*?\*/`)
-	code = multiLine.ReplaceAllString(code, "")
+	var out strings.Builder
+	n := len(code)
+	var quote byte // 0 when not inside a string literal
+	var lastSignificant byte
 
-	return code
+	for i := 0; i < n; i++ {
+		ch := code[i]
+
+		if quote != 0 {
+			out.WriteByte(ch)
+			if ch == '\\' && i+1 < n {
+				// Copy the escaped character too, so e.g. \" or \` doesn't
+				// end the string early.
+				i++
+				out.WriteByte(code[i])
+				continue
+			}
+			if ch == quote {
+				quote = 0
+				lastSignificant = 'x'
+			}
+			continue
+		}
+
+		if ch == '\'' || ch == '"' || ch == '`' {
+			quote = ch
+			out.WriteByte(ch)
+			continue
+		}
+
+		if ch == '/' && i+1 < n && code[i+1] == '/' {
+			j := i + 2
+			for j < n && code[j] != '\n' {
+				j++
+			}
+			if j < n {
+				j++ // the line's own terminating newline goes with it
+			}
+			i = j - 1
+			continue
+		}
+
+		if ch == '/' && i+1 < n && code[i+1] == '*' {
+			if end := strings.Index(code[i+2:], "*/"); end != -1 {
+				i = i + 2 + end + 1 // land on the closing '/'
+				continue
+			}
+			// no closing "*/" found - not a comment we can strip, leave as-is
+		}
+
+		if ch == '/' && utils.LooksLikeRegexStart(lastSignificant) {
+			if end := utils.FindRegexLiteralEnd(code, i+1); end != -1 {
+				out.WriteString(code[i : end+1])
+				i = end
+				for i+1 < n && utils.IsRegexFlag(code[i+1]) {
+					i++
+					out.WriteByte(code[i])
+				}
+				lastSignificant = 'x'
+				continue
+			}
+		}
+
+		out.WriteByte(ch)
+		if ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' {
+			lastSignificant = ch
+		}
+	}
+
+	return out.String()
 }
 
 func (c *Compiler) applyContext(code string) string {

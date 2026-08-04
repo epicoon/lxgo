@@ -2,7 +2,7 @@ module github.com/epicoon/lxgo/session
 
 go 1.23.2
 
-require github.com/epicoon/lxgo/kernel v0.1.0-alpha.27
+require github.com/epicoon/lxgo/kernel v0.1.0-alpha.28
 
 require (
 	github.com/kr/text v0.2.0 // indirect

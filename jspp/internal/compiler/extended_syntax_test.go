@@ -105,6 +105,25 @@ func TestFindClasses(t *testing.T) {
 	}
 }
 
+// TestFindClasses_BraceInsideStringDoesNotEndClassBodyEarly is a
+// regression test: the class body's closing brace is located via
+// FindMatchingBrace, which used to count '}' characters with no awareness
+// of string literals - a method body returning a string containing its
+// own '}' would cut the class off before its real end.
+func TestFindClasses_BraceInsideStringDoesNotEndClassBodyEarly(t *testing.T) {
+	src := "class Foo {\nmethod(){return 'a } b';}\n}"
+	classes, err := findClasses(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(classes) != 1 {
+		t.Fatalf("expected 1 class found, got %d: %#v", len(classes), classes)
+	}
+	if classes[0].fullCode != src {
+		t.Fatalf("expected the full class body (including the string's '}') captured, got %q", classes[0].fullCode)
+	}
+}
+
 func TestFindClasses_NoClasses(t *testing.T) {
 	classes, err := findClasses("const x = 1;")
 	if err != nil {

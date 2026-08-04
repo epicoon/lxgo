@@ -1,6 +1,6 @@
 # Package for console commands creating in lxgo/kernel applications
 
-> Actual version: `v0.1.0-alpha.8`. [Details](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.9`. [Details](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -228,6 +228,102 @@ func NewJSPPCommand(_ ...cmd.ICommandOptions) cmd.ICommand {
 ```
 A command that doesn't need any construction-time data (like every example
 above in this README) simply ignores the parameter (`_ ...cmd.ICommandOptions`).
+
+
+## Interactive mode
+
+A missing required parameter normally fails validation right away
+(`parameter '%s' required...`). Two ways to switch to prompting for it on
+stdin instead (using the parameter's `Description` as the question):
+
+- Set `ParamConfig.Interactive: true` when the parameter is inherently
+  something a human fills in (a name to scaffold, say) — the prompt then
+  happens automatically, and the caller never needs to know a flag exists:
+  ```go
+  Params: cmd.ParamsConfig{
+      "name": cmd.ParamConfig{
+          Description: "The new plugin's name",
+          Type:        cmd.ParamTypeString,
+          Required:    true,
+          Interactive: true,
+      },
+  },
+  ```
+  ```
+  go run . my-command:hi
+  The name of the one we greet: Al
+  Hi, Al!
+  ```
+- Pass `--interactive` on the command line, for a parameter that isn't
+  marked `Interactive` by the command author but the caller wants to fill
+  in on this one call anyway:
+  ```
+  go run . my-command:hi --interactive
+  The name of the one we greet: Al
+  Hi, Al!
+  ```
+
+Neither path changes behavior for parameters that are plain `Required`
+without `Interactive` and called without `--interactive` — a script or CI
+job still gets a fast, non-blocking error instead of hanging on stdin.
+
+### Enum parameters
+
+`Type: cmd.ParamTypeEnum` prompts with `cmd.PromptSelect` instead of reading
+a raw line, once a missing enum parameter is actually being prompted for
+(same `Interactive`/`--interactive` rules as above). The options come from
+one of:
+
+- `TypeDetails` — a static list, known upfront (`[]string`, or `[]int`
+  when `ElemType: cmd.ParamTypeInt`).
+- `FTypeDetails func(c cmd.ICommand) (any, error)` — computed on demand.
+  This is the only place `FTypeDetails` is ever called: never for a
+  parameter that was supplied on the command line, never for one that
+  isn't `Required`, and never just to validate an already-known value.
+  So an expensive lookup behind it (a filesystem scan, say) only runs once
+  its result is actually needed:
+  ```go
+  "path": cmd.ParamConfig{
+      Description:  "The target directory for the new plugin",
+      Type:         cmd.ParamTypeEnum,
+      ElemType:     cmd.ParamTypeString,
+      Required:     true,
+      Interactive:  true,
+      FTypeDetails: func(c cmd.ICommand) (any, error) {
+          return configuredPluginDirs(c)
+      },
+  },
+  ```
+  ```
+  go run . jspp:scaffold-plugin --name=MyPlugin
+  The target directory for the new plugin:
+    > frontend/plugins
+      vendor/plugins
+  ```
+
+The chosen option's own value is set on the parameter (e.g. the picked
+directory string), not its index or display text.
+
+Two building blocks are exported for a command's own action code to use
+directly (not just through the automatic missing-parameter prompt above):
+
+- `cmd.PromptString(question string) (string, error)` — prints question and
+  reads one line from stdin.
+- `cmd.PromptSelect(question string, options []string) (int, error)` — an
+  arrow-key/Enter menu (Ctrl+C aborts), falling back to a plain numbered
+  prompt when stdin isn't a real terminal (piped input, CI). Returns the
+  chosen option's index.
+
+```go
+func actionInit(c cmd.ICommand) error {
+	idx, err := cmd.PromptSelect("Module kind:", []string{"widget", "component", "plugin"})
+	if err != nil {
+		return err
+	}
+	fmt.Println("Creating a", []string{"widget", "component", "plugin"}[idx])
+	return nil
+}
+```
 
 
 ## License

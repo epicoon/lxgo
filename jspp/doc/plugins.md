@@ -32,6 +32,31 @@ found automatically; for plugins that live elsewhere, list their parent
 directories in `Components.JSPreprocessor.Plugins` (see [Start
 using](https://github.com/epicoon/lxgo/tree/master/jspp/doc/start.md)).
 
+`go run . {your-jspp-command}:scaffold-plugin --name=MyPlugin` generates this
+minimal skeleton for you (`lx-plugin.yaml`, `snippets/_root.js`, `Plugin.js`)
+under one of the configured plugin source directories above — asking which
+one, if there's more than one. Add `--interactive` instead of `--name=...` to
+be prompted for the name instead. Add `--full` for a fuller starting point
+instead of the bare minimum — `assets/i18n/tr.yaml`, `assets/css/MainCss.js`
+(an `lx.PluginCssAsset`), and one GUI node (`client/guiNodes/Main.js`), with
+the root snippet's one element already wired up to that GUI node's key and
+the css class:
+```
+/my-plugin
+  ├─ /assets
+  │   ├─ /css
+  │   │   └─ MainCss.js
+  │   └─ /i18n
+  │       └─ tr.yaml
+  ├─ /client
+  │   └─ /guiNodes
+  │       └─ Main.js
+  ├─ /snippets
+  │   └─ _root.js
+  ├─ lx-plugin.yaml
+  └─ Plugin.js
+```
+
 The only file every plugin needs is `lx-plugin.yaml` — its name is fixed and
 can't be changed. A genuinely minimal plugin is just that file plus a root
 snippet at the default location:

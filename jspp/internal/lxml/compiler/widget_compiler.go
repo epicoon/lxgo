@@ -259,11 +259,15 @@ func isNum(s string) bool {
 	return re.MatchString(s)
 }
 
-func procInserts(str string) string {
-	// ${text} -> " + text + "
-	re := regexp.MustCompile(`\$\{([^}]+?)\}(")?`)
-	return re.ReplaceAllStringFunc(str, func(s string) string {
-		match := re.FindStringSubmatch(s)
+var insertRe = regexp.MustCompile(`\$\{([^}]+?)\}(")?`)
+
+// replaceInserts rewrites ${expr} into double-quoted-string concatenation:
+// ${text} -> "+text+" (or just "+text, when ${expr} closes the string, i.e.
+// is immediately followed by the closing "). Used outside backtick-quoted
+// spans - see procInserts.
+func replaceInserts(str string) string {
+	return insertRe.ReplaceAllStringFunc(str, func(s string) string {
+		match := insertRe.FindStringSubmatch(s)
 		if len(match) != 3 {
 			return s
 		}
@@ -272,4 +276,49 @@ func procInserts(str string) string {
 		}
 		return "\"+" + match[1] + "+\""
 	})
+}
+
+// procInserts rewrites ${expr} into double-quoted-string concatenation
+// (see replaceInserts) everywhere in str, EXCEPT inside backtick-quoted
+// spans (a raw HTML block's `html:` value - see getConfigCode) - there,
+// ${expr} is already valid JS template-literal interpolation and needs no
+// rewriting; doing it anyway would splice "+expr+" into the middle of a
+// backtick string, breaking it. A backtick that itself appears inside a
+// '...'/"..." string (with backslash-escape support) doesn't count as
+// entering such a span.
+func procInserts(str string) string {
+	n := len(str)
+	var out strings.Builder
+	var quote byte
+	segStart := 0
+
+	for i := 0; i < n; i++ {
+		ch := str[i]
+
+		if quote != 0 {
+			if ch == '\\' && i+1 < n {
+				i++
+				continue
+			}
+			if ch == quote {
+				if quote == '`' {
+					out.WriteString(str[segStart : i+1])
+					segStart = i + 1
+				}
+				quote = 0
+			}
+			continue
+		}
+
+		if ch == '\'' || ch == '"' || ch == '`' {
+			if ch == '`' {
+				out.WriteString(replaceInserts(str[segStart:i]))
+				segStart = i
+			}
+			quote = ch
+		}
+	}
+
+	out.WriteString(replaceInserts(str[segStart:]))
+	return out.String()
 }

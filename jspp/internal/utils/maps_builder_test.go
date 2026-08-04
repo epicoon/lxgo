@@ -34,7 +34,7 @@ func (m *fakePluginManager) SetRoutes(jspp.PluginRoutesList)    {}
 func (m *fakePluginManager) Render(jspp.IPlugin, string) (*jspp.PluginRenderInfo, error) {
 	return nil, nil
 }
-func (m *fakePluginManager) HtmlPage(string, string) (string, error) { return "", nil }
+func (m *fakePluginManager) HtmlPage(jspp.IPlugin, string) (string, error) { return "", nil }
 
 type fakePluginData struct{ name, path string }
 

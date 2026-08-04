@@ -119,20 +119,22 @@ func mergeRecursive(dst, src kernel.Dict) {
 }
 
 func applyEnv(conf *kernel.Dict, filename string, required bool) error {
+	env := make(map[string]any, 0)
+
 	file, err := os.Open(filename)
 	if err != nil {
-		if os.IsNotExist(err) {
-			if required {
-				return fmt.Errorf("env file '%s' required but not found", filename)
-			} else {
-				return nil
-			}
+		if !os.IsNotExist(err) {
+			return err
 		}
-		return err
+		if required {
+			return fmt.Errorf("env file '%s' required but not found", filename)
+		}
+		// No .env file, and none required - "${VAR}" placeholders still
+		// need resolving (from the process environment, or their own
+		// ":-default"), there's just nothing to pre-load from a file.
+		return envToConfig(conf, env)
 	}
 	defer file.Close()
-
-	env := make(map[string]any, 0)
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

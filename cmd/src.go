@@ -167,6 +167,22 @@ func validate(c ICommand) error {
 				}
 				val = c.Param(pName)
 				_, ok = val.(bool)
+			case ParamTypeEnum:
+				if pConf.ElemType == ParamTypeInt {
+					_, ok = val.(int)
+					if !ok {
+						s, ok2 := val.(string)
+						if ok2 {
+							i, err := strconv.Atoi(s)
+							if err == nil {
+								c.SetParam(pName, i)
+								ok = true
+							}
+						}
+					}
+				} else {
+					_, ok = val.(string)
+				}
 			}
 			if !ok {
 				return fmt.Errorf("expected type for 'parameter' - %s, received - %T", pConf.Type, val)
@@ -175,6 +191,14 @@ func validate(c ICommand) error {
 
 		if !c.HasParam(pName) {
 			if pConf.Required {
+				if pConf.Interactive || c.Flag("interactive") {
+					val, err := promptForParam(c, pName, pConf)
+					if err != nil {
+						return fmt.Errorf("can not read parameter '%s' interactively: %w", pName, err)
+					}
+					c.SetParam(pName, val)
+					continue
+				}
 				return fmt.Errorf("parameter '%s' required. Expected type - %s", pName, pConf.Type)
 			}
 

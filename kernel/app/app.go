@@ -47,6 +47,7 @@ type App struct {
 func NewApp() *App {
 	app := &App{}
 	app.pathfinder = NewAppPathfinder(app)
+	app.router = lxHttp.NewRouter(app)
 	app.diContainer = NewDIContainer(app)
 	app.tplHolder = template.NewTemplateHolder(app)
 	app.events = events.NewEventManager(app)
@@ -105,7 +106,6 @@ func InitApp(app kernel.IApp, c kernel.IDict) error {
 		app.Connection().SetConfig(dbConf)
 	}
 
-	app.SetRouter(lxHttp.NewRouter(app))
 	return nil
 }
 
@@ -208,11 +208,6 @@ func (app *App) Component(key any) kernel.IAppComponent {
 // SetConnection sets the application's DB connection.
 func (app *App) SetConnection(c kernel.IConnection) {
 	app.connection = c
-}
-
-// SetRouter sets the application's router.
-func (app *App) SetRouter(r kernel.IRouter) {
-	app.router = r
 }
 
 // Pathfinder returns the application's IPathfinder.

@@ -119,14 +119,19 @@ _w0.end();
 Lines nested under a widget that aren't recognized as a widget, control-flow
 or block line are treated as raw HTML and appended to the widget's inner
 markup verbatim — a widget can have nested widgets *or* raw HTML, not both.
+Raw HTML compiles into the widget's `html` config value as a genuine JS
+template literal (`` html:`...` ``), so `${...}` interpolation works there
+too, natively — `<div class="${cls}">${text}</div>` is passed straight
+through unchanged, since the surrounding backticks already make it valid JS.
 
 **JS variables from the surrounding code** can be used almost anywhere: as
 values inside `(...)` and `{...}` (they're copied through as plain JS, no
-special handling needed), and inside quoted text via `${...}` interpolation —
-`"hello ${name}!"` compiles to `"hello "+name+"!"`. The one exception is
-geometry (`[...]`, see below), which only accepts number/string/`null`
-literals; to set a geometry value from a variable, call the corresponding
-method after construction instead — `#left(v)`, `#width(v)`, etc.
+special handling needed), inside raw HTML (see above), and inside quoted
+text via `${...}` interpolation — `"hello ${name}!"` compiles to
+`"hello "+name+"!"`. The one exception is geometry (`[...]`, see below),
+which only accepts number/string/`null` literals; to set a geometry value
+from a variable, call the corresponding method after construction instead —
+`#left(v)`, `#width(v)`, etc.
 
 The parser extracts `'...'`/`"..."` chunks before splitting the source into
 lines, so a text attribute can freely span several physical lines. Outside a

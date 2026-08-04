@@ -25,7 +25,7 @@ func Run(app kernel.IApp, conn net.Conn, cmdParams []string) {
 		case "t":
 			isTest = true
 		case "params":
-			params = parseParamList(val, &errList)
+			params = ParseParamList(val, &errList)
 		case "add":
 			arrAdd = parseArr(val, &errList)
 		case "remove":
@@ -54,7 +54,13 @@ func Run(app kernel.IApp, conn net.Conn, cmdParams []string) {
 	conn.Write([]byte("Done\n"))
 }
 
-func parseParamList(s string, errList *[]string) map[string]any {
+// ParseParamList parses a "key:val,key2:val2" list (as used by --params on
+// inject-config and trigger's manage-socket commands) into a plain map,
+// coercing each value to bool/int/float64/string - quoted strings (both
+// '...' and "...") can contain a literal comma without splitting the list
+// early. Any token that doesn't parse as "key:val" is appended to errList
+// instead of being silently dropped.
+func ParseParamList(s string, errList *[]string) map[string]any {
 	res := make(map[string]any)
 
 	tokens := splitRespectingQuotes(s)

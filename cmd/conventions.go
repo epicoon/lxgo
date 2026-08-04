@@ -53,6 +53,9 @@ const (
 	ParamTypeInt ParamType = "int"
 	// ParamTypeBool marks a parameter as a bool.
 	ParamTypeBool ParamType = "bool"
+	// ParamTypeEnum marks a parameter whose value must be one of a fixed
+	// set of options - see ParamConfig.TypeDetails/FTypeDetails and ElemType.
+	ParamTypeEnum ParamType = "enum"
 )
 
 // ParamsConfig maps parameter names to their ParamConfig - see Config.Params, ActionConfig.Params.
@@ -64,8 +67,31 @@ type ParamConfig struct {
 	Description string
 	// Type is the parameter's expected type.
 	Type ParamType
+	// TypeDetails holds Type-specific extra data. For ParamTypeEnum, it's
+	// the allowed values - a []string, or a []int when ElemType is
+	// ParamTypeInt. Ignored if FTypeDetails is set.
+	TypeDetails any
+	// FTypeDetails computes TypeDetails lazily - e.g. by scanning the
+	// filesystem for a ParamTypeEnum parameter's allowed values. Only
+	// called when the parameter is actually about to be prompted for
+	// interactively (missing, Required, and going interactive - see
+	// Interactive) - never eagerly, and never at all for a parameter
+	// that was supplied on the command line or isn't Required, so an
+	// expensive lookup only runs when its result is actually needed.
+	FTypeDetails func(c ICommand) (any, error)
+	// ElemType is a ParamTypeEnum parameter's element type - ParamTypeString
+	// (the default) or ParamTypeInt. Ignored for every other Type.
+	ElemType ParamType
 	// Required fails validation if the parameter isn't passed.
 	Required bool
+	// Interactive marks a Required parameter as always prompted for on
+	// stdin when missing, without needing the caller to pass
+	// --interactive - set this by the command author when a parameter is
+	// inherently something a human fills in (e.g. a name to scaffold),
+	// so the caller doesn't need to know or care that a dialog exists.
+	// The --interactive flag still works as a manual override for
+	// parameters that don't set this.
+	Interactive bool
 	// Default is used when the parameter isn't passed and it's not Required.
 	Default any
 	// HideDefault omits Default from the auto-generated --help output.

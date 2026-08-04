@@ -26,8 +26,8 @@ func InitRoutes(router kernel.IRouter) {
 		"/admin/clients[DELETE]": handlers.NewDeleteClientHandler,
 	})
 	router.RegisterFileAssets(map[string]string{
-		"/js-form/":   "client/js/apps/form/dist",
-		"/js-client/": "client/js/apps/client/dist",
+		"/js-form/":   "client/js/form/dist",
+		"/js-client/": "client/js/client/dist",
 		"/css/":       "client/css",
 		"/img/":       "client/img",
 	})

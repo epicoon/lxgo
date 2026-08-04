@@ -1,4 +1,4 @@
-export default class AuthManager {
+class AuthManager {
     constructor(app) {
         this.app = app;
         this.settings = {};

@@ -14,7 +14,32 @@ func TestCutComments(t *testing.T) {
 	}{
 		{"single_line", "a();\n// comment\nb();\n", "a();\nb();\n"},
 		{"multi_line", "a();/* comment\nspanning */b();", "a();b();"},
-		{"trailing_single_line_no_newline", "a(); // trailing", "a(); // trailing"},
+		// A trailing "//" comment with no terminating newline used to be
+		// left untouched (the old regex required a following line
+		// terminator to match at all) - a correct scanner has no reason
+		// to special-case end-of-input, so this is stripped correctly now.
+		{"trailing_single_line_no_newline", "a(); // trailing", "a(); "},
+		{"unterminated_block_comment_left_as_is", "a();/* never closed", "a();/* never closed"},
+		// The comment markers used to be stripped by regex regardless of
+		// string-literal context, silently corrupting compiled JS that
+		// happened to contain "//" or "/* */" inside a string.
+		{"double_quoted_string_with_line_comment_marker", `let x = "a // b";`, `let x = "a // b";`},
+		{"double_quoted_string_with_block_comment_markers", `let re = "/* not a comment */ literally";`, `let re = "/* not a comment */ literally";`},
+		{"single_quoted_string_with_comment_marker", `let x = 'a // b';`, `let x = 'a // b';`},
+		{"template_literal_with_comment_marker", "let x = `a // b`;", "let x = `a // b`;"},
+		{"escaped_quote_inside_string_does_not_end_it", `let x = "a \" // still a string";`, `let x = "a \" // still a string";`},
+		{"real_comment_after_string_still_stripped", "let x = \"a\"; // real comment\nb();", "let x = \"a\"; b();"},
+		// A JS regex literal can contain an unescaped "/*" inside a [...]
+		// character class (e.g. /[/*]/ matches either '/' or '*') without
+		// that being a real comment - cutComments used to not recognize
+		// regex literals at all, so it would mistake this for a block
+		// comment start and consume everything up to the next real "*/"
+		// it could find, corrupting unrelated code in between.
+		{
+			"regex_literal_with_slash_star_in_char_class_not_a_comment",
+			"let re = /[/*]/; let y = 1; /* actual comment */ done();",
+			"let re = /[/*]/; let y = 1;  done();",
+		},
 	}
 	c := &Compiler{}
 	for _, tc := range cases {

@@ -228,11 +228,6 @@ func (router *Router) defineResource(requestedRoute, method string) (kernel.CHtt
 		return nil, http.StatusNotFound
 	}
 
-	availRoutes := slices.Collect(maps.Keys(router.resources))
-	if !slices.Contains(availRoutes, requestedRoute) {
-		return nil, http.StatusNotFound
-	}
-
 	var cHandler kernel.CHttpResource
 	try, exists := hList[method]
 	if exists {

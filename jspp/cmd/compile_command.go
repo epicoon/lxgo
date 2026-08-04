@@ -35,26 +35,67 @@ var _ cmd.ICommand = (*CompileCommand)(nil)
 /** @constructor cmd.CCommand */
 
 // NewCompileCommand constructs a CompileCommand with "build"/"build-core"/
-// "build-maps"/"build-modules-map"/"build-plugins-map" actions - panics if
-// CompileCommandOptions.App isn't given.
+// "build-maps"/"build-modules-map"/"build-plugins-map"/"scaffold-plugin"
+// actions - panics if CompileCommandOptions.App isn't given.
 func NewCompileCommand(opt ...cmd.ICommandOptions) cmd.ICommand {
 	options := cmd.GetOptions[CompileCommandOptions](opt)
 	if options.App == nil {
 		panic("CompileCommand option 'App' is not defined")
 	}
 
-	c := &CompileCommand{
+	return cmd.Prepare(&CompileCommand{
 		Command: cmd.NewCommand(),
 		app:     options.App,
-	}
-	c.RegisterActions(cmd.ActionsList{
-		"build":             build,
-		"build-core":        buildCore,
-		"build-maps":        buildMaps,
-		"build-modules-map": buildModulesMap,
-		"build-plugins-map": buildPluginsMap,
 	})
-	return c
+}
+
+// Config declares all of CompileCommand's actions.
+func (c *CompileCommand) Config() *cmd.Config {
+	return &cmd.Config{
+		Description: "Build jspp's static output, or scaffold a new plugin.",
+		Actions: cmd.ActionsConfig{
+			"build": cmd.ActionConfig{
+				Description: "Build core.js and the modules/plugins maps.",
+				Executor:    build,
+			},
+			"build-core": cmd.ActionConfig{
+				Description: "Build core.js.",
+				Executor:    buildCore,
+			},
+			"build-maps": cmd.ActionConfig{
+				Description: "Build the modules and plugins maps.",
+				Executor:    buildMaps,
+			},
+			"build-modules-map": cmd.ActionConfig{
+				Description: "Build the modules map only.",
+				Executor:    buildModulesMap,
+			},
+			"build-plugins-map": cmd.ActionConfig{
+				Description: "Build the plugins map only.",
+				Executor:    buildPluginsMap,
+			},
+			"scaffold-plugin": cmd.ActionConfig{
+				Description: "Create a skeleton for a new plugin: lx-plugin.yaml, snippets/_root.js, Plugin.js (add --full for assets/i18n, assets/css, and one GUI node too).",
+				Executor:    scaffoldPlugin,
+				Params: cmd.ParamsConfig{
+					"name": cmd.ParamConfig{
+						Description: "The new plugin's name (its directory name and lx-plugin.yaml's 'name')",
+						Type:        cmd.ParamTypeString,
+						Required:    true,
+						Interactive: true,
+					},
+					"path": cmd.ParamConfig{
+						Description:  "The target directory for the new plugin (one of Components.JSPreprocessor.Plugins)",
+						Type:         cmd.ParamTypeEnum,
+						ElemType:     cmd.ParamTypeString,
+						FTypeDetails: pluginPaths,
+						Required:     true,
+						Interactive:  true,
+					},
+				},
+			},
+		},
+	}
 }
 
 /** @handler cmd.FAction */

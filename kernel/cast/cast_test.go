@@ -469,6 +469,73 @@ func TestDictToStruct(t *testing.T) {
 		}
 	})
 
+	// Regression: an anonymous (embedded) field used to be treated like any
+	// other named field - DictToStruct looked for a dict key matching the
+	// EMBEDDED TYPE's own name (e.g. "connConfig"), which real callers
+	// never send, so the embedded field's own fields never got filled at
+	// all. lxgo-kernel/http's buildFieldMap already flattened anonymous
+	// fields into the same namespace as the outer struct (mirroring Go's
+	// own field promotion) - DictToStruct now does the same, so a field
+	// declared on an embedded struct is reachable (and fillable) the same
+	// way a plain top-level field is.
+	t.Run("anonymous_field_is_flattened_like_field_promotion", func(t *testing.T) {
+		// The embedded type must be exported (capitalized) here - Go
+		// reflection taints an entire subtree read-only once it passes
+		// through an unexported field/type, which would block Set()
+		// regardless of this package's own logic. Real forms embed
+		// exported types (*http.Form), so this isn't a real-world
+		// limitation, just a rule of the test fixture.
+		type Embedded struct {
+			Nested string `json:"nested"`
+		}
+		type withEmbed struct {
+			Embedded
+			Name string `json:"name"`
+		}
+		var v withEmbed
+		err := cast.DictToStruct(kernel.Dict{"name": "Alice", "nested": "value"}, &v)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := withEmbed{Embedded: Embedded{Nested: "value"}, Name: "Alice"}
+		if !reflect.DeepEqual(v, want) {
+			t.Fatalf("got %#v, want %#v", v, want)
+		}
+	})
+
+	t.Run("anonymous_pointer_field_is_flattened_when_non_nil", func(t *testing.T) {
+		type Embedded struct {
+			Nested string `json:"nested"`
+		}
+		type withEmbedPtr struct {
+			*Embedded
+		}
+		v := withEmbedPtr{Embedded: &Embedded{}}
+		err := cast.DictToStruct(kernel.Dict{"nested": "value"}, &v)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Nested != "value" {
+			t.Fatalf("got %#v, want Nested=value", v)
+		}
+	})
+
+	t.Run("nil_anonymous_pointer_field_is_skipped_not_panicked", func(t *testing.T) {
+		type Embedded struct {
+			Nested string `json:"nested"`
+		}
+		type withEmbedPtr struct {
+			*Embedded
+		}
+		var v withEmbedPtr
+		if err := cast.DictToStruct(kernel.Dict{"nested": "value"}, &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Embedded != nil {
+			t.Fatalf("expected the nil embedded pointer to stay nil, got %#v", v.Embedded)
+		}
+	})
+
 	t.Run("missing_key_leaves_field_unset", func(t *testing.T) {
 		v := connConfig{Host: "kept"}
 		if err := cast.DictToStruct(kernel.Dict{}, &v); err != nil {
@@ -478,4 +545,45 @@ func TestDictToStruct(t *testing.T) {
 			t.Fatalf("got %#v, want Host to stay 'kept'", v)
 		}
 	})
+
+	// Regression: a kernel.IForm-typed field (a form nested inside another
+	// form) used to be treated like any other struct field - filled by
+	// replacing it with a fresh, unconstructed zero value via reflect.New,
+	// discarding whatever pre-constructed state it had (its own
+	// ErrorsCollector, in a real form). It's left alone here; the caller
+	// (see lxgo-kernel/http's fillNestedForms) owns filling and validating
+	// it with its own lifecycle.
+	t.Run("kernel_IForm_typed_field_is_left_untouched", func(t *testing.T) {
+		type withNestedForm struct {
+			Nested fakeIForm `json:"nested"`
+		}
+		v := withNestedForm{Nested: fakeIForm{Value: "preset"}}
+		err := cast.DictToStruct(kernel.Dict{"nested": kernel.Dict{"Value": "from-dict"}}, &v)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Nested.Value != "preset" {
+			t.Fatalf("expected the IForm-typed field to be left untouched, got %#v", v.Nested)
+		}
+	})
 }
+
+// fakeIForm is a minimal kernel.IForm implementation, just enough to prove
+// DictToStruct recognizes and skips IForm-typed fields - not a real usable
+// form (no error collection, no config).
+type fakeIForm struct {
+	Value string
+}
+
+func (f *fakeIForm) Config() kernel.FormConfig                  { return nil }
+func (f *fakeIForm) SetRequired(required []string)              {}
+func (f *fakeIForm) Required() []string                         { return nil }
+func (f *fakeIForm) AfterFill()                                 {}
+func (f *fakeIForm) Validate() bool                             { return true }
+func (f *fakeIForm) CollectError(kernel.IError)                 {}
+func (f *fakeIForm) CollectErrorf(string, ...any)               {}
+func (f *fakeIForm) CollectCodifiedErrorf(uint, string, ...any) {}
+func (f *fakeIForm) HasErrors() bool                            { return false }
+func (f *fakeIForm) GetFirstError() kernel.IError               { return nil }
+
+var _ kernel.IForm = (*fakeIForm)(nil)

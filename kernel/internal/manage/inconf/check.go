@@ -16,11 +16,11 @@ func checkParams(app kernel.IApp, params map[string]any, report *[]string) {
 	for name, val := range params {
 		existing, found := getNestedValue(cfg, name)
 		if !found {
-			*report = append(*report, fmt.Sprintf("%s: параметр не найден, будет создан", name))
+			*report = append(*report, fmt.Sprintf("%s: parameter not found, will be created", name))
 			continue
 		}
 		if reflect.TypeOf(existing) != reflect.TypeOf(val) {
-			*report = append(*report, fmt.Sprintf("%s: тип не совпадает (%T != %T)", name, existing, val))
+			*report = append(*report, fmt.Sprintf("%s: type mismatch (%T != %T)", name, existing, val))
 		} else {
 			*report = append(*report, fmt.Sprintf("%s: OK (%T)", name, val))
 		}
@@ -32,12 +32,12 @@ func checkArrAdd(app kernel.IApp, list map[string][]any, report *[]string) {
 	for name, arr := range list {
 		existing, found := getNestedValue(cfg, name)
 		if !found {
-			*report = append(*report, fmt.Sprintf("%s: массив не найден, будет создан", name))
+			*report = append(*report, fmt.Sprintf("%s: array not found, will be created", name))
 			continue
 		}
 		existingVal := reflect.ValueOf(existing)
 		if existingVal.Kind() != reflect.Slice {
-			*report = append(*report, fmt.Sprintf("%s: не является массивом", name))
+			*report = append(*report, fmt.Sprintf("%s: is not an array", name))
 			continue
 		}
 		for _, newElem := range arr {
@@ -49,9 +49,9 @@ func checkArrAdd(app kernel.IApp, list map[string][]any, report *[]string) {
 				}
 			}
 			if found {
-				*report = append(*report, fmt.Sprintf("%s[%v]: уже существует", name, newElem))
+				*report = append(*report, fmt.Sprintf("%s[%v]: already exists", name, newElem))
 			} else {
-				*report = append(*report, fmt.Sprintf("%s[%v]: будет добавлен", name, newElem))
+				*report = append(*report, fmt.Sprintf("%s[%v]: will be added", name, newElem))
 			}
 		}
 	}
@@ -62,12 +62,12 @@ func checkArrRemove(app kernel.IApp, list map[string][]any, report *[]string) {
 	for name, arr := range list {
 		existing, found := getNestedValue(cfg, name)
 		if !found {
-			*report = append(*report, fmt.Sprintf("%s: массив не найден, удалять нечего", name))
+			*report = append(*report, fmt.Sprintf("%s: array not found, nothing to remove", name))
 			continue
 		}
 		existingVal := reflect.ValueOf(existing)
 		if existingVal.Kind() != reflect.Slice {
-			*report = append(*report, fmt.Sprintf("%s: не является массивом", name))
+			*report = append(*report, fmt.Sprintf("%s: is not an array", name))
 			continue
 		}
 		for _, remElem := range arr {
@@ -79,9 +79,9 @@ func checkArrRemove(app kernel.IApp, list map[string][]any, report *[]string) {
 				}
 			}
 			if found {
-				*report = append(*report, fmt.Sprintf("%s[%v]: будет удалён", name, remElem))
+				*report = append(*report, fmt.Sprintf("%s[%v]: will be removed", name, remElem))
 			} else {
-				*report = append(*report, fmt.Sprintf("%s[%v]: элемента нет", name, remElem))
+				*report = append(*report, fmt.Sprintf("%s[%v]: element not found", name, remElem))
 			}
 		}
 	}

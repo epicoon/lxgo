@@ -40,6 +40,21 @@ func TestI18nMap_Localize_FoundTranslation(t *testing.T) {
 	}
 }
 
+// TestI18nMap_Localize_ParenInsideKeyDoesNotEndCallEarly is a regression
+// test: the lx.i18n(...) call's closing paren is located via
+// FindMatchingBrace, which used to count ')' characters with no awareness
+// of string literals - a key containing its own ')' would cut the call
+// short.
+func TestI18nMap_Localize_ParenInsideKeyDoesNotEndCallEarly(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"greeting)odd": "Hello"},
+	})
+	got := m.Localize(`x = lx.i18n('greeting)odd');`, "en")
+	if got != `x = 'Hello';` {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestI18nMap_Localize_MissingTranslation_StripsModulePrefix(t *testing.T) {
 	m := NewI18nMap(map[string]map[string]string{"en": {}})
 	got := m.Localize(`x = lx.i18n('module-mymod-greeting');`, "en")
@@ -73,6 +88,25 @@ func TestI18nMap_Localize_MultipleOccurrences(t *testing.T) {
 	m := NewI18nMap(map[string]map[string]string{"en": {"a": "A", "b": "B"}})
 	got := m.Localize(`lx.i18n('a'); lx.i18n('b');`, "en")
 	if got != `'A'; 'B';` {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// TestI18nMap_Localize_MultipleCallsInArrayLiteral covers the shape that
+// actually broke in production: several lx.i18n(...) calls back to back in
+// one array, each already carrying a module-scoped key (as produced by
+// addModuleI18nPrefix in the compiler package, which stores module
+// dictionaries under "module-{{name}}-{{key}}" - see
+// Compiler.applyModuleI18n). Before that prefixing bug was fixed at the
+// source, the second call's key would end up merged into the first (see
+// files_compiler_test.go) - this pins the correct, independent handling of
+// each call once the input is well-formed.
+func TestI18nMap_Localize_MultipleCallsInArrayLiteral(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"module-Calendar-monday": "Mo", "module-Calendar-tuesday": "Tu", "module-Calendar-wednesday": "We"},
+	})
+	got := m.Localize(`[lx.i18n('module-Calendar-monday'), lx.i18n('module-Calendar-tuesday'), lx.i18n('module-Calendar-wednesday')]`, "en")
+	if got != `['Mo', 'Tu', 'We']` {
 		t.Fatalf("got %q", got)
 	}
 }

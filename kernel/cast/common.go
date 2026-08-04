@@ -25,19 +25,37 @@ func MapToStruct(m map[string]any, s any) error {
 	return DictToStruct(&dict, s)
 }
 
+var formInterfaceType = reflect.TypeOf((*kernel.IForm)(nil)).Elem()
+
 // DictToStruct populates struct s's fields from dict, matching each field
 // by its "dict" tag, then "json" tag, then field name; recurses into
 // nested structs/slices/maps, coercing mismatched-but-compatible value
 // types along the way (numeric strings, etc.). s must be a struct or a
 // pointer to one.
+//
+// An anonymous (embedded) field's own fields are populated from the SAME
+// dict, at the same level, not from a nested value under the embedded
+// type's name - mirroring Go's own field promotion for embedding (and
+// matching lxgo-kernel/http's buildFieldMap, which already flattened
+// anonymous fields this way; this used to be the one place in the form-
+// filling pipeline that didn't, so a required field declared inside an
+// embedded (not just the top-level *Form) struct would validate as
+// present but never actually get filled).
+//
+// A NAMED field that is itself a kernel.IForm (a form nested inside
+// another form, as opposed to embedded) is left untouched here -
+// populating it via plain field coercion would replace an
+// already-constructed nested form with a fresh, unconstructed zero value,
+// discarding its embedded ErrorsCollector. Filling and validating a nested
+// form is more than field coercion (its own required-fields check,
+// AfterFill, Validate, error aggregation) and is handled by whoever owns
+// that lifecycle (see lxgo-kernel/http's fillNestedForms).
 func DictToStruct(dict kernel.IDict, s any) error {
 	val := reflect.ValueOf(s)
-	typ := reflect.TypeOf(s)
 
 	// For pointer
 	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
-		typ = typ.Elem()
 	}
 
 	// Check struct
@@ -45,12 +63,37 @@ func DictToStruct(dict kernel.IDict, s any) error {
 		return errors.New("provided value is not a struct")
 	}
 
-	// Parse struct
+	return dictToStructValue(dict, val)
+}
+
+func dictToStructValue(dict kernel.IDict, val reflect.Value) error {
+	typ := val.Type()
+
 	for i := 0; i < val.NumField(); i++ {
 		field := typ.Field(i)
 		fieldValue := val.Field(i)
 
 		if !fieldValue.CanSet() {
+			continue
+		}
+
+		if field.Anonymous {
+			ev := fieldValue
+			if ev.Kind() == reflect.Pointer {
+				if ev.IsNil() {
+					continue
+				}
+				ev = ev.Elem()
+			}
+			if ev.Kind() == reflect.Struct {
+				if err := dictToStructValue(dict, ev); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+
+		if isFormField(fieldValue) {
 			continue
 		}
 
@@ -70,6 +113,17 @@ func DictToStruct(dict kernel.IDict, s any) error {
 	}
 
 	return nil
+}
+
+// isFormField reports whether fieldValue's address (or fieldValue itself,
+// if it's already a pointer) implements kernel.IForm - kernel.IForm's
+// methods are all pointer-receiver in the base Form, so a value-typed
+// field needs Addr() to reach them.
+func isFormField(fieldValue reflect.Value) bool {
+	if fieldValue.Kind() == reflect.Pointer {
+		return !fieldValue.IsNil() && fieldValue.Type().Implements(formInterfaceType)
+	}
+	return fieldValue.CanAddr() && reflect.PointerTo(fieldValue.Type()).Implements(formInterfaceType)
 }
 
 // FieldName resolves the dict/JSON key a struct field is populated from and

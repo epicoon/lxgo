@@ -1160,12 +1160,14 @@ func hybi10Decode(reader *bufio.Reader) (opcode byte, payload []byte, fin bool, 
 	return opcode, payload, fin, nil
 }
 
+// RandHash returns a random 32-char hex ID.
+//
+// rand.Read is documented to never actually return an error here - on
+// failure it crashes the process irrecoverably instead (via runtime.fatal,
+// not a recoverable panic - see https://pkg.go.dev/crypto/rand#Read), so
+// there's nothing a fallback here could do that the caller would ever see.
 func RandHash() string {
 	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		// fallback (маловероятно), но так хотя бы не будет всех нулей
-		return hex.EncodeToString(b)
-	}
+	rand.Read(b)
 	return hex.EncodeToString(b)
 }

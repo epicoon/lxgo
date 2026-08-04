@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.27`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.28`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -720,8 +720,13 @@ func main() {
         * `--add="arrayName:[newElem1,newElem2]"` - append elements to an array param.
         * `--remove="arrayName:[newElem1,newElem2]"` - remove elements from an array param.
         * add `-t` to only validate the resulting config first without applying it.
-    * `go run . manage:trigger --event=NAME` - **not implemented yet**, currently
-      only prints "Not implemented yet".
+    * `go run . manage:trigger --event=NAME` - fire a custom app event
+      (`app.Events().Trigger`) in the running process, as if it happened
+      internally - useful for testing event handlers, or forcing a
+      re-run without restarting the app:
+        * `--params="number:123,name:'some string'"` - optional payload,
+          same syntax as `inject-config`'s `--params` - the event handler
+          receives it as its `IEvent.Payload()`.
 
 
 ## License
