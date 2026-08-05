@@ -367,6 +367,16 @@ class Rect extends lx.Element {
         lx.app.binder.unbindWidget(this);
     }
 
+    // Push this widget's own current value out into the bound model's field
+    pushBind() {
+        lx.app.binder.pushWidget(this);
+    }
+
+    // Pull the bound model's current value for this widget's field into this widget
+    pullBind() {
+        lx.app.binder.pullWidget(this);
+    }
+
     get index() {
         if (this._index === undefined) return 0;
         return this._index;
@@ -1584,8 +1594,6 @@ class Rect extends lx.Element {
     getEventHandlers(name) {
         let eventList = this.domElem.getEvents();
         if (!eventList) return [];
-
-        console.log(name, eventList);
 
         if (name in eventList) {
             let result = [];

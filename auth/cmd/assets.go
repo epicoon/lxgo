@@ -6,9 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/epicoon/lxgo/cmd"
-	jsppComponent "github.com/epicoon/lxgo/jspp/component"
-	"github.com/epicoon/lxgo/kernel"
-	"github.com/epicoon/lxgo/kernel/apptest"
+	jsppCompiler "github.com/epicoon/lxgo/jspp/compiler"
 )
 
 /** @interface cmd.ICommand */
@@ -40,40 +38,12 @@ var clientApps = []string{"form", "client"}
 
 /** @handler cmd.FAction */
 func buildAssets(_ cmd.ICommand) error {
-	sysPath, err := os.MkdirTemp("", "lxgo-auth-assets-*")
-	if err != nil {
-		return fmt.Errorf("can not create temp dir: %v", err)
-	}
-	defer os.RemoveAll(sysPath)
-
-	// A throwaway jspp preprocessor just for its compiler - this build step
-	// doesn't need a named-modules map (every lx.import(...) here is
-	// path-based), so SysPath/MapsPath just need to point somewhere writable.
-	app, err := apptest.New(kernel.Dict{
-		"Components": kernel.Dict{
-			"JSPreprocessor": kernel.Dict{
-				"SysPath":  sysPath,
-				"MapsPath": sysPath,
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("can not build jspp preprocessor: %v", err)
-	}
-	if err := jsppComponent.SetAppComponent(app, "Components.JSPreprocessor"); err != nil {
-		return fmt.Errorf("can not register jspp component: %v", err)
-	}
-	pp, err := jsppComponent.AppComponent(app)
-	if err != nil {
-		return fmt.Errorf("can not get jspp component: %v", err)
-	}
-
 	for _, appName := range clientApps {
 		entryPath := filepath.Join("client", "js", appName, "src", "App.js")
 		distDir := filepath.Join("client", "js", appName, "dist")
 		distPath := filepath.Join(distDir, "bundle.js")
 
-		code, err := pp.CompilerBuilder().
+		code, err := jsppCompiler.Builder().
 			SetClientContext().
 			SetUnwrapped().
 			SetFilePath(entryPath).

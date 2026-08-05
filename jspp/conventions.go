@@ -121,8 +121,10 @@ type ICompilerBuilder interface {
 	// SetApp binds the compiler to app.
 	SetApp(app kernel.IApp) ICompilerBuilder
 
-	// SetConfig sets the preprocessor config the compiler reads settings (mode, paths) from.
-	SetConfig(c *base.JSPreprocessorConfig) ICompilerBuilder
+	// SetMode overrides the build mode (e.g. "DEV") used to resolve
+	// `@lx:<mode NAME: ...` blocks - normally taken from the bound
+	// preprocessor's own config; required mostly in standalone mode.
+	SetMode(mode string) ICompilerBuilder
 
 	// SetPathfinder sets the IPathfinder used to resolve source file paths.
 	SetPathfinder(pf kernel.IPathfinder) ICompilerBuilder

@@ -81,6 +81,37 @@ func (cc *ComponentConfig) Get(key string) any {
 type AppComponent struct {
 	app    kernel.IApp
 	config kernel.IAppComponentConfig
+
+	// self is the component's own outward-facing instance, bound by
+	// InitComponent - see selfBinder and logCategory.
+	self kernel.IAppComponent
+}
+
+// selfBinder lets InitComponent hand a component its own outward-facing
+// instance back to itself. Go embedding has no virtual dispatch: a call to
+// c.LogCategory() from a method defined on *AppComponent always resolves to
+// *AppComponent's own LogCategory(), even when c is embedded in a struct
+// that overrides it - the override is a distinct method promoted onto the
+// outer type, never reached through the embedded receiver. Routing
+// Log/LogWarning/LogError through the bound self (an interface value whose
+// dynamic type is the outer struct) restores the override.
+type selfBinder interface {
+	setSelf(self kernel.IAppComponent)
+}
+
+func (c *AppComponent) setSelf(self kernel.IAppComponent) {
+	c.self = self
+}
+
+// logCategory returns the category to log under: self.LogCategory() if
+// InitComponent bound self (the usual case for any component set up via
+// RegisterComponent/InitComponent), so an embedding struct's override is
+// honored; falling back to c.LogCategory() otherwise.
+func (c *AppComponent) logCategory() string {
+	if c.self != nil {
+		return c.self.LogCategory()
+	}
+	return c.LogCategory()
 }
 
 var _ kernel.IAppComponent = (*AppComponent)(nil)
@@ -113,6 +144,14 @@ func RegisterComponent(app kernel.IApp, c kernel.IAppComponent, componentKey, co
 // see RegisterComponent for the usual entry point that also registers c on app.
 func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) error {
 	c.SetApp(app)
+
+	// c is the component's own outward-facing instance (e.g. *session.Storage,
+	// not the *AppComponent it embeds) - handing it back to AppComponent lets
+	// Log/LogWarning/LogError call LogCategory() through it, so an embedding
+	// struct's override actually takes effect. See selfBinder.
+	if binder, ok := c.(selfBinder); ok {
+		binder.setSelf(c)
+	}
 
 	path := strings.Split(configKey, ".")
 	var conf kernel.IDict = app.Config()
@@ -166,9 +205,9 @@ func (c *AppComponent) GetConfig() kernel.IAppComponentConfig {
 // with params if any are given.
 func (c *AppComponent) Log(msg string, params ...any) {
 	if len(params) > 0 {
-		c.App().Log(fmt.Sprintf(msg, params...), c.LogCategory())
+		c.App().Log(fmt.Sprintf(msg, params...), c.logCategory())
 	} else {
-		c.App().Log(msg, c.LogCategory())
+		c.App().Log(msg, c.logCategory())
 	}
 }
 
@@ -176,9 +215,9 @@ func (c *AppComponent) Log(msg string, params ...any) {
 // with params if any are given.
 func (c *AppComponent) LogWarning(msg string, params ...any) {
 	if len(params) > 0 {
-		c.App().LogWarning(fmt.Sprintf(msg, params...), c.LogCategory())
+		c.App().LogWarning(fmt.Sprintf(msg, params...), c.logCategory())
 	} else {
-		c.App().LogWarning(msg, c.LogCategory())
+		c.App().LogWarning(msg, c.logCategory())
 	}
 }
 
@@ -186,9 +225,9 @@ func (c *AppComponent) LogWarning(msg string, params ...any) {
 // params if any are given.
 func (c *AppComponent) LogError(msg string, params ...any) {
 	if len(params) > 0 {
-		c.App().LogError(fmt.Sprintf(msg, params...), c.LogCategory())
+		c.App().LogError(fmt.Sprintf(msg, params...), c.logCategory())
 	} else {
-		c.App().LogError(msg, c.LogCategory())
+		c.App().LogError(msg, c.logCategory())
 	}
 }
 

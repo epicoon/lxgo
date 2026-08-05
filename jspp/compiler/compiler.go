@@ -1,3 +1,12 @@
+// Package compiler implements jspp.ICompiler/jspp.ICompilerBuilder, the
+// compiler that turns `lx`-flavored JS source into plain JS. Builder()
+// returns a builder with no preprocessor component bound - configure it
+// directly (SetPathfinder, SetMode, ...) to compile standalone,
+// without a running kernel.IApp (e.g. an offline build script); named
+// modules (`lx.import(ModuleName)`), `lx.ml(...)` (LXML) and `@config(...)`
+// substitution all read from a live component and are not available this
+// way. component.JSPreprocessor.CompilerBuilder binds one automatically for
+// the full-featured, in-app path.
 package compiler
 
 import (
@@ -12,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
-	"github.com/epicoon/lxgo/jspp/internal/base"
 	"github.com/epicoon/lxgo/jspp/internal/i18n"
 	"github.com/epicoon/lxgo/jspp/internal/lxml"
 	"github.com/epicoon/lxgo/jspp/internal/utils"
@@ -33,12 +41,12 @@ type Flags struct {
  * Compiler
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 type Compiler struct {
-	config     *base.JSPreprocessorConfig
 	pp         jspp.IPreprocessor
 	app        kernel.IApp
 	pathfinder kernel.IPathfinder
 
 	isApp      bool
+	mode       string
 	context    string
 	filePath   string
 	prevCode   string
@@ -84,14 +92,38 @@ func (c *Compiler) Run() (string, error) {
 }
 
 func (c *Compiler) Pathfinder() kernel.IPathfinder {
-	if c.pathfinder == nil {
+	if c.pathfinder == nil && c.pp != nil {
 		c.pathfinder = c.pp.Pathfinder()
 	}
 	return c.pathfinder
 }
 
+// Mode returns the build mode: an explicit SetMode override if given, else
+// the bound preprocessor's own config, else "prod" (standalone default -
+// there is no config to fall back to without a preprocessor).
 func (c *Compiler) Mode() string {
-	return c.config.Mode
+	if c.mode != "" {
+		return c.mode
+	}
+
+	if c.pp != nil {
+		return c.pp.Config().Mode
+	}
+
+	return "prod"
+}
+
+// logError reports a compile-time error through the bound preprocessor's
+// logger, or - running standalone, with no preprocessor bound - to stderr.
+func (c *Compiler) logError(msg string, params ...any) {
+	if c.pp != nil {
+		c.pp.LogError(msg, params...)
+		return
+	}
+	if len(params) > 0 {
+		msg = fmt.Sprintf(msg, params...)
+	}
+	fmt.Fprintln(os.Stderr, msg)
 }
 
 func (c *Compiler) CompiledModules() []string {
@@ -187,12 +219,12 @@ func (c *Compiler) compileCodeInnerDirectives(code, path string) (string, error)
 	code = c.parseMd(code, path)
 
 	code = c.applyContext(code)
-	code = c.injectDatum(code)
+	code = c.injectDatum(code, path)
 	code, err = applyExtendedSyntax(code, path)
 	if err != nil {
 		return "", err
 	}
-	code = c.plugDependencies(code)
+	code = c.plugDependencies(code, path)
 	code = c.applyMode(code)
 
 	return code, nil
@@ -268,7 +300,7 @@ func (c *Compiler) processLxml(code string) string {
 		blockStart := j + 1
 		closeIdx := findUnescapedBacktick(code, blockStart)
 		if closeIdx == -1 {
-			c.pp.LogError("lx.ml(): unterminated template literal")
+			c.logError("lx.ml(): unterminated template literal")
 			out.WriteString(code[i:afterMarker])
 			i = afterMarker
 			continue
@@ -279,12 +311,19 @@ func (c *Compiler) processLxml(code string) string {
 			p++
 		}
 		if p >= n || code[p] != ')' {
-			c.pp.LogError("lx.ml(): expected closing ')'")
+			c.logError("lx.ml(): expected closing ')'")
 			out.WriteString(code[i:afterMarker])
 			i = afterMarker
 			continue
 		}
 		callEnd := p + 1
+
+		if c.pp == nil {
+			c.logError("lx.ml(): LXML is not supported in standalone mode (no preprocessor component bound)")
+			out.WriteString(code[i:callEnd])
+			i = callEnd
+			continue
+		}
 
 		segment := code[i:idx]
 		keyword := ""
@@ -306,7 +345,7 @@ func (c *Compiler) processLxml(code string) string {
 		}
 		compiled, err := parser.ParseText(ml)
 		if err != nil {
-			c.pp.LogError(err.Error())
+			c.logError(err.Error())
 		} else {
 			out.WriteString(compiled)
 		}
@@ -440,23 +479,23 @@ func (c *Compiler) applyContext(code string) string {
 	})
 }
 
-func (c *Compiler) plugDependencies(code string) string {
+func (c *Compiler) plugDependencies(code string, filePath string) string {
 	// @lx:js path;
-	code = c.plugDependency(code, "js", depTypeJS)
+	code = c.plugDependency(code, "js", depTypeJS, filePath)
 
 	// @lx:css path;
-	code = c.plugDependency(code, "css", depTypeCSS)
+	code = c.plugDependency(code, "css", depTypeCSS, filePath)
 
 	return code
 }
 
-func (c *Compiler) plugDependency(code, key, tp string) string {
+func (c *Compiler) plugDependency(code, key, tp, filePath string) string {
 	re := regexp.MustCompile(fmt.Sprintf("@lx:%s +([^;]+?);", key))
 	matches := re.FindAllStringSubmatch(code, -1)
 	for _, match := range matches {
 		path := match[1]
 		if !strings.HasPrefix(path, "http:") && !strings.HasPrefix(path, "https:") {
-			path = c.Pathfinder().GetAbsPath(path)
+			path = c.resolvePath(filePath, path)
 		}
 		addAsset(c.assets, path, tp)
 	}
@@ -487,7 +526,7 @@ func (c *Compiler) cutCoordinationDirectives(code string) string {
 	return code
 }
 
-func (c *Compiler) injectDatum(code string) string {
+func (c *Compiler) injectDatum(code string, filePath string) string {
 	// val = lx.json('path');
 	// val = lx.yaml('path');
 	pattern := regexp.MustCompile(`lx\.(json|yaml)\s*\(\s*['"]?(.*?)['"]?\s*\)`)
@@ -498,10 +537,10 @@ func (c *Compiler) injectDatum(code string) string {
 		}
 
 		key := matches[1]
-		path := c.Pathfinder().GetAbsPath(matches[2])
+		path := c.resolvePath(filePath, matches[2])
 		file, err := os.Open(path)
 		if err != nil {
-			c.pp.LogError("Can not open file %s: %v", path, err)
+			c.logError("Can not open file %s: %v", path, err)
 			return "null"
 		}
 		defer file.Close()
@@ -510,12 +549,12 @@ func (c *Compiler) injectDatum(code string) string {
 		switch key {
 		case "json":
 			if err := json.NewDecoder(file).Decode(&data); err != nil {
-				c.pp.LogError("Can not decode json file %s: %v", path, err)
+				c.logError("Can not decode json file %s: %v", path, err)
 				return "null"
 			}
 		case "yaml":
 			if err := yaml.NewDecoder(file).Decode(&data); err != nil {
-				c.pp.LogError("Can not decode yaml file %s: %v", path, err)
+				c.logError("Can not decode yaml file %s: %v", path, err)
 				return "null"
 			}
 		default:
@@ -525,13 +564,37 @@ func (c *Compiler) injectDatum(code string) string {
 		res, err := json.Marshal(data)
 		if err != nil {
 			if err := json.NewDecoder(file).Decode(&data); err != nil {
-				c.pp.LogError("Can not encode json file %s: %v", path, err)
+				c.logError("Can not encode json file %s: %v", path, err)
 				return "null"
 			}
 		}
 		return string(res)
 	})
 	return code
+}
+
+// resolvePath resolves a path referenced from currentPath (e.g. in
+// `@lx:js path;`/`lx.json('path')`) relative to currentPath's own directory
+// - so a file can pull in files that sit next to it regardless of where the
+// pathfinder's root is. A leading `/`/`@`/`{` opts out of that (an
+// app-rooted/aliased/templated path instead) and goes through the
+// pathfinder, when there is one.
+func (c *Compiler) resolvePath(currentPath, path string) string {
+	if path == "" {
+		return path
+	}
+
+	first := path[0]
+	if first != '/' && first != '@' && first != '{' {
+		dir := filepath.Dir(currentPath)
+		return filepath.Join(dir, path)
+	}
+
+	if pf := c.Pathfinder(); pf != nil {
+		return pf.GetAbsPath(path)
+	}
+
+	return path
 }
 
 func (c *Compiler) applyI18n(code string) (string, error) {
@@ -578,13 +641,13 @@ func (c *Compiler) getAppStart(conf string) string {
 }
 
 func (c *Compiler) parseAppConfig() (res string) {
-	if !c.isApp {
+	if !c.isApp || c.pp == nil {
 		return ""
 	}
 
 	res = "{}"
 	conf := make(map[string]any)
-	cPath := c.config.AppConfig
+	cPath := c.pp.Config().AppConfig
 	defer func() {
 		if mm, exists := conf["use"]; exists {
 			delete(conf, "use")
@@ -592,7 +655,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 				for _, m := range use {
 					mStr, ok := m.(string)
 					if !ok {
-						c.pp.LogError("invalid format for 'use' element '%v' in JS-application config '%s': string require", m, cPath)
+						c.logError("invalid format for 'use' element '%v' in JS-application config '%s': string require", m, cPath)
 						continue
 					}
 					if !slices.Contains(c.useModules, mStr) {
@@ -600,7 +663,7 @@ func (c *Compiler) parseAppConfig() (res string) {
 					}
 				}
 			} else {
-				c.pp.LogError("invalid format for 'use' in JS-application config '%s': []string require", cPath)
+				c.logError("invalid format for 'use' in JS-application config '%s': []string require", cPath)
 			}
 		}
 
@@ -608,11 +671,11 @@ func (c *Compiler) parseAppConfig() (res string) {
 			conf["settings"] = make(map[string]any, 1)
 		}
 		settings := conf["settings"].(map[string]any)
-		settings["csrs"] = c.config.CssScopeRenderSide
+		settings["csrs"] = c.pp.Config().CssScopeRenderSide
 
 		bConf, err := json.Marshal(conf)
 		if err != nil {
-			c.pp.LogError("can not marshal to json JS-application config '%s': %v", cPath, err)
+			c.logError("can not marshal to json JS-application config '%s': %v", cPath, err)
 		} else {
 			res = string(bConf)
 			re := regexp.MustCompile(`@config\(([^)]+)\)`)
@@ -657,15 +720,15 @@ func (c *Compiler) parseAppConfig() (res string) {
 	rawConf, err := os.ReadFile(cPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			c.pp.LogError("JS-application config '%s' not found", cPath)
+			c.logError("JS-application config '%s' not found", cPath)
 		} else {
-			c.pp.LogError("can not read JS-application config '%s': %v", cPath, err)
+			c.logError("can not read JS-application config '%s': %v", cPath, err)
 		}
 		return
 	}
 
 	if err := yaml.Unmarshal(rawConf, &conf); err != nil {
-		c.pp.LogError("can not unmarshal yaml JS-application config '%s': %v", cPath, err)
+		c.logError("can not unmarshal yaml JS-application config '%s': %v", cPath, err)
 		return
 	}
 
@@ -673,14 +736,14 @@ func (c *Compiler) parseAppConfig() (res string) {
 	if exists {
 		localPath, ok := conf["local"].(string)
 		if !ok {
-			c.pp.LogError("invalid format for JS-application local config path: '%v'", conf["local"])
+			c.logError("invalid format for JS-application local config path: '%v'", conf["local"])
 		} else {
 			var path string
 			switch localPath[0] {
 			case '/':
 				path = localPath
 			case '@':
-				path = c.pathfinder.GetAbsPath(localPath)
+				path = c.Pathfinder().GetAbsPath(localPath)
 			default:
 				dir := filepath.Dir(cPath)
 				path = filepath.Join(dir, localPath)
@@ -688,15 +751,15 @@ func (c *Compiler) parseAppConfig() (res string) {
 			rawConf, err := os.ReadFile(path)
 			if err != nil {
 				if os.IsNotExist(err) {
-					c.pp.LogError("JS-application local config '%s' not found", path)
+					c.logError("JS-application local config '%s' not found", path)
 				} else {
-					c.pp.LogError("can not read JS-application local config '%s': %v", path, err)
+					c.logError("can not read JS-application local config '%s': %v", path, err)
 				}
 				return
 			}
 			lConf := make(map[string]any)
 			if err := yaml.Unmarshal(rawConf, &lConf); err != nil {
-				c.pp.LogError("can not unmarshal yaml JS-application local config '%s': %v", cPath, err)
+				c.logError("can not unmarshal yaml JS-application local config '%s': %v", cPath, err)
 				return
 			}
 			mergeRecursive(conf, lConf)

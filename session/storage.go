@@ -98,6 +98,11 @@ func (s *Storage) Name() string {
 	return "SessionsStorage"
 }
 
+// LogCategory returns the category the component's log methods write under.
+func (s *Storage) LogCategory() string {
+	return "SessionsStorage"
+}
+
 // AfterInit registers the session-loading middleware and starts the GC loop - see kernel.IAppComponent.
 func (s *Storage) AfterInit() {
 	s.App().Router().AddMiddleware(func(ctx kernel.IHandleContext) error {

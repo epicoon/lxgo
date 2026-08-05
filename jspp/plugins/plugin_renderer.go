@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
-	"github.com/epicoon/lxgo/jspp/internal/compiler"
+	"github.com/epicoon/lxgo/jspp/compiler"
 	"github.com/epicoon/lxgo/kernel/cast"
 	lxErrors "github.com/epicoon/lxgo/kernel/errors"
 	"github.com/epicoon/lxgo/kernel/utils"

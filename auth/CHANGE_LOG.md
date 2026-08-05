@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.06
+Version: v0.1.0-alpha.8
+Changes:
+- refactor: `assets:build` now compiles through `lxgo-jspp`'s new standalone compiler entry point
+  (`jspp/compiler.Builder()`) directly, instead of spinning up a throwaway `kernel.IApp` and registering a
+  `JSPreprocessor` component just to reach `CompilerBuilder()`
+- docs: `README.md`'s `refresh_handler.go` reference description now mentions the optional `scope` param (see
+  `lxgo-auth_client`'s scope-narrowing feature)
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.05
 Version: v0.1.0-alpha.7
 Changes:

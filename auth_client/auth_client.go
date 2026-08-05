@@ -237,20 +237,42 @@ func (c *AuthClient) LogOut(accessToken string) error {
 	return nil
 }
 
-// RefreshTokens exchanges a refresh token for a new token pair - narrowing
-// the granted scope is possible, broadening it is not (RFC 6749 §6).
-func (c *AuthClient) RefreshTokens(refreshToken string) (*Tokens, error) {
+// StatusError is returned by AuthClient methods when the authorization
+// service replies with a well-formed {success:false} error - Status is the
+// HTTP status it replied with (e.g. 400 for a bad request like requesting
+// a wider scope than already granted, as opposed to 401 for a bad/expired
+// token). A caller proxying the call to its own client (see
+// RefreshHandler) can propagate Status instead of collapsing every
+// failure into a 500.
+type StatusError struct {
+	Status  int
+	Message string
+}
+
+func (e *StatusError) Error() string {
+	return e.Message
+}
+
+// RefreshTokens exchanges a refresh token for a new token pair. scope is
+// optional - pass it to narrow the granted access (RFC 6749 §6); broadening
+// beyond what was already granted is rejected by the server. Omit it (or
+// pass an empty string) to keep the current scope unchanged.
+func (c *AuthClient) RefreshTokens(refreshToken string, scope ...string) (*Tokens, error) {
 	config := c.Config()
-	_, resp, err := lxHttp.RequestBuilder().
+	params := map[string]any{
+		"grant_type":    "refresh_token",
+		"client_id":     config.ID,
+		"client_secret": config.Secret,
+		"refresh_token": refreshToken,
+	}
+	if len(scope) > 0 && scope[0] != "" {
+		params["scope"] = scope[0]
+	}
+	httpResp, resp, err := lxHttp.RequestBuilder().
 		SetURL(config.Server + "/refresh").
 		SetMethod("POST").
 		SetJson().
-		SetParams(map[string]any{
-			"grant_type":    "refresh_token",
-			"client_id":     config.ID,
-			"client_secret": config.Secret,
-			"refresh_token": refreshToken,
-		}).
+		SetParams(params).
 		SetResponseForm(&tokensForm{}).
 		Send()
 	if err != nil {
@@ -258,7 +280,7 @@ func (c *AuthClient) RefreshTokens(refreshToken string) (*Tokens, error) {
 	}
 	tokensResp := resp.(*tokensForm)
 	if !tokensResp.Success {
-		return nil, errors.New(tokensResp.ErrorMessage)
+		return nil, &StatusError{Status: httpResp.StatusCode, Message: tokensResp.ErrorMessage}
 	}
 	tokens := new(Tokens)
 	tokens.Set(tokensResp)

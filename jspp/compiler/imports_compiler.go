@@ -265,7 +265,7 @@ func (c *Compiler) processImport(code, rootPath string) (string, error) {
 		for _, p := range call.paths {
 			includedCode, err := c.plugRequire(p.Path, p.Flags, parentDir, rootPath)
 			if err != nil {
-				c.pp.LogError("Can not process lx.import path %s: %v", p.Path, err)
+				c.logError("Can not process lx.import path %s: %v", p.Path, err)
 				continue
 			}
 			out.WriteString(includedCode)

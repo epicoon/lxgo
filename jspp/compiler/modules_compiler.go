@@ -9,7 +9,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// checkModule resolves moduleName through the bound preprocessor's
+// ModulesMap - named modules (`lx.import(Name)`) require a component, since
+// the map they're registered in lives on it (built from its own
+// SysPath/MapsPath config); standalone mode has nowhere to resolve them
+// from.
 func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, filePaths *[]string) {
+	if c.pp == nil {
+		c.logError("Module '%s' is not supported in standalone mode (no preprocessor component bound)", moduleName)
+		return
+	}
+
 	if resolved, ok := c.pp.Config().ModuleInjector[moduleName]; ok {
 		moduleName = resolved
 	}
@@ -23,15 +33,15 @@ func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, fil
 	mData := c.pp.ModulesMap().Get(moduleName)
 
 	if mData == nil {
-		c.pp.LogError("Module '%s' does not exist", moduleName)
+		c.logError("Module '%s' does not exist", moduleName)
 		return
 	}
 	path := mData.Path()
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			c.pp.LogError("File for module '%s' does not exist", moduleName)
+			c.logError("File for module '%s' does not exist", moduleName)
 		} else {
-			c.pp.LogError("Error while module '%s' file checking: %v", moduleName, err)
+			c.logError("Error while module '%s' file checking: %v", moduleName, err)
 		}
 		return
 	}
@@ -57,7 +67,7 @@ func (c *Compiler) checkModuleDependencies(modulePath string, modulesForBuild *[
 	// bare module-name arguments, to fold them into the same dependency scan)
 	code, err := os.ReadFile(modulePath)
 	if err != nil {
-		c.pp.LogError("Failed to read module file '%s': %v\n", modulePath, err)
+		c.logError("Failed to read module file '%s': %v\n", modulePath, err)
 		return
 	}
 
@@ -92,16 +102,16 @@ func (c *Compiler) applyModuleI18n(mData jspp.IJSModuleData, i18n string) {
 
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			c.pp.LogError("File i18n '%s' for module '%s' does not exist", path, mData.Name())
+			c.logError("File i18n '%s' for module '%s' does not exist", path, mData.Name())
 		} else {
-			c.pp.LogError("Error while module '%s' i18n '%s' file checking", mData.Name(), path)
+			c.logError("Error while module '%s' i18n '%s' file checking", mData.Name(), path)
 		}
 		return
 	}
 
 	file, err := os.Open(path)
 	if err != nil {
-		c.pp.LogError("Can not open module '%s' i18n '%s' file", mData.Name(), path)
+		c.logError("Can not open module '%s' i18n '%s' file", mData.Name(), path)
 		return
 	}
 	defer file.Close()
@@ -109,7 +119,7 @@ func (c *Compiler) applyModuleI18n(mData jspp.IJSModuleData, i18n string) {
 	decoder := yaml.NewDecoder(file)
 	i18nMap := make(map[string]map[string]string)
 	if err := decoder.Decode(i18nMap); err != nil {
-		c.pp.LogError("Can not decode module '%s' i18n '%s' file", mData.Name(), path)
+		c.logError("Can not decode module '%s' i18n '%s' file", mData.Name(), path)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -18,6 +19,7 @@ import (
 type RefreshRequest struct {
 	*lxHttp.Form
 	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
 }
 
 var _ kernel.IForm = (*RefreshRequest)(nil)
@@ -28,6 +30,10 @@ func (f *RefreshRequest) Config() kernel.FormConfig {
 		"refresh_token": kernel.FormFieldConfig{
 			Description: "token for refresh of a pair of tokens",
 			Required:    true,
+		},
+		"scope": kernel.FormFieldConfig{
+			Description: "optionally narrow the scope of the reissued tokens; omit to keep the current scope unchanged",
+			Required:    false,
 		},
 	}
 }
@@ -79,8 +85,19 @@ func (handler *RefreshHandler) Run() kernel.IHttpResponse {
 
 	req := handler.RequestForm().(*RefreshRequest)
 
-	tokens, err := authClient.RefreshTokens(req.RefreshToken)
+	tokens, err := authClient.RefreshTokens(req.RefreshToken, req.Scope)
 	if err != nil {
+		// A *StatusError means the authorization service rejected the
+		// request itself (e.g. 400 for a wider scope than already
+		// granted, 401 for a bad/expired token) - relay that status
+		// instead of reporting it as a 500, but only for 4xx: a 5xx (or
+		// anything else, like a network failure) is still our own
+		// generic "Something went wrong" below, not a client mistake to
+		// pass through as-is.
+		var statusErr *StatusError
+		if errors.As(err, &statusErr) && statusErr.Status >= 400 && statusErr.Status < 500 {
+			return handler.ErrorResponse(statusErr.Status, statusErr.Message)
+		}
 		handler.LogError(fmt.Sprintf("can not refresh tokens: %s", err), "App")
 		return handler.ErrorResponse(http.StatusInternalServerError, "Something went wrong")
 	}

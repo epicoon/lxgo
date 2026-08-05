@@ -1,4 +1,32 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.06
+Version: v0.1.0-alpha.33
+Changes:
+- refactor: the compiler moved from `internal/compiler` to the public `jspp/compiler` package - `compiler.Builder()`
+  (previously reachable only via a live `IPreprocessor` component's `CompilerBuilder()`) now works standalone, with
+  no running `kernel.IApp`/component at all; named modules (`lx.import(Name)`), `lx.ml(...)` (LXML) and `@config(...)`
+  substitution still require a bound component and report a clear error instead of panicking when used without one
+- add: `SetMode(mode string)` on `ICompilerBuilder` - overrides the build mode directly, for standalone compiles with
+  no bound component/config to read it from
+- fix: relative paths in `@lx:js`/`@lx:css`/`lx.json(...)`/`lx.yaml(...)` always resolved against the pathfinder's
+  root instead of the directory of the file referencing them - a file couldn't pull in a file sitting right next to
+  it with a relative path
+- rename: `BindableModel.bindRefresh` → `pushBind`; added `pullBind` - the reverse direction, reading the current
+  value out of every bound widget right now and writing it into the model, without waiting for a widget's `change`
+  event. Same pair (`pushBind`/`pullBind`) added to `lx.Rect` widgets, always relative to whichever side (model or
+  widget) they're called on
+- refactor: `Binder.js`'s internal bind registry unified around a single `{obj, fields}` record per bind id - widgets
+  no longer carry a separate `lxBindObj`/`lxBindC` back-reference duplicating `lxBindId`, and the per-call closures
+  previously allocated on every bind/every widget `change` event are gone, replaced by shared named functions
+- fix: a write-only (`BIND_TYPE_WRITE`) bound widget wasn't tracked for unbinding at all - `unbind`/`unbindWidget`
+  never removed its `change` listener, leaking it
+- fix: re-binding the same widget onto the same bind id (e.g. an aggregation's "first" element being replaced)
+  crashed - unbinding the last widget of a bind entry deleted the whole entry, and the following re-bind read it back
+  as `undefined`
+- rename: `Binder.refresh` → `Binder.push` (and the internal `_refresh` → `_push`), matching the already-renamed
+  `pull`
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.05
 Version: v0.1.0-alpha.32
 Changes:

@@ -424,7 +424,7 @@ function _actualizeColorModel(self) {
     colorModel.L = Math.round(self.color.getLightness());
     colorModel.text = self.color.toString();
     colorModel.ignoreSetterListener(false);
-    colorModel.bindRefresh();
+    colorModel.pushBind();
 }
 
 function _actualizeSaturation(self) {

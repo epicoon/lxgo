@@ -35,7 +35,7 @@ func (c *Compiler) parseMd(code, path string) string {
 
 		html, err := md.ConvertFile(fullPath)
 		if err != nil {
-			c.pp.LogError("can not convert markdown file '%s': %v", fullPath, err)
+			c.logError("can not convert markdown file '%s': %v", fullPath, err)
 			return `""`
 		}
 

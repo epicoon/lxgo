@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/epicoon/lxgo/jspp/internal/base"
 )
 
 func TestCutComments(t *testing.T) {
@@ -74,13 +72,13 @@ func TestApplyContext(t *testing.T) {
 func TestApplyMode(t *testing.T) {
 	src := "@lx:<mode DEV:\ndevCode();\n@lx:mode>\nrest"
 
-	c := &Compiler{config: fakeConfig("DEV")}
+	c := &Compiler{mode: "DEV"}
 	got := c.applyMode(src)
 	if got != "devCode();\n\nrest" {
 		t.Fatalf("DEV mode: unexpected result: %q", got)
 	}
 
-	c = &Compiler{config: fakeConfig("PROD")}
+	c = &Compiler{mode: "PROD"}
 	got = c.applyMode(src)
 	if got != "\nrest" {
 		t.Fatalf("PROD mode: unexpected result: %q", got)
@@ -236,8 +234,4 @@ func TestProcessLxml_NotAFunctionCallIsLeftAlone(t *testing.T) {
 	if got != src {
 		t.Fatalf("expected the identifier-prefixed occurrence to be left untouched, got %q", got)
 	}
-}
-
-func fakeConfig(mode string) *base.JSPreprocessorConfig {
-	return &base.JSPreprocessorConfig{Mode: mode}
 }

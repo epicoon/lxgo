@@ -157,7 +157,7 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 
 func (c *Compiler) checkFileCompileAvailable(path string, force bool) bool {
 	if _, err := os.Stat(path); err != nil {
-		c.pp.LogError("Can not compile file %s: %v", path, err)
+		c.logError("Can not compile file %s: %v", path, err)
 		return false
 	}
 

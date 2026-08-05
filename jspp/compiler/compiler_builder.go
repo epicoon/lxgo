@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"github.com/epicoon/lxgo/jspp"
-	"github.com/epicoon/lxgo/jspp/internal/base"
 	"github.com/epicoon/lxgo/kernel"
 )
 
@@ -14,6 +13,9 @@ type compilerBuilder struct {
 var _ jspp.ICompilerBuilder = (*compilerBuilder)(nil)
 
 /** @constructor */
+
+// Builder returns a fresh builder, not bound to any preprocessor component -
+// see the package doc for standalone vs in-app use.
 func Builder() *compilerBuilder {
 	return &compilerBuilder{compiler: *newCompiler()}
 }
@@ -25,7 +27,6 @@ func (cb *compilerBuilder) Compiler() jspp.ICompiler {
 func (cb *compilerBuilder) SetPreprocessor(pp jspp.IPreprocessor) jspp.ICompilerBuilder {
 	cb.compiler.pp = pp
 	cb.compiler.app = pp.App()
-	cb.compiler.config = pp.Config()
 	return cb
 }
 
@@ -34,8 +35,8 @@ func (cb *compilerBuilder) SetApp(app kernel.IApp) jspp.ICompilerBuilder {
 	return cb
 }
 
-func (cb *compilerBuilder) SetConfig(c *base.JSPreprocessorConfig) jspp.ICompilerBuilder {
-	cb.compiler.config = c
+func (cb *compilerBuilder) SetMode(mode string) jspp.ICompilerBuilder {
+	cb.compiler.mode = mode
 	return cb
 }
 

@@ -5,14 +5,20 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/epicoon/lxgo/kernel"
 	"github.com/epicoon/lxgo/kernel/cast"
@@ -22,22 +28,29 @@ import (
 	"github.com/epicoon/lxgo/kernel/template"
 )
 
+// defaultShutdownTimeout is how long Run waits for in-flight requests to
+// finish (via http.Server.Shutdown) after SIGINT/SIGTERM, before giving up
+// and returning anyway - used unless the app's config sets its own
+// "ShutdownTimeout" (whole seconds), see InitApp.
+const defaultShutdownTimeout = 5 * time.Second
+
 /** @interface kernel.IApp */
 
 // App is the default kernel.IApp implementation - embed it in your own
 // application struct and override at least ConfigPath.
 type App struct {
-	port         int
-	pathfinder   kernel.IPathfinder
-	config       kernel.IDict
-	manageSocket *manageSocket
-	components   map[any]kernel.IAppComponent
-	logger       kernel.ILogger
-	diContainer  kernel.IDIContainer
-	connection   kernel.IConnection
-	router       kernel.IRouter
-	tplHolder    kernel.ITemplateHolder
-	events       kernel.IEventManager
+	port            int
+	pathfinder      kernel.IPathfinder
+	config          kernel.IDict
+	manageSocket    *manageSocket
+	components      map[any]kernel.IAppComponent
+	logger          kernel.ILogger
+	diContainer     kernel.IDIContainer
+	connection      kernel.IConnection
+	router          kernel.IRouter
+	tplHolder       kernel.ITemplateHolder
+	events          kernel.IEventManager
+	shutdownTimeout time.Duration
 }
 
 /** @constructor */
@@ -51,6 +64,7 @@ func NewApp() *App {
 	app.diContainer = NewDIContainer(app)
 	app.tplHolder = template.NewTemplateHolder(app)
 	app.events = events.NewEventManager(app)
+	app.shutdownTimeout = defaultShutdownTimeout
 	return app
 }
 
@@ -104,6 +118,17 @@ func InitApp(app kernel.IApp, c kernel.IDict) error {
 		app.SetConnection(NewConnection())
 		app.Connection().SetApp(app)
 		app.Connection().SetConfig(dbConf)
+	}
+
+	if config.HasParam(c, "ShutdownTimeout") {
+		a, ok := app.BaseApp().(*App)
+		if ok {
+			seconds, err := config.GetParam[int](c, "ShutdownTimeout")
+			if err != nil {
+				return fmt.Errorf("can not read ShutdownTimeout config: %s", err)
+			}
+			a.shutdownTimeout = time.Duration(seconds) * time.Second
+		}
 	}
 
 	return nil
@@ -286,7 +311,12 @@ func (app *App) SetLogger(l kernel.ILogger) {
 }
 
 // Run starts the manage socket (if configured), the router, the HTTP
-// server, and every registered component - blocks serving requests.
+// server, and every registered component, then blocks until SIGINT/SIGTERM,
+// at which point it gives the server up to shutdownTimeout to finish
+// in-flight requests (http.Server.Shutdown) before returning. Run itself
+// never calls Final - that stays the caller's job, so there is
+// exactly one place that ever calls it, on a graceful shutdown or a
+// recovered panic alike.
 func (app *App) Run() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -296,6 +326,14 @@ func (app *App) Run() {
 			return
 		}
 	}()
+
+	// Registered first, before manage socket/router/server/component
+	// startup - a signal arriving during that startup work must not fall
+	// through to the OS's default disposition (process death without any
+	// cleanup at all); it's fine for it to just sit satisfied on ctx until
+	// the select below is reached, whenever that ends up being.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	fmt.Printf("Start a new application on port %d\n", app.port)
 
@@ -308,17 +346,45 @@ func (app *App) Run() {
 
 	app.router.Start()
 
-	srv := http.Server{Addr: ":" + strconv.Itoa(app.port), Handler: nil}
-	if err := srv.ListenAndServe(); err != nil {
+	for _, c := range app.components {
+		if err := c.Run(); err != nil {
+			fmt.Printf("Could not start app component '%s': %s\n", c.Name(), err.Error())
+			return
+		}
+	}
+
+	srv := &http.Server{Addr: ":" + strconv.Itoa(app.port), Handler: nil}
+
+	// Bind synchronously, so a port conflict is reported (and stops
+	// startup) right here rather than racing the goroutine
+	// below - only Serve, which blocks until Shutdown/Close, moves there.
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
 		fmt.Printf("Could not start server: %s\n", err.Error())
 		return
 	}
 
-	for _, c := range app.components {
-		if err := c.Run(); err != nil {
-			srv.Close()
-			fmt.Printf("Could not start app component '%s': %s\n", c.Name(), err.Error())
+	srvErr := make(chan error, 1)
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			srvErr <- err
 			return
+		}
+		srvErr <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Println("Shutting down...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), app.shutdownTimeout)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			fmt.Printf("Graceful shutdown failed: %s\n", err.Error())
+		}
+		<-srvErr // Serve has returned by now (Shutdown/Close unblocks it) - drain so the goroutine isn't left dangling
+	case err := <-srvErr:
+		if err != nil {
+			fmt.Printf("Server error: %s\n", err.Error())
 		}
 	}
 }

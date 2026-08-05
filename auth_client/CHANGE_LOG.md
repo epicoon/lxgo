@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.06
+Version: v0.1.0-alpha.5
+Changes:
+- add: `AuthClient.RefreshTokens(refreshToken string, scope ...string)` - an optional trailing `scope` narrows the
+  reissued tokens' access (RFC 6749 §6); omit it to keep the current scope unchanged, same as before
+- add: `/auth-refresh` (`RefreshHandler`/`RefreshRequest`) accepts an optional `scope` field in the request body,
+  forwarded straight through to `RefreshTokens`
+- test: unit tests for `RefreshTokens`'s scope handling (passed/omitted/empty), plus an integration test that a
+  submitted `scope` actually reaches the auth server through the HTTP proxy handler
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.4
 Changes:

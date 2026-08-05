@@ -69,13 +69,18 @@ declared as a reference to another property with `ref`:
   });
   ```
 * **Auto-refresh on set** — after a field changes, every widget currently
-  bound to that field is refreshed automatically (via `bindRefresh`).
+  bound to that field is refreshed automatically (via `pushBind`).
 * `bind(widgets, type = lx.app.binder.BIND_TYPE_FULL)` — bind the model to one
   widget or an array of widgets.
 * `unbind(widget = null)` — unbind everything, or a single widget.
 * `getBind()` / `getWidgetsForField(field)` — inspect current bindings.
-* `bindRefresh(fieldNames = null)` — manually re-push field values into bound
+* `pushBind(fieldNames = null)` — manually re-push field values into bound
   widgets.
+* `pullBind(fieldNames = null)` — the opposite direction: read the current
+  value out of every bound widget right now and write it into the model,
+  without waiting for a widget's `change` event (which already keeps the
+  model in sync live). Useful to force a sync point - e.g. right before a
+  form submit.
 
 
 ## Binding a widget to a model
@@ -84,10 +89,17 @@ Any `lx.Rect`-based widget (e.g. `lx.Box`) exposes:
 ```js
 box.bind(model);   // model.bind(box, type)
 box.unbind();
+box.pushBind();    // write just this widget's current value into the model
+box.pullBind();    // re-apply the model's current value to just this widget
 ```
 Binding walks the widget's children looking for elements marked with a
 `_field` name and keeps their content/value in sync with the matching model
-field in both directions.
+field in both directions. `pushBind`/`pullBind` are always relative to
+whichever side you call them on - "push" sends that side's own data out,
+"pull" brings data in from the other side - so a widget's `pushBind`/
+`pullBind` are the *opposite* direction of the model's own `pushBind`/
+`pullBind`, scoped to just this one widget instead of every widget bound to
+a field.
 
 The actual synchronization logic lives in the `binder` application component
 (`lx.app.binder`, key `binder`, client-only) — it is an internal mechanism and

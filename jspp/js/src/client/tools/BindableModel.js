@@ -40,11 +40,19 @@ class BindableModel extends lx.Model {
 	}
 
 	/**
-	 * Trigger refresh
+	 * Push this model's current field values into every bound widget.
 	 * @param {Array<String>|String|null} [fieldNames=null]
 	 */
-	bindRefresh(fieldNames = null) {
-		lx.app.binder.refresh(this, fieldNames);
+	pushBind(fieldNames = null) {
+		lx.app.binder.push(this, fieldNames);
+	}
+
+	/**
+	 * Pull the current value out of every bound widget into this model.
+	 * @param {Array<String>|String|null} [fieldNames=null]
+	 */
+	pullBind(fieldNames = null) {
+		lx.app.binder.pull(this, fieldNames);
 	}
 
 	static setterListenerFields() {
@@ -101,7 +109,7 @@ class BindableModel extends lx.Model {
 			}
 		});
 		this.afterSet(function(field) {
-			lx.app.binder.refresh(this, field)
+			lx.app.binder.push(this, field)
 		});
 	}
 

@@ -1,6 +1,6 @@
 # Authentication microservice
 
-> Actual version: `v0.1.0-alpha.7`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.8`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
 
 There are ways to use the service:
 * [Full ready-to-use solution for lxgo/kernel applications](#full-sol)
@@ -126,12 +126,12 @@ of them talk to the authorization service's database directly.
   [/logout](https://github.com/epicoon/lxgo/tree/master/auth/README_API.md#r5) with that token and the client's
   `client_id`, and relays `{"success": "ok"}` (or an error) back.
 * **Endpoint for proxying a request to `/refresh` of the authorization service** (reference: `refresh_handler.go`).
-  Accepts `refresh_token`, calls
+  Accepts `refresh_token` and an optional `scope`, calls
   [/refresh](https://github.com/epicoon/lxgo/tree/master/auth/README_API.md#r4) with `grant_type: refresh_token`,
-  `client_id`, `client_secret`, `refresh_token`, and relays the new token pair
-  (`access_token`/`access_token_expired`/`refresh_token`/`refresh_token_expired`/`scope`) back as JSON. The reference
-  implementation doesn't expose scope narrowing to the browser (it never forwards an optional `scope` of its own to
-  `/refresh`) — it just keeps whatever scope the tokens already had.
+  `client_id`, `client_secret`, `refresh_token`, and (if supplied) `scope`, and relays the new token pair
+  (`access_token`/`access_token_expired`/`refresh_token`/`refresh_token_expired`/`scope`) back as JSON. Passing
+  `scope` narrows the reissued tokens' access (RFC 6749 §6) — requesting anything broader than what was already
+  granted is rejected by `/refresh`; omit it to keep the current scope unchanged.
 * **Endpoint for proxying a request to `/user-data` of the authorization service.** Unlike the four above,
   `lxgo/auth_client` doesn't ship a ready-made handler for this one — build it the same way: extract the bearer
   token, call [/user-data](https://github.com/epicoon/lxgo/tree/master/auth/README_API.md#r2) with it and the

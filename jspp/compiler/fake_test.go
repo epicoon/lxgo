@@ -8,8 +8,8 @@ import (
 
 // fakePreprocessor is a minimal jspp.IPreprocessor for whitebox tests in
 // this package - built by hand (rather than via component.SetAppComponent)
-// because internal/compiler can't import jspp/component: component imports
-// internal/compiler itself, a real cycle.
+// because this package can't import jspp/component: component imports this
+// package itself, a real cycle.
 type fakePreprocessor struct {
 	config *base.JSPreprocessorConfig
 	mm     jspp.IModulesMap

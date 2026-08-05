@@ -9,8 +9,8 @@ import (
 	"net/http"
 
 	cnv "github.com/epicoon/lxgo/jspp"
+	"github.com/epicoon/lxgo/jspp/compiler"
 	"github.com/epicoon/lxgo/jspp/internal/base"
-	"github.com/epicoon/lxgo/jspp/internal/compiler"
 	"github.com/epicoon/lxgo/jspp/internal/executor"
 	"github.com/epicoon/lxgo/jspp/internal/handlers"
 	"github.com/epicoon/lxgo/jspp/internal/modules"

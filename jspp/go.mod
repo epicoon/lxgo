@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
 	github.com/epicoon/lxgo/cmd v0.1.0-alpha.9
-	github.com/epicoon/lxgo/kernel v0.1.0-alpha.28
+	github.com/epicoon/lxgo/kernel v0.1.0-alpha.29
 	gopkg.in/yaml.v3 v3.0.1
 )
 

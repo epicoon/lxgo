@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.06
+Version: v0.1.0-alpha.7
+Changes:
+- fix: `Storage` didn't override `LogCategory()` at all - logged under the generic `"AppComponent"` category instead
+  of `"SessionsStorage"`
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.07.28
 Version: v0.1.0-alpha.6
 Changes:

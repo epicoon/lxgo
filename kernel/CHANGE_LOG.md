@@ -1,4 +1,18 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.06
+Version: v0.1.0-alpha.29
+Changes:
+- add: `App.Run()` now handles `SIGINT`/`SIGTERM` - stops accepting new HTTP connections and waits (up to a
+  `ShutdownTimeout`, default 5s, configurable via `config.yaml`) for in-flight requests to finish before returning,
+  instead of blocking forever on `ListenAndServe`
+- fix: registered components' `Run()` sat unreachable after the old blocking `ListenAndServe` call and never actually
+  executed - fixed as part of the graceful-shutdown rework above
+- fix: an embedding component's `LogCategory()` override (e.g. `session.Storage`) was never honored by
+  `Log`/`LogWarning`/`LogError` - they always logged under the generic `"AppComponent"` category, since Go embedding
+  has no virtual dispatch; `InitComponent` now binds the component back to itself so the override actually takes
+  effect
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.05
 Version: v0.1.0-alpha.28
 Changes:

@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -150,6 +151,92 @@ func TestRefreshTokens_ServerRejects(t *testing.T) {
 
 	if _, err := ac.RefreshTokens("revoked"); err == nil {
 		t.Fatal("expected an error for a rejected refresh token")
+	}
+}
+
+// TestRefreshTokens_ServerRejects_CarriesHTTPStatus checks that a
+// {success:false} rejection surfaces as a *client.StatusError carrying the
+// server's actual HTTP status (400 for invalid_scope, in this case) - not
+// a plain error a caller can't distinguish from a transport failure.
+func TestRefreshTokens_ServerRejects_CarriesHTTPStatus(t *testing.T) {
+	stub := newJSONStub(t, "/refresh", http.StatusBadRequest, map[string]any{
+		"success":       false,
+		"error_code":    1017,
+		"error_message": "Requested scope exceeds the scope already granted",
+	})
+	ac := newTestAuthClient(t, kernel.Dict{"ID": 1, "Secret": "s", "Server": stub.URL})
+
+	_, err := ac.RefreshTokens("oldref", "profile:data")
+	if err == nil {
+		t.Fatal("expected an error for a rejected scope")
+	}
+	var statusErr *client.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *client.StatusError, got %T: %v", err, err)
+	}
+	if statusErr.Status != http.StatusBadRequest {
+		t.Fatalf("StatusError.Status = %d, want %d", statusErr.Status, http.StatusBadRequest)
+	}
+	if statusErr.Message != "Requested scope exceeds the scope already granted" {
+		t.Fatalf("StatusError.Message = %q", statusErr.Message)
+	}
+}
+
+func TestRefreshTokens_WithScope_SendsScope(t *testing.T) {
+	stub := newJSONStub(t, "/refresh", http.StatusOK, map[string]any{
+		"success":       true,
+		"access_token":  "newacc",
+		"refresh_token": "newref",
+		"scope":         "profile",
+	})
+	ac := newTestAuthClient(t, kernel.Dict{"ID": 1, "Secret": "s", "Server": stub.URL})
+
+	tokens, err := ac.RefreshTokens("oldref", "profile")
+	if err != nil {
+		t.Fatalf("RefreshTokens: %v", err)
+	}
+	if stub.lastBody["scope"] != "profile" {
+		t.Fatalf("request body scope = %v, want %q", stub.lastBody["scope"], "profile")
+	}
+	if tokens.Scope != "profile" {
+		t.Fatalf("tokens.Scope = %q, want %q", tokens.Scope, "profile")
+	}
+}
+
+// TestRefreshTokens_WithoutScope_OmitsScopeFromRequest checks the backward
+// compatible path: calling RefreshTokens the old way (no scope argument at
+// all) must not add a "scope" key to the request body.
+func TestRefreshTokens_WithoutScope_OmitsScopeFromRequest(t *testing.T) {
+	stub := newJSONStub(t, "/refresh", http.StatusOK, map[string]any{
+		"success":       true,
+		"access_token":  "newacc",
+		"refresh_token": "newref",
+	})
+	ac := newTestAuthClient(t, kernel.Dict{"ID": 1, "Secret": "s", "Server": stub.URL})
+
+	if _, err := ac.RefreshTokens("oldref"); err != nil {
+		t.Fatalf("RefreshTokens: %v", err)
+	}
+	if _, ok := stub.lastBody["scope"]; ok {
+		t.Fatalf("request body unexpectedly carries scope: %#v", stub.lastBody)
+	}
+}
+
+// TestRefreshTokens_EmptyScopeArg_OmitsScopeFromRequest checks that an
+// explicit empty string behaves the same as not passing scope at all.
+func TestRefreshTokens_EmptyScopeArg_OmitsScopeFromRequest(t *testing.T) {
+	stub := newJSONStub(t, "/refresh", http.StatusOK, map[string]any{
+		"success":       true,
+		"access_token":  "newacc",
+		"refresh_token": "newref",
+	})
+	ac := newTestAuthClient(t, kernel.Dict{"ID": 1, "Secret": "s", "Server": stub.URL})
+
+	if _, err := ac.RefreshTokens("oldref", ""); err != nil {
+		t.Fatalf("RefreshTokens: %v", err)
+	}
+	if _, ok := stub.lastBody["scope"]; ok {
+		t.Fatalf("request body unexpectedly carries scope: %#v", stub.lastBody)
 	}
 }
 

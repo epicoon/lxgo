@@ -1,6 +1,6 @@
 # Authentication client for lxgo/kernel applications
 
-> Actual version: `v0.1.0-alpha.4`. [Details](https://github.com/epicoon/lxgo/tree/master/auth_client/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.5`. [Details](https://github.com/epicoon/lxgo/tree/master/auth_client/CHANGE_LOG.md)
 
 This package is the client-side counterpart of the
 [lxgo/auth](https://github.com/epicoon/lxgo/tree/master/auth) authentication microservice — it wires an
@@ -13,7 +13,11 @@ Concretely, it gives you:
 * an app component (`AuthClient`) that talks to the authorization service's API (exchanging a code for tokens,
   refreshing them, logging out, fetching user data) — see `auth_client.go`. The `Tokens` it returns
   (`ExchangeCodeForTokens`/`RefreshTokens`, `tokens.go`) carry a `Scope` field with the access level the server
-  actually granted (`profile` or `profile:data`) — read it if your app needs to know which one it got;
+  actually granted (`profile` or `profile:data`) — read it if your app needs to know which one it got.
+  `RefreshTokens(refreshToken, scope...)` takes an optional `scope` to narrow the reissued tokens' access
+  (RFC 6749 §6) — omit it to keep the current scope unchanged; requesting anything broader than what was already
+  granted is rejected by the server (`400`/`invalid_scope`) — surfaced from `RefreshTokens` as a `*client.StatusError`
+  (`Status`/`Message`), so callers can tell a rejection like this apart from a transport-level failure;
 * ready-made HTTP handlers for four of the five endpoints your application needs to expose to the browser (the
   auth-callback redirect target, CSRF state generation, and the `/logout`/`/refresh` proxies) — see
   `auth_callback_handler.go`/`state_handler.go`/`logout_handler.go`/`refresh_handler.go`;
@@ -65,6 +69,22 @@ app.Router().RegisterResources(kernel.HttpResourcesList{
     "/get-user":      NewGetUserHandler,
     // ...
 })
+```
+
+`/auth-refresh`'s `RefreshRequest` accepts an optional `scope` field in the POST body alongside `refresh_token` — pass
+it to narrow the reissued tokens' access (RFC 6749 §6); the request is rejected (`400`, with the authorization
+service's own message) if it asks for anything broader than what the tokens already had:
+```json
+{"refresh_token": "<token>", "scope": "profile"}
+```
+Calling `AuthClient.RefreshTokens` directly works the same way — the trailing `scope` argument is optional, so
+existing calls that don't pass one keep working unchanged:
+```go
+// keeps the current scope
+tokens, err := authClient.RefreshTokens(refreshToken)
+
+// narrows to "profile"
+tokens, err := authClient.RefreshTokens(refreshToken, "profile")
 ```
 
 4. The fifth endpoint (`/get-user`, proxying the authorization service's `/user-data`) doesn't have a ready-made

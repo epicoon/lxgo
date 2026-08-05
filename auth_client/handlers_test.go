@@ -3,6 +3,7 @@ package client_test
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -223,6 +224,91 @@ func TestRefreshHandler_RealHTTPRoundTrip(t *testing.T) {
 	}
 	if decoded.AccessToken != "newacc" {
 		t.Fatalf("decoded = %#v", decoded)
+	}
+}
+
+// TestRefreshHandler_WithScope_ForwardsScopeToServer drives a real HTTP
+// request carrying an optional "scope" field through RefreshHandler and
+// checks it actually reaches the authorization service's /refresh call,
+// not just that RefreshRequest parses it.
+func TestRefreshHandler_WithScope_ForwardsScopeToServer(t *testing.T) {
+	stub := newJSONStub(t, "/refresh", http.StatusOK, map[string]any{
+		"success":       true,
+		"access_token":  "newacc",
+		"refresh_token": "newref",
+		"scope":         "profile",
+	})
+	app := newTestApp(t, stub.URL)
+	srv := apptest.Server(app)
+	defer srv.Close()
+
+	body, _ := json.Marshal(map[string]any{"refresh_token": "oldref", "scope": "profile"})
+	resp, err := http.Post(srv.URL+"/auth/refresh", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /auth/refresh: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	if stub.lastBody["scope"] != "profile" {
+		t.Fatalf("scope forwarded to the authorization service = %v, want %q", stub.lastBody["scope"], "profile")
+	}
+}
+
+// TestRefreshHandler_ScopeRejected_Propagates400 is a regression test: a
+// {success:false} scope rejection from the authorization service (400 +
+// invalid_scope) used to always come back from this handler as a flat 500
+// - a client had no way to tell "your own request was wrong" from "the
+// service is broken". It must now come back as the same 400, carrying the
+// authorization service's own message.
+func TestRefreshHandler_ScopeRejected_Propagates400(t *testing.T) {
+	stub := newJSONStub(t, "/refresh", http.StatusBadRequest, map[string]any{
+		"success":       false,
+		"error_code":    1017,
+		"error_message": "Requested scope exceeds the scope already granted",
+	})
+	app := newTestApp(t, stub.URL)
+	srv := apptest.Server(app)
+	defer srv.Close()
+
+	body, _ := json.Marshal(map[string]any{"refresh_token": "oldref", "scope": "profile:data"})
+	resp, err := http.Post(srv.URL+"/auth/refresh", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /auth/refresh: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+
+	// handler.ErrorResponse renders via http.Error - plain text, not JSON.
+	msg, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if got := strings.TrimSpace(string(msg)); got != "Requested scope exceeds the scope already granted" {
+		t.Fatalf("body = %q", got)
+	}
+}
+
+// TestRefreshHandler_ServerDown_Still500 checks the other side of the same
+// fix: a failure that isn't a well-formed {success:false} 4xx response
+// (here, the stub server is simply unreachable) must still come back as a
+// 500, not be mistaken for a passthrough-able client error.
+func TestRefreshHandler_ServerDown_Still500(t *testing.T) {
+	app := newTestApp(t, "http://127.0.0.1:1")
+	srv := apptest.Server(app)
+	defer srv.Close()
+
+	body, _ := json.Marshal(map[string]any{"refresh_token": "oldref"})
+	resp, err := http.Post(srv.URL+"/auth/refresh", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /auth/refresh: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusInternalServerError)
 	}
 }
 

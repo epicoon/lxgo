@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.28`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.29`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -24,6 +24,7 @@ You can create your own web-server - an application with components, routing and
 * [Events](#events)
 * [Proxy API](#proxy)
 * [Database connection](#db)
+* [Graceful shutdown](#shutdown)
 * [Local config](#lconfig)
 * [Local managing](#lmanaging)
 
@@ -665,6 +666,25 @@ Then use the underlying `*sql.DB` anywhere in your app:
 db := app.Connection().DB()
 ```
 Currently only PostgreSQL is supported (via `github.com/lib/pq`).
+
+
+### <a name="shutdown">Graceful shutdown</a>
+`app.Run()` starts the HTTP server and blocks until the process receives
+`SIGINT`/`SIGTERM`, then stops accepting new connections and waits for
+in-flight requests to finish (via `http.Server.Shutdown`) before returning -
+up to a timeout, after which it gives up and returns anyway. The timeout
+defaults to 5 seconds; override it with a `ShutdownTimeout` (whole seconds)
+in `config.yaml`:
+```yaml
+# Optional, defaults to 5
+ShutdownTimeout: 30
+```
+`app.Run()` never calls `app.Final()` itself - call it yourself right after
+`Run()` returns, same as always:
+```go
+app.Run()
+app.Final()
+```
 
 
 ### <a name="lconfig">Local config</a>
