@@ -6,8 +6,8 @@ require (
 	github.com/epicoon/lxgo/auth_client v0.1.0-alpha.5
 	github.com/epicoon/lxgo/cmd v0.1.0-alpha.9
 	github.com/epicoon/lxgo/jspp v0.1.0-alpha.33
-	github.com/epicoon/lxgo/kernel v0.1.0-alpha.29
-	github.com/epicoon/lxgo/migrator v0.1.0-alpha.8
+	github.com/epicoon/lxgo/kernel v0.1.0-alpha.30
+	github.com/epicoon/lxgo/migrator v0.1.0-alpha.10
 	github.com/epicoon/lxgo/session v0.1.0-alpha.7
 	github.com/stretchr/testify v1.10.0
 	gorm.io/driver/postgres v1.6.0
@@ -16,10 +16,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dlclark/regexp2 v1.11.5 // indirect
-	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
-	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.1 // indirect

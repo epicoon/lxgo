@@ -268,6 +268,47 @@ func TestValue_Nil(t *testing.T) {
 	})
 }
 
+func TestValue_Pointer(t *testing.T) {
+	t.Run("bool_ptr<-bool", func(t *testing.T) {
+		got, err := cast.Value(true, reflect.TypeOf((*bool)(nil)))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		p, ok := got.(*bool)
+		if !ok || p == nil || *p != true {
+			t.Fatalf("got %#v, want *bool pointing to true", got)
+		}
+	})
+
+	t.Run("bool_ptr<-string", func(t *testing.T) {
+		got, err := cast.Value("false", reflect.TypeOf((*bool)(nil)))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		p, ok := got.(*bool)
+		if !ok || p == nil || *p != false {
+			t.Fatalf("got %#v, want *bool pointing to false", got)
+		}
+	})
+
+	t.Run("int_ptr<-string", func(t *testing.T) {
+		got, err := cast.Value("42", reflect.TypeOf((*int)(nil)))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		p, ok := got.(*int)
+		if !ok || p == nil || *p != 42 {
+			t.Fatalf("got %#v, want *int pointing to 42", got)
+		}
+	})
+
+	t.Run("bool_ptr<-invalid_string", func(t *testing.T) {
+		if _, err := cast.Value("nope", reflect.TypeOf((*bool)(nil))); err == nil {
+			t.Fatalf("expected error, got none")
+		}
+	})
+}
+
 func TestValue_UnsupportedTarget(t *testing.T) {
 	if _, err := cast.Value(42, reflect.TypeOf(make(chan int))); err == nil {
 		t.Fatalf("expected error, got none")
@@ -543,6 +584,43 @@ func TestDictToStruct(t *testing.T) {
 		}
 		if v.Host != "kept" {
 			t.Fatalf("got %#v, want Host to stay 'kept'", v)
+		}
+	})
+
+	// A *bool (or any other) field lets a caller distinguish "not set,
+	// inherit a default from elsewhere" (nil) from "explicitly set" (a
+	// non-nil value, true or false alike) - a plain bool field can't
+	// represent that distinction, its zero value is indistinguishable from
+	// an explicit false. dict.Has gates whether the field is touched at
+	// all, so an absent key leaves it nil; a present key always produces a
+	// non-nil pointer, even when the value is false.
+	t.Run("pointer_field_nil_when_key_absent_set_when_present", func(t *testing.T) {
+		type withOptionalFlag struct {
+			Flag *bool
+		}
+
+		var absent withOptionalFlag
+		if err := cast.DictToStruct(kernel.Dict{}, &absent); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if absent.Flag != nil {
+			t.Fatalf("got %#v, want Flag to stay nil", absent)
+		}
+
+		var explicitFalse withOptionalFlag
+		if err := cast.DictToStruct(kernel.Dict{"Flag": false}, &explicitFalse); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if explicitFalse.Flag == nil || *explicitFalse.Flag != false {
+			t.Fatalf("got %#v, want Flag to point to false", explicitFalse)
+		}
+
+		var explicitTrue withOptionalFlag
+		if err := cast.DictToStruct(kernel.Dict{"Flag": true}, &explicitTrue); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if explicitTrue.Flag == nil || *explicitTrue.Flag != true {
+			t.Fatalf("got %#v, want Flag to point to true", explicitTrue)
 		}
 	})
 

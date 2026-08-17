@@ -22,7 +22,7 @@ func (m *manager) getAppliedData() (*appliedData, error) {
 		return newAppliedData([]*appliedDataItem{}), nil
 	}
 
-	rows, err := m.db.Query("SELECT time, name FROM " + cTABLE_NAME)
+	rows, err := m.db.Query("SELECT time, name FROM " + cQUALIFIED_TABLE_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch applied migrations: %s", err)
 	}
@@ -44,7 +44,7 @@ func (m *manager) isTableExist() (bool, error) {
 	query := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM information_schema.tables
-		WHERE table_name = '%s'`, cTABLE_NAME)
+		WHERE table_schema = '%s' AND table_name = '%s'`, cSCHEMA_NAME, cTABLE_NAME)
 	var count int
 	err := m.db.QueryRow(query).Scan(&count)
 	if err != nil {
@@ -63,14 +63,18 @@ func (m *manager) createTable() error {
 		return nil
 	}
 
+	if _, err := m.db.Exec("CREATE SCHEMA IF NOT EXISTS " + cSCHEMA_NAME); err != nil {
+		return fmt.Errorf("failed to create schema %s: %w", cSCHEMA_NAME, err)
+	}
+
 	query := fmt.Sprintf(`
 		CREATE TABLE %s (
 			time VARCHAR(18) NOT NULL,
 			name VARCHAR(255) NOT NULL,
-			PRIMARY KEY (time, name));`, cTABLE_NAME)
+			PRIMARY KEY (time, name));`, cQUALIFIED_TABLE_NAME)
 	_, err = m.db.Exec(query)
 	if err != nil {
-		return fmt.Errorf("failed to create table %s: %w", cTABLE_NAME, err)
+		return fmt.Errorf("failed to create table %s: %w", cQUALIFIED_TABLE_NAME, err)
 	}
 
 	return nil

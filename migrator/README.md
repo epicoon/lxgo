@@ -1,6 +1,6 @@
 # Package for manage migrations
 
-> Actual version: `v0.1.0-alpha.8`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.10`. Details [here](https://github.com/epicoon/lxgo/tree/master/migrator/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -14,6 +14,11 @@ Database:
   DBName: "my_db"
   SSLMode: "disable"
 ```
+
+   The migrator tracks applied migrations in `lx_sys.migrator` - its own Postgres schema,
+   created automatically (`CREATE SCHEMA IF NOT EXISTS lx_sys`) the first time it's needed, so
+   the DB role above needs `CREATE SCHEMA` (or the schema must already exist, created ahead of
+   time by a role that does).
 
 2. Plug in console command, create command wrapper:
     > How to set up console commands in your application you can find [here](https://github.com/epicoon/lxgo/tree/master/cmd)
@@ -103,10 +108,10 @@ func main() {
 5. An example of migration (`migrator:create` generates a skeleton with this
    shape, named `<timestamp>_<name>.yaml`):
 ```yaml
-name: create_tables
-type: query
+Name: create_tables
+Type: query
 
-up:
+Up:
   - CREATE TABLE
     my_table (
       id SERIAL PRIMARY KEY,
@@ -114,20 +119,34 @@ up:
     )
   - CREATE INDEX my_table_name_idx ON my_table (name);
 
-down:
+Down:
   - DROP INDEX IF EXISTS my_table_name_idx;
   - DROP TABLE IF EXISTS my_table;
 ```
-   `up`/`down` accept either a single SQL string or (as above) a list of
-   statements, run in order inside one transaction. `name`/`type` aren't
-   actually read by the migrator (only the filename matters for tracking
-   which migrations ran) — `type: query` is currently just a placeholder the
-   generated skeleton includes, reserved for possibly distinguishing other
-   kinds of migrations later.
+   `Up`/`Down` accept either a single SQL string or (as above) a list of
+   statements, run in order inside one transaction. `Name` isn't actually
+   read by the migrator (only the filename matters for tracking which
+   migrations ran); `Type: query` (or an absent `Type`) selects this
+   built-in SQL-list behavior — see below for other `Type` values.
 
    Only PostgreSQL is supported for now (migrations run through
    `database/sql` with the `lib/pq` driver, same as [`lxgo/kernel`'s DB
    connection](https://github.com/epicoon/lxgo/tree/master/kernel#db)).
+
+   Besides `query`, other migration types can be plugged in via
+   `RegisterMigrationType(name string, apply, invert func(tx *sql.Tx, raw []byte) error) error`
+   — a migration file declaring `Type: <name>` is dispatched to `apply`
+   (on `up`) or `invert` (on `down`) instead of being read as SQL; `raw` is
+   the migration file's entire, untouched content, `migrator` doesn't
+   interpret it beyond the `Type` field. `CreateWithContent(name string,
+   content []byte) error` writes such a file (same timestamped naming as
+   `Create`, but with caller-supplied content instead of the `query`
+   template) — the caller is responsible for `content` being valid,
+   including its own `Type:` line.
+
+   [`lxgo/model`](https://github.com/epicoon/lxgo/tree/master/model) is one such migration type - it generates and
+   applies typed, invertible migrations from a diff between yaml model schemas and the live database, instead of
+   hand-written SQL.
 
 6. An example of seeds:
 ```yaml

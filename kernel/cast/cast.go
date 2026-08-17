@@ -76,9 +76,26 @@ func Value(v any, target reflect.Type) (any, error) {
 		return toMap(v, target)
 	case reflect.Struct:
 		return toStruct(v, target)
+	case reflect.Pointer:
+		return toPointer(v, target)
 	}
 
 	return nil, fmt.Errorf("cast: cannot assign %T to %s", v, target)
+}
+
+// toPointer coerces v to target's pointed-to type, then wraps the result in
+// a freshly allocated pointer - a nil target field only stays nil when its
+// dict key is absent (see dictToStructValue's dict.Has check), never as a
+// side effect of the value itself being un-coercible to a non-pointer type.
+func toPointer(v any, target reflect.Type) (any, error) {
+	elem, err := Value(v, target.Elem())
+	if err != nil {
+		return nil, err
+	}
+
+	ptr := reflect.New(target.Elem())
+	ptr.Elem().Set(reflect.ValueOf(elem))
+	return ptr.Interface(), nil
 }
 
 func toInt(v any, target reflect.Type) (any, error) {

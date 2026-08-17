@@ -1,7 +1,3 @@
-// Package migrator manages DB schema migrations and data seeds for
-// lxgo/kernel applications - migrations are YAML files with `up`/`down` SQL,
-// tracked in a dedicated table; see NewCommand for the ready-made console
-// command wrapping Create/Show/Check/Up/Down/UpSeeds.
 package migrator
 
 import (
@@ -16,25 +12,27 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const cTABLE_NAME = "_lxgo_migrator"
+// cSCHEMA_NAME is the Postgres schema the package's service table lives
+// in - grouped separately from the user's own tables so it doesn't need a
+// name prefix to stand out.
+const cSCHEMA_NAME = "lx_sys"
 
-var template = `name: %s
-type: query
+// cTABLE_NAME is the service table's bare name (no schema qualifier) -
+// used where information_schema.tables.table_name is compared directly
+// (that column never includes the schema). cQUALIFIED_TABLE_NAME is the
+// schema-qualified form used everywhere the table is actually read from
+// or written to.
+const cTABLE_NAME = "migrator"
 
-up: | # TODO SQL to up migration
+const cQUALIFIED_TABLE_NAME = cSCHEMA_NAME + "." + cTABLE_NAME
 
-down: | # TODO SQL to down migration
+var template = `Name: %s
+Type: query
+
+Up: | # TODO SQL to up migration
+
+Down: | # TODO SQL to down migration
 `
-
-// Config configures the package-level migrator state - see Init.
-type Config struct {
-	// DB is the database connection migrations/seeds run against.
-	DB *sql.DB
-	// MigrationsPath is the directory migration YAML files are read from/written to.
-	MigrationsPath string
-	// SeedsPath is the directory seed YAML files are read from.
-	SeedsPath string
-}
 
 // Init sets up the package-level migrator state from conf - call this once
 // before using any other function in the package.
@@ -57,12 +55,7 @@ func SetMigrationsPath(migrationsPath string) {
 // Create writes a new migration YAML file (timestamped, named after name)
 // into the configured migrations directory, with an up/down template ready to fill in.
 func Create(name string) error {
-	timestamp := time.Now().UTC().Format("20060102150405.000")
-	filename := fmt.Sprintf("%s_%s.yaml", timestamp, name)
-	if m.migrationsPath != "" {
-		migrationsPath := strings.TrimSuffix(m.migrationsPath, "/")
-		filename = filepath.Join(migrationsPath, filename)
-	}
+	filename := migrationFilename(name)
 	file, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("can not create file: %w", err)
@@ -77,6 +70,29 @@ func Create(name string) error {
 
 	fmt.Printf("Migration '%s' has been created\n", filename)
 	return nil
+}
+
+// CreateWithContent writes content as-is (timestamped filename, same
+// convention as Create) into the configured migrations directory - the
+// caller is responsible for content being a complete, valid migration YAML,
+// including its own "Type" field; migrator does not interpret or wrap it.
+func CreateWithContent(name string, content []byte) error {
+	filename := migrationFilename(name)
+	if err := os.WriteFile(filename, content, 0644); err != nil {
+		return fmt.Errorf("can not write file: %w", err)
+	}
+
+	fmt.Printf("Migration '%s' has been created\n", filename)
+	return nil
+}
+
+func migrationFilename(name string) string {
+	timestamp := time.Now().UTC().Format("20060102150405.000")
+	filename := fmt.Sprintf("%s_%s.yaml", timestamp, name)
+	if m.migrationsPath != "" {
+		filename = filepath.Join(m.migrationsPath, filename)
+	}
+	return filename
 }
 
 // Check returns every migration that hasn't been applied yet.
@@ -249,38 +265,15 @@ func upMigration(tx *sql.Tx, mig *migration) error {
 		return fmt.Errorf("failed to read migration file '%s': %s", mig.file, err)
 	}
 
-	var data struct {
-		Up any `yaml:"up"`
-	}
-	err = yaml.Unmarshal(content, &data)
+	action, err := resolveMigrationAction(content, "Up", mig.file)
 	if err != nil {
-		return fmt.Errorf("failed to parse migration file '%s': %s", mig.file, err)
+		return err
+	}
+	if err := action.run(tx); err != nil {
+		return fmt.Errorf("failed to execute migration '%s': %s", mig.file, err)
 	}
 
-	var upCommands []string
-	switch v := data.Up.(type) {
-	case string:
-		upCommands = append(upCommands, v)
-	case []any:
-		for _, cmd := range v {
-			cmdStr, ok := cmd.(string)
-			if !ok {
-				return fmt.Errorf("invalid command type in 'up' section of '%s'", mig.file)
-			}
-			upCommands = append(upCommands, cmdStr)
-		}
-	default:
-		return fmt.Errorf("'up' section of '%s' must be a string or an array of strings", mig.file)
-	}
-
-	for _, cmd := range upCommands {
-		_, err = tx.Exec(cmd)
-		if err != nil {
-			return fmt.Errorf("failed to execute migration '%s': %s. The SQL: %q", mig.file, err, cmd)
-		}
-	}
-
-	_, err = tx.Exec(`INSERT INTO `+cTABLE_NAME+` (time, name) VALUES ($1, $2)`, mig.timestamp, mig.name)
+	_, err = tx.Exec(`INSERT INTO `+cQUALIFIED_TABLE_NAME+` (time, name) VALUES ($1, $2)`, mig.timestamp, mig.name)
 	if err != nil {
 		return fmt.Errorf("failed to update migrations table for '%s': %s", mig.file, err)
 	}
@@ -295,38 +288,15 @@ func downMigration(tx *sql.Tx, mig *migration) error {
 		return fmt.Errorf("failed to read migration file '%s': %s", mig.file, err)
 	}
 
-	var data struct {
-		Down any `yaml:"down"`
-	}
-	err = yaml.Unmarshal(content, &data)
+	action, err := resolveMigrationAction(content, "Down", mig.file)
 	if err != nil {
-		return fmt.Errorf("failed to parse migration file '%s': %s", mig.file, err)
+		return err
+	}
+	if err := action.run(tx); err != nil {
+		return fmt.Errorf("failed to execute migration '%s': %s", mig.file, err)
 	}
 
-	var downCommands []string
-	switch v := data.Down.(type) {
-	case string:
-		downCommands = append(downCommands, v)
-	case []any:
-		for _, cmd := range v {
-			cmdStr, ok := cmd.(string)
-			if !ok {
-				return fmt.Errorf("invalid command type in 'up' section of '%s'", mig.file)
-			}
-			downCommands = append(downCommands, cmdStr)
-		}
-	default:
-		return fmt.Errorf("'up' section of '%s' must be a string or an array of strings", mig.file)
-	}
-
-	for _, cmd := range downCommands {
-		_, err = tx.Exec(cmd)
-		if err != nil {
-			return fmt.Errorf("failed to execute migration '%s': %s. The SQL: %q", mig.file, err, cmd)
-		}
-	}
-
-	_, err = tx.Exec(`DELETE FROM `+cTABLE_NAME+` WHERE time = $1 AND name = $2`, mig.timestamp, mig.name)
+	_, err = tx.Exec(`DELETE FROM `+cQUALIFIED_TABLE_NAME+` WHERE time = $1 AND name = $2`, mig.timestamp, mig.name)
 	if err != nil {
 		return fmt.Errorf("failed to update migrations table for '%s': %s", mig.file, err)
 	}

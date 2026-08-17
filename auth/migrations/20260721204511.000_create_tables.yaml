@@ -1,7 +1,7 @@
-name: create_tables
-type: query
+Name: create_tables
+Type: query
 
-up:
+Up:
   - CREATE TABLE
     roles (
       id SERIAL PRIMARY KEY,
@@ -149,7 +149,7 @@ up:
       (2, 'admin_w');
   - SELECT SETVAL(pg_get_serial_sequence('rights', 'id'), MAX(id)) FROM rights;
 
-down:
+Down:
   - DROP INDEX IF EXISTS tokens_user_id_idx;
   - DROP INDEX IF EXISTS tokens_client_id_idx;
   - DROP INDEX IF EXISTS tokens_value_idx;

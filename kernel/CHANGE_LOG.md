@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.17
+Version: v0.1.0-alpha.30
+Changes:
+- add: `cast.Value` now coerces into a pointer target (of any element type, not just a specific one) - allocates and
+  fills a fresh pointer via the same coercion rules as the pointed-to type, so a `*bool`/etc struct field (e.g. a
+  3-level cascade's "not declared, inherit" vs. "explicitly set" distinction, which a plain `bool` field can't
+  represent) can actually be populated from a `kernel.Dict`/`DictToStruct` call. Previously a hard "cannot assign"
+  error for any pointer-typed target
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.06
 Version: v0.1.0-alpha.29
 Changes:

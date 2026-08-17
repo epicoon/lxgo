@@ -1,4 +1,41 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.11
+Version: v0.1.0-alpha.10
+Changes:
+- add: `RegisterMigrationType(name string, apply, invert FMigrationApply) error` - plugs a custom
+  migration type into `Up`/`Down` dispatch, alongside the built-in `query` type (a plain SQL list
+  under `Up`/`Down`). A migration file declaring `Type: <name>` is dispatched to `apply`/`invert`
+  instead of being read as SQL; `name` must not already be registered. `FMigrationApply func(tx
+  *sql.Tx, raw []byte) error` receives the migration file's entire, untouched content - `migrator`
+  doesn't interpret it beyond reading the top-level `Type` field to pick the handler
+- add: `CreateWithContent(name string, content []byte) error` - writes a migration file with
+  caller-supplied content (its own `Type` field included), the same timestamped-filename
+  convention `Create` uses - for a caller building whole migration files programmatically (e.g.
+  [`lxgo/model`](https://github.com/epicoon/lxgo/tree/master/model), the first registered custom
+  migration type) rather than filling in the `query` template `Create` writes
+- change (breaking): the applied-migrations table moved from `public._lxgo_migrator` to
+  `lx_sys.migrator` - its own Postgres schema, created automatically (`CREATE SCHEMA IF NOT EXISTS
+  lx_sys`) the first time it's needed, grouping it with other `lx`-family packages' service tables
+  instead of standing out via a long name prefix in `public`. The DB role migrations run under
+  needs `CREATE SCHEMA` (or the schema must already exist, created ahead of time by a role that
+  does)
+- upgrade: an existing deployment's `public._lxgo_migrator` isn't migrated automatically - run this
+  once, by hand, against each database before deploying this version:
+  ```sql
+  CREATE SCHEMA IF NOT EXISTS lx_sys;
+  ALTER TABLE public._lxgo_migrator SET SCHEMA lx_sys;
+  ALTER TABLE lx_sys._lxgo_migrator RENAME TO migrator;
+  ```
+
+------------------------------------------------------------------------------------------------------------------------
+Date: 2026.08.07
+Version: v0.1.0-alpha.9
+Changes:
+- change (breaking): a migration file's own protocol keys are now capitalized - top-level `Name`/`Type`, and the
+  built-in `query` type's `Up`/`Down` SQL sections; `Type`'s value (`query`, or a registered custom type's name) is
+  unaffected, only the key. No backward compatibility with the old lowercase spelling
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.05
 Version: v0.1.0-alpha.8
 Changes:

@@ -23,7 +23,7 @@ func testDSN() string {
 }
 
 // setupMigrator wires up a fresh migrations directory and a clean
-// _lxgo_migrator table for one test - migrator's state is package-level
+// lx_sys.migrator table for one test - migrator's state is package-level
 // (var m), so tests must run sequentially (no t.Parallel()), each
 // resetting it via Init.
 func setupMigrator(t *testing.T) (db *sql.DB, migrationsDir string) {
@@ -37,8 +37,8 @@ func setupMigrator(t *testing.T) (db *sql.DB, migrationsDir string) {
 	}
 	t.Cleanup(func() { db.Close() })
 
-	if _, err := db.Exec("DROP TABLE IF EXISTS _lxgo_migrator"); err != nil {
-		t.Fatalf("drop _lxgo_migrator: %v", err)
+	if _, err := db.Exec("DROP TABLE IF EXISTS lx_sys.migrator"); err != nil {
+		t.Fatalf("drop lx_sys.migrator: %v", err)
 	}
 
 	migrationsDir = t.TempDir()
@@ -49,7 +49,7 @@ func setupMigrator(t *testing.T) (db *sql.DB, migrationsDir string) {
 
 func writeMigration(t *testing.T, dir, filename, up, down string) {
 	t.Helper()
-	content := "name: test\ntype: query\n\nup: " + up + "\n\ndown: " + down + "\n"
+	content := "Name: test\nType: query\n\nUp: " + up + "\n\nDown: " + down + "\n"
 	if err := os.WriteFile(filepath.Join(dir, filename), []byte(content), 0644); err != nil {
 		t.Fatalf("write migration file: %v", err)
 	}
@@ -70,8 +70,8 @@ func tableExists(t *testing.T, db *sql.DB, name string) bool {
 func appliedCount(t *testing.T, db *sql.DB) int {
 	t.Helper()
 	var count int
-	if err := db.QueryRow("SELECT COUNT(*) FROM _lxgo_migrator").Scan(&count); err != nil {
-		t.Fatalf("count _lxgo_migrator: %v", err)
+	if err := db.QueryRow("SELECT COUNT(*) FROM lx_sys.migrator").Scan(&count); err != nil {
+		t.Fatalf("count lx_sys.migrator: %v", err)
 	}
 	return count
 }
@@ -96,7 +96,7 @@ func TestUp_AppliesMigrationsAndTracksThem(t *testing.T) {
 		t.Fatal("expected both migrations' tables to exist after Up()")
 	}
 	if got := appliedCount(t, db); got != 2 {
-		t.Fatalf("_lxgo_migrator rows = %d, want 2", got)
+		t.Fatalf("lx_sys.migrator rows = %d, want 2", got)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestDown_RollsBackLastMigrationOnly(t *testing.T) {
 		t.Fatal("expected the first migration's table to survive Down(0)")
 	}
 	if got := appliedCount(t, db); got != 1 {
-		t.Fatalf("_lxgo_migrator rows = %d, want 1", got)
+		t.Fatalf("lx_sys.migrator rows = %d, want 1", got)
 	}
 }
 
@@ -155,7 +155,7 @@ func TestDown_NegativeStepsRollsBackOne(t *testing.T) {
 		t.Fatal("expected the first migration's table to survive Down(-1)")
 	}
 	if got := appliedCount(t, db); got != 1 {
-		t.Fatalf("_lxgo_migrator rows = %d, want 1 (Down(-1) must roll back exactly one)", got)
+		t.Fatalf("lx_sys.migrator rows = %d, want 1 (Down(-1) must roll back exactly one)", got)
 	}
 }
 
@@ -186,11 +186,11 @@ func TestCreate_WritesExpectedTemplate(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 	got := string(content)
-	if !regexp.MustCompile(`(?m)^name: hello$`).MatchString(got) {
-		t.Fatalf("content = %q, want it to declare 'name: hello'", got)
+	if !regexp.MustCompile(`(?m)^Name: hello$`).MatchString(got) {
+		t.Fatalf("content = %q, want it to declare 'Name: hello'", got)
 	}
-	if !regexp.MustCompile(`(?m)^up: `).MatchString(got) || !regexp.MustCompile(`(?m)^down: `).MatchString(got) {
-		t.Fatalf("content = %q, want up:/down: template placeholders", got)
+	if !regexp.MustCompile(`(?m)^Up: `).MatchString(got) || !regexp.MustCompile(`(?m)^Down: `).MatchString(got) {
+		t.Fatalf("content = %q, want Up:/Down: template placeholders", got)
 	}
 }
 
