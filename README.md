@@ -1,3 +1,5 @@
+<p align="center"><img src="./logo.png" alt="lxgo mascot" width="200"></p>
+
 # lxgo
 
 `lxgo` is a lightweight, modular Go web-framework ecosystem built around [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel) -
@@ -16,6 +18,7 @@ This repository contains several `Go` packages:
 * [lxgo/ws](https://github.com/epicoon/lxgo/tree/master/ws) - if you need WebSocket support for your web-application
 * [lxgo/cmd](https://github.com/epicoon/lxgo/tree/master/cmd) - tool helps to create console commands
 * [lxgo/migrator](https://github.com/epicoon/lxgo/tree/master/migrator) - tool to manage DB migrations
+* [lxgo/model](https://github.com/epicoon/lxgo/tree/master/model) - describe DB models as yaml schemas and generate migrations from schema diffs
 * [lxgo/jspp](https://github.com/epicoon/lxgo/tree/master/jspp) - javascript preprocessor useful for web-application frontend developing
 
 Also:
