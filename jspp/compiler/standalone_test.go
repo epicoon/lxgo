@@ -74,6 +74,32 @@ func TestCompiler_ResolvePath_RelativeToCurrentFile(t *testing.T) {
 	}
 }
 
+// TestCompiler_InjectDatum_YamlWithUnquotedIntegerKeys is a regression
+// test: a YAML mapping with unquoted integer keys ("0:", "1:", ...) decodes
+// through gopkg.in/yaml.v3 as map[interface{}]interface{} rather than
+// map[string]interface{}, since not every key is already a string -
+// encoding/json refuses to marshal that map type at all, so the directive
+// used to silently collapse to "null" instead of the actual data.
+func TestCompiler_InjectDatum_YamlWithUnquotedIntegerKeys(t *testing.T) {
+	dir := t.TempDir()
+	yamlPath := filepath.Join(dir, "boards.yaml")
+	yamlContent := "0:\n  - { cube: 6, group: GROUP_ANIMAL }\n1:\n  - { cube: 6, group: GROUP_CASTLE, default: true }\n"
+	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0o644); err != nil {
+		t.Fatalf("write yaml fixture: %v", err)
+	}
+
+	c := &Compiler{}
+	src := "const boards = lx.yaml('boards.yaml');"
+	got := c.injectDatum(src, filepath.Join(dir, "caller.js"))
+
+	if strings.Contains(got, "null") {
+		t.Fatalf("expected decoded data, got fallback null: %q", got)
+	}
+	if !strings.Contains(got, `"0"`) || !strings.Contains(got, "GROUP_ANIMAL") {
+		t.Fatalf("expected the yaml content inlined as JSON, got %q", got)
+	}
+}
+
 func TestCompiler_CheckModule_StandaloneMode_ReportsErrorNotPanic(t *testing.T) {
 	c := &Compiler{}
 	var modulesForBuild, filePaths []string

@@ -1,6 +1,6 @@
 # The package helps to work with the Web Socket protocol
 
-> Actual version: `v0.1.0-alpha.8`. [Details](https://github.com/epicoon/lxgo/tree/master/ws/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.9`. [Details](https://github.com/epicoon/lxgo/tree/master/ws/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -339,6 +339,53 @@ const chat = new lx.socket.ChatBox({
 // you've wired up joining other channels yourself, see "Using channels" above.
 chat.setSocket(socket, 'channelName');
 ```
+
+
+6. Connect from another Go process
+
+Sections 1-5 above are all about *this* process's own `WSServer` accepting
+connections. `component.Dial` is the other direction - this process opening
+an outbound WS connection to a remote `WSServer` (its own or another
+process's), the way two backend services would talk to each other rather
+than a browser talking to a server:
+
+```go
+onPush := func(msg any) {
+    // handle anything the remote side sends that isn't a Request's response
+}
+client, err := component.Dial("app-host:8000", "/", onPush, nil)
+if err != nil {
+    // ...
+}
+defer client.Close()
+
+if err := client.Send(map[string]any{"hello": "world"}, "text"); err != nil {
+    // ...
+}
+
+resp, err := client.Request("/some-route", map[string]any{"key": "value"}, 3*time.Second)
+if err != nil {
+    // ...
+}
+// resp.Code, resp.Headers, resp.Body - Body already decoded from JSON
+```
+
+`client` is a `ws.IClient` - a much smaller surface than `ws.IConnection`
+(no channels, no reconnection window, no `ConnRepo` bookkeeping): there's
+exactly one known peer, not many. Frames it sends are always masked, per
+RFC 6455's client requirement.
+
+`client` owns its connection's incoming side from the moment `Dial`
+returns it: every received message is dispatched either to whichever
+`Request` call is waiting on it or to `onPush` (either callback passed to
+`Dial` may be nil) - there's no exposed `Receive()` to call directly.
+`onDropped` (the second callback) fires once if the connection is lost for
+any reason other than an explicit `Close()`.
+
+The remote's `AllowedOrigins` check is a browser concept with no
+equivalent here - `Dial` sends no `Origin` header, so point it only at a
+`WSServer` whose `AllowedOrigins` is left unset (or otherwise not enforced)
+for the port used for this kind of connection.
 
 
 ## License

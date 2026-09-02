@@ -34,30 +34,43 @@ var importTrailingFlagRe = regexp.MustCompile(`\s+-([A-Za-z]+)$`)
 
 // findImportCalls scans code for lx.import(...) calls (top level, not
 // nested inside another lx.import) and parses each one's argument list.
+//
+// Comment-aware on its own, regardless of whether the caller already
+// stripped comments from code: it scans a comments-blanked copy (see
+// blankComments) rather than code itself, so a commented-out
+// "// lx.import(...)" is never mistaken for a real call, and a commented-out
+// argument inside an otherwise-real call (e.g. "lx.import(\n\t// Name,\n\t
+// 'dir/'\n)", left over from someone testing whether Name was still needed)
+// is silently dropped instead of being read literally, "//" included, as a
+// bare module name that then fails to resolve. blankComments preserves
+// every byte's position (comment content becomes spaces, not removed), so
+// the returned start/end offsets stay valid against the ORIGINAL code - a
+// caller that splices code at those offsets (see processImport) needs that.
 func findImportCalls(code string) []importCall {
 	var calls []importCall
-	n := len(code)
+	clean := blankComments(code)
+	n := len(clean)
 	i := 0
 	for i < n {
-		rel := strings.Index(code[i:], importMarker)
+		rel := strings.Index(clean[i:], importMarker)
 		if rel == -1 {
 			break
 		}
 		idx := i + rel
 
-		if idx > 0 && isLxmlIdentByte(code[idx-1]) {
+		if idx > 0 && isLxmlIdentByte(clean[idx-1]) {
 			i = idx + 1
 			continue
 		}
 
 		openParen := idx + len(importMarker) - 1
-		closeParen := utils.FindMatchingBrace(code, openParen, '(')
+		closeParen := utils.FindMatchingBrace(clean, openParen, '(')
 		if closeParen == -1 {
 			i = idx + len(importMarker)
 			continue
 		}
 
-		argsText := code[openParen+1 : closeParen]
+		argsText := clean[openParen+1 : closeParen]
 		rawArgs := splitImportArgs(argsText)
 
 		callFlags := Flags{}

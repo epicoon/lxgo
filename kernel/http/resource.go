@@ -123,7 +123,11 @@ func (r *Resource) Context() kernel.IHandleContext {
 
 // App returns the owning application.
 func (r *Resource) App() kernel.IApp {
-	return r.context.App()
+	self := r.context.App().SelfApp()
+	if self == nil {
+		return r.context.App()
+	}
+	return self
 }
 
 // Route returns the matched route.

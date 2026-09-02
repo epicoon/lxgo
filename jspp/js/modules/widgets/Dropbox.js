@@ -30,7 +30,7 @@ class Dropbox extends lx.Box {
 	static initCss(css) {
 		css.useExtender(lx.BasicCssContext);
 		css.addClass('lx-Dropbox', {
-			borderRadius: css.preset.borderRadius,
+			borderRadius: css.presetValue('borderRadius', '5px'),
 			cursor: 'pointer',
 			overflow: 'hidden'
 		}, {
@@ -49,19 +49,19 @@ class Dropbox extends lx.Box {
 			right: 0,
 			width: '30px',
 			height: '100%',
-			borderTop: '1px solid ' + css.preset.widgetBorderColor,
-			borderBottom: '1px solid ' + css.preset.widgetBorderColor,
-			borderRight: '1px solid ' + css.preset.widgetBorderColor,
-			color: css.preset.widgetIconColor,
-			background: css.preset.widgetGradient,
+			borderTop: '1px solid ' + css.presetValue('widgetBorderColor', '#646464'),
+			borderBottom: '1px solid ' + css.presetValue('widgetBorderColor', '#646464'),
+			borderRight: '1px solid ' + css.presetValue('widgetBorderColor', '#646464'),
+			color: css.presetValue('widgetIconColor', '#DFD8B7'),
+			background: css.presetValue('widgetGradient', 'linear-gradient(to bottom, #59574F, #403F3A)'),
 			cursor: 'pointer',
 			'@icon': ['\\25BC', 15]
 		});
 		css.addClass('lx-Dropbox-cell', {
 		}, {
 			hover: {
-				color: css.preset.checkedSoftColor,
-				backgroundColor: css.preset.checkedDarkColor
+				color: css.presetValue('checkedSoftColor', '#50b73a'),
+				backgroundColor: css.presetValue('checkedDarkColor', '#2f6a22')
 			}
 		});
 	}

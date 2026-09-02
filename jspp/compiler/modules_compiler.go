@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/epicoon/lxgo/jspp"
+	"github.com/epicoon/lxgo/jspp/internal/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -46,17 +47,23 @@ func (c *Compiler) checkModule(moduleName string, modulesForBuild *[]string, fil
 		return
 	}
 
-	if slices.Contains(*filePaths, path) {
+	if slices.Contains(c.visitingModules, path) {
 		return
 	}
+	c.visitingModules = append(c.visitingModules, path)
 
-	*filePaths = append(*filePaths, path)
 	if mData.HasData() {
 		c.applyModuleMetaData(mData)
 	}
-	*modulesForBuild = append(*modulesForBuild, moduleName)
 
+	// A module's own lx.import(...) dependencies are resolved - and
+	// appended to modulesForBuild/filePaths - before the module itself, so
+	// a module that extends/uses another is always emitted after its
+	// dependency in the compiled bundle.
 	c.checkModuleDependencies(path, modulesForBuild, filePaths)
+
+	*filePaths = append(*filePaths, path)
+	*modulesForBuild = append(*modulesForBuild, moduleName)
 }
 
 func (c *Compiler) checkModuleDependencies(modulePath string, modulesForBuild *[]string, filePaths *[]string) {
@@ -71,7 +78,9 @@ func (c *Compiler) checkModuleDependencies(modulePath string, modulesForBuild *[
 		return
 	}
 
-	calls := findImportCalls(string(code))
+	scanCode := c.processLxml(string(code))
+
+	calls := findImportCalls(scanCode)
 	if len(calls) == 0 {
 		return
 	}
@@ -96,8 +105,17 @@ func (c *Compiler) applyModuleI18n(mData jspp.IJSModuleData, i18n string) {
 	if filepath.IsAbs(i18n) {
 		path = i18n
 	} else {
-		dir := filepath.Dir(mData.Path())
-		path = filepath.Join(dir, i18n)
+		pPath, ok := utils.ResolvePluginPath(c.pp, i18n)
+		if ok {
+			path = pPath
+		} else {
+			dir := filepath.Dir(mData.Path())
+			path = filepath.Join(dir, i18n)
+			if c.app != nil {
+				pf := c.app.Pathfinder()
+				path = pf.GetAbsPath(path)
+			}
+		}
 	}
 
 	if _, err := os.Stat(path); err != nil {

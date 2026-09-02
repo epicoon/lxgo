@@ -1,6 +1,7 @@
 // @lx:namespace lx;
-class GuiNode {
+class GuiNode extends lx.Object {
     constructor(plugin, box) {
+        super();
         this._plugin = plugin;
         this._box = box;
         this._box.guiNode = this;

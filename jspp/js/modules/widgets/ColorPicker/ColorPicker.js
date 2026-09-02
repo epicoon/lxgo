@@ -8,7 +8,7 @@ lx.import(
     lx.Scroll
 );
 
-const __slices = [
+const _slices = [
     {base: [1, 0, 0], change: 1, direction: +1},
     {base: [1, 1, 0], change: 0, direction: -1},
     {base: [0, 1, 0], change: 2, direction: +1},
@@ -16,7 +16,7 @@ const __slices = [
     {base: [0, 0, 1], change: 0, direction: +1},
     {base: [1, 0, 1], change: 2, direction: -1}
 ];
-const __lims = {
+const _lims = {
     R: [0, 255],
     G: [0, 255],
     B: [0, 255],
@@ -96,8 +96,8 @@ class ColorPicker extends lx.Box {
         };
         this.colorModel.beforeSet(function(fieldName, value) {
             if (fieldName == 'text' || fieldName == 'RGB') return value;
-            if (!lx.isNumber(value) || value < __lims[fieldName][0]) return __lims[fieldName][0];
-            if (value > __lims[fieldName][1]) return __lims[fieldName][1];
+            if (!lx.isNumber(value) || value < _lims[fieldName][0]) return _lims[fieldName][0];
+            if (value > _lims[fieldName][1]) return _lims[fieldName][1];
             return Math.round(value);
         });
         this.colorModel.afterSet(function(fieldName, value) {
@@ -205,14 +205,14 @@ function __renderHueScale(self) {
     const handler = track.add(lx.Box, {key: 'hueHandler', geom: [0, 0, '15px', '15px'], css: 'lx-ColorPicker-handler'});
 
     handler.move({yMove: false});
-    handler.on('move', ()=>__defineBaseColorByHueScale(self));
+    handler.on('move', ()=>_defineBaseColorByHueScale(self));
     hueScale.click(e=>{
         let g = hueScale.getGlobalRect(),
             pos = Math.round(e.clientX - g.left);
         if (pos > hueScale.width('px') - handler.width('px'))
             pos = hueScale.width('px') - handler.width('px');
         handler.left(pos + 'px');
-        __defineBaseColorByHueScale(self);
+        _defineBaseColorByHueScale(self);
     });
 }
 
@@ -279,17 +279,17 @@ function __renderPick(self, field, geom) {
     grHandler.move({yMove: false});
     grHandler.on('move', ()=>{
         let pos = grHandler.left('px') / (grTrack.width('px') - grHandler.width('px'));
-        self.colorModel[field] = pos * __lims[field][1];
+        self.colorModel[field] = pos * _lims[field][1];
     });
     pick.click(function (e) {
         if (e.target === grHandler.getDomElem()) return;
         let g = pick.getGlobalRect(),
             pos = Math.round(e.clientX - g.left);
-        self.colorModel[field] = (pos / pick.width('px')) * __lims[field][1];
+        self.colorModel[field] = (pos / pick.width('px')) * _lims[field][1];
     });
 }
 
-function __defineBaseColorByHueScale(self) {
+function _defineBaseColorByHueScale(self) {
     const hueScale = lx(self)>>hueScale;
     const hueHandler = lx(self)>>hueHandler;
 
@@ -308,7 +308,7 @@ function __defineBaseColorByHueScale(self) {
     }
     sliceShift = sliceShift / map[sliceIndex];
 
-    let slice = __slices[sliceIndex],
+    let slice = _slices[sliceIndex],
         rgb = [slice.base[0], slice.base[1], slice.base[2]];
     rgb[slice.change] += sliceShift * slice.direction;
 
@@ -324,7 +324,7 @@ function __defineBaseColorByHueScale(self) {
 function _defineSliceIndex(self) {
     let sliceIndex = 0;
     for (let i=0; i<6; i++) {
-        let slice = __slices[i],
+        let slice = _slices[i],
             base = slice.base,
             sliceMask = [base[0], base[1], base[2]],
             colorMask = [2, 2, 2];
@@ -343,7 +343,7 @@ function _defineSliceIndex(self) {
     return sliceIndex;
 }
 
-function __defineBaseColor(self) {
+function _defineBaseColor(self) {
     // Calculate base color and main scale coordinates
     function calc(c1, c2, c3) {
         let y = (255 - c1) / 255;
@@ -399,7 +399,7 @@ function _onColorChange(self) {
     _actualizeSaturation(self);
     _actualizeLightness(self);
     if (!self._movingLines && !self._movingHue)
-        __defineBaseColor(self);
+        _defineBaseColor(self);
 
     lx(self)>>colorExample.fill(self.color);
 }
@@ -448,7 +448,7 @@ function _actualizeLightness(self) {
 function _actualizeGrHandler(gr, field, value) {
     const grTrack = lx(gr)>>track;
     const grHandler = lx(gr)>>handler;
-    let pos = Math.round(value * (grTrack.width('px') - grHandler.width('px')) / __lims[field][1]);
+    let pos = Math.round(value * (grTrack.width('px') - grHandler.width('px')) / _lims[field][1]);
     if (pos > grTrack.width('px') - grHandler.width('px'))
         pos = grTrack.width('px') - grHandler.width('px');
     grHandler.left(pos + 'px');
@@ -482,8 +482,8 @@ function _actualizeMainScalePoint(self, x ,y) {
 
 function _actualizeHueScale(self) {
     let sliceIndex = _defineSliceIndex(self),
-        partColor = self.baseColor[['R', 'G', 'B'][__slices[sliceIndex].change]];
-    if (__slices[sliceIndex].direction == -1) partColor = 255 - partColor;
+        partColor = self.baseColor[['R', 'G', 'B'][_slices[sliceIndex].change]];
+    if (_slices[sliceIndex].direction == -1) partColor = 255 - partColor;
     const hueGradient = lx(self)>>hueGradient;
     const hueHandler = lx(self)>>hueHandler;
     const sliceBox = hueGradient.child(sliceIndex);

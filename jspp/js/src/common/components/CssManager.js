@@ -227,9 +227,12 @@ class CssManager extends lx.AppComponentSettable {
      */
     getScope(name = '') {
         if (!this.scopes.has(name)) {
-            if (!this.settings.scopes || !(name in this.settings.scopes))
-                return null;
-            this.createPresetScope(this.settings.scopes[name], name);
+            if (!this.settings.scopes || !(name in this.settings.scopes)) {
+                if (name !== '') return null;
+                this.createPresetScope(lx.CssPreset, '');
+            } else {
+                this.createPresetScope(this.settings.scopes[name], name);
+            }
         }
         return this.scopes.get(name);
     }
@@ -242,6 +245,10 @@ class CssManager extends lx.AppComponentSettable {
             return;
         }
         const scope = this.getScope(scopeName);
+		if (!scope) {
+			console.error('Scope "' + scopeName + '" not found');
+			return;
+		}
         scope.addElement(elem);
     }
 

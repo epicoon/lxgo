@@ -145,3 +145,53 @@ func TestFindImportCalls_NoCalls(t *testing.T) {
 		t.Fatalf("expected nil, got %#v", calls)
 	}
 }
+
+// TestFindImportCalls_CommentedOutArgumentIsDropped is a regression test:
+// findImportCalls used to read a module file's raw text with no comment
+// awareness at all - a commented-out argument inside an otherwise-real call
+// (left over from someone testing whether a module was still needed) was
+// read literally, "//" included, as a bare module name that then failed to
+// resolve ("Module '// Name' does not exist").
+func TestFindImportCalls_CommentedOutArgumentIsDropped(t *testing.T) {
+	code := "lx.import(\n\t// Name,\n\t'dir/'\n);"
+	calls := findImportCalls(code)
+	if len(calls) != 1 {
+		t.Fatalf("expected exactly 1 call, got %d: %#v", len(calls), calls)
+	}
+	if len(calls[0].modules) != 0 {
+		t.Fatalf("expected the commented-out module dropped, got: %#v", calls[0].modules)
+	}
+	if len(calls[0].paths) != 1 || calls[0].paths[0].Path != "dir/" {
+		t.Fatalf("expected the real path argument kept, got: %#v", calls[0].paths)
+	}
+}
+
+// TestFindImportCalls_FullyCommentedCallIsIgnored is a regression test for
+// the same underlying gap as above, one level up: an entire lx.import(...)
+// statement commented out on one line must not be found as a real call at
+// all.
+func TestFindImportCalls_FullyCommentedCallIsIgnored(t *testing.T) {
+	calls := findImportCalls("// lx.import(Name);\nlx.import(Real);")
+	if len(calls) != 1 {
+		t.Fatalf("expected exactly 1 call (the real one), got %d: %#v", len(calls), calls)
+	}
+	if len(calls[0].modules) != 1 || calls[0].modules[0] != "Real" {
+		t.Fatalf("unexpected modules: %#v", calls[0].modules)
+	}
+}
+
+// TestFindImportCalls_OffsetsStayValidAgainstOriginalCode is a regression
+// test: findImportCalls must return start/end offsets usable to splice the
+// CALLER's original, unstripped code (see processImport) - a comment-aware
+// scan that shrinks the text before searching it would throw those off.
+func TestFindImportCalls_OffsetsStayValidAgainstOriginalCode(t *testing.T) {
+	code := "const x = 1; // a comment\nlx.import(Real);"
+	calls := findImportCalls(code)
+	if len(calls) != 1 {
+		t.Fatalf("expected exactly 1 call, got %d: %#v", len(calls), calls)
+	}
+	call := calls[0]
+	if code[call.start:call.end] != "lx.import(Real);" && code[call.start:call.end] != "lx.import(Real)" {
+		t.Fatalf("start/end don't slice out the real call from the original code: %q", code[call.start:call.end])
+	}
+}

@@ -143,3 +143,37 @@ func TestCheckPluginPath_InvalidClientFileType(t *testing.T) {
 		t.Fatalf("expected exactly one plugin entry, got %d", len(ppMap))
 	}
 }
+
+// TestCheckPath_SkipsBrokenSymlink is a regression test: checkModulePath
+// used to run os.ReadFile straight through a *.js path without checking
+// whether it was a symlink first. A broken symlink made that read fail and
+// return an error, which the caller's filepath.Walk treated as fatal -
+// aborting the whole walk and silently dropping every path still left to
+// visit, not just the broken one.
+func TestCheckPath_SkipsBrokenSymlink(t *testing.T) {
+	dir := t.TempDir()
+	linkPath := filepath.Join(dir, "broken.js")
+	if err := os.Symlink(filepath.Join(dir, "does-not-exist.js"), linkPath); err != nil {
+		t.Fatalf("os.Symlink: %v", err)
+	}
+
+	info, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("os.Lstat: %v", err)
+	}
+
+	app, err := apptest.New()
+	if err != nil {
+		t.Fatalf("apptest.New: %v", err)
+	}
+	pp := &fakePreprocessor{app: app, config: &base.JSPreprocessorConfig{}}
+
+	var mmMap []jspp.IJSModuleData
+	var ppMap []jspp.IPluginData
+	if err := checkPath(pp, linkPath, info, MapBuilderOptions{Modules: true, Plugins: true}, &mmMap, &ppMap); err != nil {
+		t.Fatalf("checkPath on a broken symlink returned an error instead of skipping it: %v", err)
+	}
+	if len(mmMap) != 0 {
+		t.Fatalf("expected the symlink itself to add no module entry, got %d", len(mmMap))
+	}
+}

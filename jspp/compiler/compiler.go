@@ -61,8 +61,10 @@ type Compiler struct {
 
 	buildModules    bool
 	compiledFiles   []string
+	compilingFiles  []string
 	ignoredModules  []string
 	compiledModules []string
+	visitingModules []string
 	modulesCode     string
 	cleanCode       string
 	assets          jspp.IAssets
@@ -387,12 +389,22 @@ func findUnescapedBacktick(code string, from int) int {
 }
 
 // cutComments strips // line comments and /* */ block comments from code -
+// see stripComments.
+func (c *Compiler) cutComments(code string) string {
+	return stripComments(code)
+}
+
+// stripComments strips // line comments and /* */ block comments from code -
 // scanning character by character and tracking whether it's currently
 // inside a string literal ('...', "...", or `...`, with backslash-escape
 // support for all three) or a JS regex literal (/pattern/flags, which can
 // itself contain an unescaped "/*" or "//" inside a [...] character class -
-// e.g. /[/*]/ - without those being a real comment).
-func (c *Compiler) cutComments(code string) string {
+// e.g. /[/*]/ - without those being a real comment). A package-level
+// function (not a *Compiler method) so it can be reused anywhere comment
+// awareness is needed without a bound Compiler. See also blankComments,
+// a position-preserving variant for a caller that can't afford to shift
+// byte offsets.
+func stripComments(code string) string {
 	var out strings.Builder
 	n := len(code)
 	var quote byte // 0 when not inside a string literal
@@ -441,6 +453,92 @@ func (c *Compiler) cutComments(code string) string {
 				continue
 			}
 			// no closing "*/" found - not a comment we can strip, leave as-is
+		}
+
+		if ch == '/' && utils.LooksLikeRegexStart(lastSignificant) {
+			if end := utils.FindRegexLiteralEnd(code, i+1); end != -1 {
+				out.WriteString(code[i : end+1])
+				i = end
+				for i+1 < n && utils.IsRegexFlag(code[i+1]) {
+					i++
+					out.WriteByte(code[i])
+				}
+				lastSignificant = 'x'
+				continue
+			}
+		}
+
+		out.WriteByte(ch)
+		if ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' {
+			lastSignificant = ch
+		}
+	}
+
+	return out.String()
+}
+
+// blankComments is a position-preserving sibling of stripComments: the same
+// string/comment/regex-literal detection, but a comment's own content is
+// overwritten with spaces (its newlines, if any, left as real newlines)
+// instead of being removed outright, so every remaining byte keeps its
+// original offset into code. findImportCalls needs this rather than
+// stripComments - it locates lx.import(...) calls by searching for a literal
+// marker string and returns byte offsets a caller (processImport) uses to
+// splice the ORIGINAL code in place, which a length-changing strip would
+// throw off.
+func blankComments(code string) string {
+	var out strings.Builder
+	n := len(code)
+	var quote byte
+	var lastSignificant byte
+
+	for i := 0; i < n; i++ {
+		ch := code[i]
+
+		if quote != 0 {
+			out.WriteByte(ch)
+			if ch == '\\' && i+1 < n {
+				i++
+				out.WriteByte(code[i])
+				continue
+			}
+			if ch == quote {
+				quote = 0
+				lastSignificant = 'x'
+			}
+			continue
+		}
+
+		if ch == '\'' || ch == '"' || ch == '`' {
+			quote = ch
+			out.WriteByte(ch)
+			continue
+		}
+
+		if ch == '/' && i+1 < n && code[i+1] == '/' {
+			j := i
+			for j < n && code[j] != '\n' {
+				out.WriteByte(' ')
+				j++
+			}
+			i = j - 1
+			continue
+		}
+
+		if ch == '/' && i+1 < n && code[i+1] == '*' {
+			if end := strings.Index(code[i+2:], "*/"); end != -1 {
+				stop := i + 2 + end + 1 // the closing '/'
+				for j := i; j <= stop; j++ {
+					if code[j] == '\n' {
+						out.WriteByte('\n')
+					} else {
+						out.WriteByte(' ')
+					}
+				}
+				i = stop
+				continue
+			}
+			// no closing "*/" found - not a comment we can blank, leave as-is
 		}
 
 		if ch == '/' && utils.LooksLikeRegexStart(lastSignificant) {
@@ -557,6 +655,7 @@ func (c *Compiler) injectDatum(code string, filePath string) string {
 				c.logError("Can not decode yaml file %s: %v", path, err)
 				return "null"
 			}
+			data = normalizeYAMLValue(data)
 		default:
 			return "null"
 		}
@@ -571,6 +670,38 @@ func (c *Compiler) injectDatum(code string, filePath string) string {
 		return string(res)
 	})
 	return code
+}
+
+// normalizeYAMLValue makes a value decoded from YAML safe for
+// encoding/json to marshal. A YAML mapping key may be any scalar - an
+// unquoted "0:" decodes as the integer 0, not the string "0" - and when
+// every key of a mapping isn't already a string, the yaml decoder folds
+// the whole mapping into map[interface{}]interface{} rather than
+// map[string]interface{}. encoding/json rejects that map type outright,
+// regardless of what the keys' runtime values actually are, so it's
+// converted here (recursively, since the same can happen at any nesting
+// level) into map[string]interface{} by stringifying each key.
+func normalizeYAMLValue(v any) any {
+	switch val := v.(type) {
+	case map[interface{}]interface{}:
+		m := make(map[string]interface{}, len(val))
+		for k, e := range val {
+			m[fmt.Sprint(k)] = normalizeYAMLValue(e)
+		}
+		return m
+	case map[string]interface{}:
+		for k, e := range val {
+			val[k] = normalizeYAMLValue(e)
+		}
+		return val
+	case []interface{}:
+		for i, e := range val {
+			val[i] = normalizeYAMLValue(e)
+		}
+		return val
+	default:
+		return v
+	}
 }
 
 // resolvePath resolves a path referenced from currentPath (e.g. in
@@ -597,30 +728,45 @@ func (c *Compiler) resolvePath(currentPath, path string) string {
 	return path
 }
 
+// applyI18n resolves every lx.i18n(...) call in code against whichever
+// translation sources are bound (a module's own i18n data, an app/plugin's,
+// both, or neither) - in a single pass over the whole code, checking a
+// module-scoped key against modulesI18n and everything else against i18n,
+// so a key only one of the two sources actually has still resolves,
+// regardless of which source gets consulted first. Running them as two
+// independent passes used to lose exactly that: the first pass's own
+// "no translation found" fallback rewrites the call into a plain string
+// unconditionally, so a second pass never gets a chance to look at a key
+// only it could have resolved.
 func (c *Compiler) applyI18n(code string) (string, error) {
 	lang := c.lang
 	if lang == "" {
 		lang = "en-EN"
 	}
 
-	algs := 0
-
-	if c.modulesI18n != nil {
-		algs++
-		m := i18n.NewI18nMap(c.modulesI18n)
-		code = m.Localize(code, lang)
-	}
-
-	if c.i18n != nil {
-		algs++
-		code = c.i18n.Localize(code, lang)
-	}
-
-	if algs < 2 {
+	if c.modulesI18n == nil && c.i18n == nil {
 		return clearI18n(code), nil
-	} else {
-		return code, nil
 	}
+
+	var modulesMap map[string]string
+	if c.modulesI18n != nil {
+		modulesMap = c.modulesI18n[lang]
+	}
+	pluginI18n := c.i18n
+
+	code = i18n.LocalizeWithLookup(code, func(key string) string {
+		if modulesMap != nil {
+			if tr := modulesMap[key]; tr != "" {
+				return tr
+			}
+		}
+		if pluginI18n != nil {
+			return pluginI18n.Get(lang, key)
+		}
+		return ""
+	})
+
+	return code, nil
 }
 
 func (c *Compiler) getAppStart(conf string) string {
@@ -769,19 +915,35 @@ func (c *Compiler) parseAppConfig() (res string) {
 	return
 }
 
+// clearI18n replaces every lx.i18n(key) / lx.i18n(key, {placeholders}) call
+// with the key itself as a plain string, dropping any placeholders - the
+// fallback used when no translation source (module-level or app-level) is
+// bound at all.
 func clearI18n(code string) string {
-	re := regexp.MustCompile(`lx\.i18n\(['"]?([\w\d_\-.]+)['"]?\)`)
-	code = re.ReplaceAllStringFunc(code, func(match string) string {
-		matches := re.FindStringSubmatch(match)
-		if len(matches) < 2 {
-			return match
+	marker := regexp.MustCompile(`lx\.i18n\(`)
+	modulePrefix := regexp.MustCompile(`^module\-[^\-]+\-`)
+	for {
+		loc := marker.FindStringIndex(code)
+		if loc == nil {
+			return code
 		}
-		key := matches[1]
-		re := regexp.MustCompile(`module\-[^\-]+\-`)
-		key = re.ReplaceAllString(key, "")
-		return "'" + key + "'"
-	})
-	return code
+		start, finish := loc[0], loc[1]
+		end := utils.FindMatchingBrace(code, finish-1, '(')
+		if end == -1 {
+			return code
+		}
+
+		key := code[finish:end]
+		if idx := strings.Index(key, ","); idx != -1 {
+			key = key[:idx]
+		}
+		key = strings.TrimSpace(key)
+		key = strings.Trim(key, `'"`)
+		key = modulePrefix.ReplaceAllString(key, "")
+
+		orig := code[start : end+1]
+		code = strings.Replace(code, orig, "'"+key+"'", 1)
+	}
 }
 
 func deepCopyMap(m map[string]any) map[string]any {

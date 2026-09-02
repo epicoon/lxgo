@@ -61,10 +61,10 @@ class CssContext {
      * @param {string|Array<string>} valName
      * @param {any|Array<any>} defaultVal
      * @param {Function} [modifier]
-     * @returns {lx.PresetFieldtHolder}
+     * @returns {lx.PresetFieldHolder}
      */
     presetValue(valName, defaultVal, modifier = null) {
-        return new lx.PresetFieldtHolder(valName, defaultVal, modifier);
+        return new lx.PresetFieldHolder(this.preset, valName, defaultVal, modifier);
     }
 
     addStyle(name, content = {}) {
@@ -258,7 +258,7 @@ function _defineRulePreset(rule) {
 function _defineAttrsPreset(attrs) {
     for (let i in attrs) {
         let attr = attrs[i];
-        if (lx.isInstance(attr, lx.CssValue) || lx.isInstance(attr, lx.PresetFieldtHolder)) return true;
+        if (lx.isInstance(attr, lx.CssValue) || lx.isInstance(attr, lx.PresetFieldHolder)) return true;
         if (lx.isStrictObject(attr) && _defineAttrsPreset(attr))
             return true;
     }
@@ -509,7 +509,7 @@ function _prepareContentString(context, content) {
                 propVal = content[prop]
             else if (lx.implementsInterface(content[prop], {methods:['toCssString']}))
                 propVal = content[prop].toCssString();
-            else if (content[prop] instanceof lx.PresetFieldtHolder)
+            else if (content[prop] instanceof lx.PresetFieldHolder)
                 propVal = content[prop].getValue(context.preset);
 
             if (propVal === null) continue;

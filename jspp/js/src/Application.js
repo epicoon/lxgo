@@ -68,8 +68,12 @@ class Application {
     }
 
     get root() {
-        if (_root === null)
+        if (_root === null) {
+
+            getElementByAttrs
+
             throw "Application root widget is not defined";
+        }
         return _root;
     }
 
@@ -156,9 +160,7 @@ class Application {
         if (config.components)
             this.setupComponents(config.components);
 
-        if (config.root)
-            _defineRoot(this, config.root);
-
+        _defineRoot(this, config.root || null);
         _setReady(this);
 
         // @lx:<mode DEV:
@@ -208,6 +210,12 @@ class Application {
  * @param root {lx.Box|Object|boolean}
  */
 function _defineRoot(app, root) {
+    if (!root) {
+        let el = app.domSelector.getElementByAttrs({lxid: 'lx-root'});
+        if (el) _root = lx.Box.rise(el)
+        return;
+    }
+
     if (root instanceof lx.Box) {
         _root = root;
         return;

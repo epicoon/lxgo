@@ -12,7 +12,7 @@
 // @lx:namespace lx;
 class EggMenu extends lx.Box {
 	static initCss(css) {
-		let shadowSize = css.preset.shadowSize + 2,
+		let shadowSize = css.presetValue('shadowSize', 10) + 2,
 			shadowShift = Math.floor(shadowSize * 0.5);
 		css.addClass('lx-EggMenu', {
 			overflow: 'visible',
@@ -20,12 +20,12 @@ class EggMenu extends lx.Box {
 			boxShadow: '0 '+shadowShift+'px '+shadowSize+'px rgba(0,0,0,0.5)'
 		});
 		css.addClass('lx-EggMenu-top', {
-			backgroundColor: css.preset.bodyBackgroundColor,
+			backgroundColor: css.presetValue('bodyBackgroundColor', '#3C3F41'),
 			borderTopLeftRadius: '25px',
 			borderTopRightRadius: '25px'
 		});
 		css.addClass('lx-EggMenu-bottom', {
-			backgroundColor: css.preset.checkedSoftColor,
+			backgroundColor: css.presetValue('checkedSoftColor', '#50b73a'),
 			borderBottomLeftRadius: '25px',
 			borderBottomRightRadius: '25px'
 		});

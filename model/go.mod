@@ -6,7 +6,7 @@ require gopkg.in/yaml.v3 v3.0.1
 
 require (
 	github.com/epicoon/lxgo/cmd v0.1.0-alpha.9
-	github.com/epicoon/lxgo/kernel v0.1.0-alpha.30
+	github.com/epicoon/lxgo/kernel v0.1.0-alpha.31
 	github.com/epicoon/lxgo/migrator v0.1.0-alpha.10
 	github.com/lib/pq v1.10.9
 	github.com/shopspring/decimal v1.4.0

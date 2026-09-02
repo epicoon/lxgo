@@ -19,6 +19,7 @@ type fakeApp struct {
 var _ kernel.IApp = (*fakeApp)(nil)
 
 func (a *fakeApp) BaseApp() kernel.IApp                       { return a }
+func (a *fakeApp) SelfApp() kernel.IApp                       { return a }
 func (a *fakeApp) SetPort(int)                                {}
 func (a *fakeApp) ConfigPath() string                         { return "" }
 func (a *fakeApp) SetConfig(c kernel.IDict)                   { a.config = c }

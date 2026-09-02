@@ -46,11 +46,13 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 		DependsOf    []string
 		Dependencies []string
 		Counter      int
+		ModuleName   string
 	}
 
 	list := make(map[string]*fileInfo)
 	classesMap := make(map[string]string)
 	reClass := regexp.MustCompile(`(?:@lx:namespace\s+([\w\d_.]+?)\s*;\s*)?class\s+(.+?)\b\s+(?:extends\s+([\w\d_.]+?))?\s*{`)
+	reModule := regexp.MustCompile(`@lx:module +?([^;]+?) *?;`)
 
 	// Collect files data
 	for _, fileName := range fileNames {
@@ -60,11 +62,9 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 		}
 		originalCode := string(data)
 
-		// lx.i18n(  =>  lx.i18n(module-{{moduleName}}-
-		re := regexp.MustCompile(`@lx:module +?([^;]+?) *?;`)
-		match := re.FindStringSubmatch(originalCode)
-		if match != nil {
-			originalCode = addModuleI18nPrefix(originalCode, match[1])
+		moduleName := ""
+		if match := reModule.FindStringSubmatch(originalCode); match != nil {
+			moduleName = match[1]
 		}
 
 		code, err := c.compileCodeInnerDirectives(originalCode, fileName)
@@ -98,6 +98,7 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 			DependsOf:    dependsOf,
 			Dependencies: []string{},
 			Counter:      0,
+			ModuleName:   moduleName,
 		}
 	}
 
@@ -108,7 +109,45 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 				if !slices.Contains(list[parentPath].Dependencies, fileName) {
 					list[parentPath].Dependencies = append(list[parentPath].Dependencies, fileName)
 				}
+				continue
 			}
+
+			if c.pp == nil {
+				continue
+			}
+			parentData := c.pp.ModulesMap().Get(parentClass)
+			if parentData == nil {
+				continue
+			}
+			if slices.Contains(c.compiledFiles, parentData.Path()) {
+				// Already written out somewhere earlier in c.modulesCode -
+				// safe, nothing more to do.
+				continue
+			}
+			var extraFilePaths, extraModulesForBuild []string
+			c.checkModule(parentClass, &extraModulesForBuild, &extraFilePaths)
+			forcedSingleFile := false
+			if len(extraFilePaths) == 0 {
+				if slices.Contains(c.compilingFiles, parentData.Path()) {
+					continue
+				}
+				extraFilePaths = []string{parentData.Path()}
+				forcedSingleFile = true
+				c.compilingFiles = append(c.compilingFiles, parentData.Path())
+			}
+			extraCode, err := c.compileFileGroup(extraFilePaths, Flags{}, rootPath)
+			if forcedSingleFile {
+				c.compilingFiles = c.compilingFiles[:len(c.compilingFiles)-1]
+			}
+			if err != nil {
+				return "", err
+			}
+			for _, m := range extraModulesForBuild {
+				if !slices.Contains(c.compiledModules, m) {
+					c.compiledModules = append(c.compiledModules, m)
+				}
+			}
+			c.modulesCode += extraCode
 		}
 	}
 
@@ -124,12 +163,27 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 		incrementCounter(key)
 	}
 
-	// Sort files according to dependencies
+	// Sort files according to dependencies. Built from fileNames (this
+	// call's own argument, in a fixed order) rather than by ranging over
+	// the list map - Go deliberately randomizes map iteration order on
+	// every run, so two files with no dependency relationship between them
+	// (equal Counter - e.g. two unrelated bare-module lx.import(...)
+	// targets pulled into the same batch by checkModuleDependencies, with
+	// nothing in this batch's own class-extends graph linking them) would
+	// otherwise come out in a coin-flip order every time this batch is
+	// compiled, even though sort.SliceStable is used below specifically to
+	// keep equal-Counter files in their input order.
 	sortedFiles := make([]*fileInfo, 0, len(list))
-	for _, file := range list {
+	seen := make(map[string]bool, len(list))
+	for _, fileName := range fileNames {
+		file, ok := list[fileName]
+		if !ok || seen[fileName] {
+			continue
+		}
+		seen[fileName] = true
 		sortedFiles = append(sortedFiles, file)
 	}
-	sort.Slice(sortedFiles, func(i, j int) bool {
+	sort.SliceStable(sortedFiles, func(i, j int) bool {
 		return sortedFiles[i].Counter < sortedFiles[j].Counter
 	})
 
@@ -145,6 +199,13 @@ func (c *Compiler) compileFileGroup(fileNames []string, flags Flags, rootPath st
 		code, err = c.compileCodeOuterDirectives(code, file.Path, !flags.Unwrapped)
 		if err != nil {
 			return "", err
+		}
+
+		// lx.i18n(  =>  lx.i18n(module-{{moduleName}}-  - applied here, to
+		// the fully assembled code. A module's i18n data is meant to cover
+		// its whole file tree.
+		if file.ModuleName != "" {
+			code = addModuleI18nPrefix(code, file.ModuleName)
 		}
 
 		code = c.markDevInterrupting(code, rootPath)

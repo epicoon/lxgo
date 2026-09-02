@@ -1,4 +1,42 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.02
+Version: v0.1.0-alpha.34
+Changes:
+- add: `@lx:const` no longer requires a trailing `;`, and its value can be a quoted string (allowed to contain `;`)
+  or a multi-line array/object literal, not just a scalar up to the first `;`
+- add: `@lx:behavior(s) Name[, Name2...]` - mixes an `lx.Behavior` subclass's methods into a class via a generated
+  `static __injectBehaviors()`, invoked by `lx.Object.__afterDefinition()` (only recognized on a class that has
+  `extends`)
+- fix: `lx.i18n(...)` now resolves a key against both a module's own i18n data and an app/plugin's own in a single
+  pass, so a key present in only one of the two still resolves - two independent passes used to let the first one
+  rewrite away any key only the second one could actually resolve
+- fix: `lx.i18n(key, {placeholders})` spliced placeholder names in as bare local variables, risking collisions with
+  real identifiers already in scope - now mangled with an `i18n_` prefix; also accepts JS shorthand property syntax
+  (`{name}` meaning `{name: name}`), not just `{name: value}`
+- add: `lx.json(...)`-injected YAML data with non-string mapping keys (an unquoted `0:`, `true:`, ...) no longer
+  breaks JSON encoding - keys are stringified recursively before marshaling
+- add: `lx.ml`'s `(...)`/`{...}` raw-JS attribute blocks can span multiple physical lines, the same way a real
+  multi-line JS array/object literal would, with no trailing `\` needed
+- fix: a class-file batch's compile order for files with no dependency relationship between them depended on Go's
+  randomized map iteration order, so the same batch could compile in a different order from run to run - now built
+  from the batch's own input order and sorted stably
+- fix: `lx.import(...)` calls (and their arguments) written inside comments were scanned literally instead of being
+  ignored; module dependency scanning now also finds calls written inside lxml markup, not just plain top-level JS,
+  and always resolves a module's own dependencies before queuing the module itself for the bundle (previously could
+  emit a module before something it depends on)
+- add: a module's `i18n` path can point at another plugin (`{plugin:Name}/...`) or resolve through the app's own
+  pathfinder, not just a path relative to the module's own file - the app-level pathfinder itself also now resolves
+  `{plugin:Name}/...` (previously a stub)
+- fix: the module-map builder no longer follows symlinks while scanning for modules/plugins
+- fix: `CssManager`'s default (unconfigured) scope now lazily creates a plain `lx.CssPreset` instead of failing, so
+  CSS that never reads `css.preset.*` needs no setup; several built-in widgets switched from raw `css.preset.<token>`
+  reads (`undefined` against an empty default preset) to `css.presetValue('<token>', fallback)` accordingly
+- fix: the `compile`/`build-map` commands ignored `AppComponent`'s error when the app has no `JSPreprocessor`
+  component configured, going on to dereference a nil component - now returns a clear "JSPreprocessor component not
+  defined" error instead
+- rename: `PresetFieldtHolder` → `PresetFieldHolder` (typo)
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.06
 Version: v0.1.0-alpha.33
 Changes:

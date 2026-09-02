@@ -33,13 +33,13 @@ class TreeBox extends lx.Box {
 	static initCss(css) {
 		css.useExtender(lx.BasicCssContext);
 		css.addClass('lx-TreeBox', {
-			color: css.preset.textColor,
+			color: css.presetValue('textColor', '#BABABA'),
 			overflow: 'auto',
 			borderRadius: '10px'
 		});
 		css.inheritAbstractClass('lx-TW-Button', 'ActiveButton', {
-			color: css.preset.widgetIconColor,
-			backgroundColor: css.preset.checkedMainColor
+			color: css.presetValue('widgetIconColor', '#DFD8B7'),
+			backgroundColor: css.presetValue('checkedMainColor', '#378028')
 		});
 		css.inheritClasses({
 			'lx-TW-Button-closed':
@@ -50,20 +50,20 @@ class TreeBox extends lx.Box {
 				{ '@icon': ['\\271A', {fontSize:10, paddingBottom:'0px'}] },
 			'lx-TW-Button-del'   :
 				{
-					backgroundColor: css.preset.hotMainColor,
+					backgroundColor: css.presetValue('hotMainColor', '#ED6A76'),
 					'@icon': ['\\2716', {fontSize:10, paddingBottom:'0px'}] 
 				},
 		}, 'lx-TW-Button');
 		css.inheritClass('lx-TW-Button-empty', 'Button', {
-			backgroundColor: css.preset.checkedMainColor,
+			backgroundColor: css.presetValue('checkedMainColor', '#378028'),
 			cursor: 'default'
 		});
 		css.addClass('lx-TW-Label', {
 			overflow: 'hidden',
 			whiteSpace: 'nowrap',
 			textOverflow: 'ellipsis',
-			backgroundColor: css.preset.textBackgroundColor,
-			borderRadius: css.preset.borderRadius
+			backgroundColor: css.presetValue('textBackgroundColor', '#45494A'),
+			borderRadius: css.presetValue('borderRadius', '5px')
 		});
 	}
 

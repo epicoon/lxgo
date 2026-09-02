@@ -82,6 +82,13 @@ or in code (`lx.app.cssManager.createPresetScope(lx.CssPresetDark)`). Every
 widget's own CSS is then generated against that scope's preset automatically
 — you don't attach a preset per widget yourself.
 
+The default scope (`''`) doesn't require either of those - if nothing ever
+configured it, `CssManager` lazily creates it with a plain `lx.CssPreset`
+(no tokens of its own) instead of failing, so CSS that never reads
+`css.preset.*` works with no setup at all; a `css.preset.someToken` read
+against that lazily-created default preset resolves to `undefined`, same as
+reading a token a real preset simply doesn't define.
+
 Every token declared in `getParams()` becomes a property on the preset instance, and reading it (`css.preset.textColor`) returns an `lx.CssValue` wrapper rather than a raw string. Inside an element (see [Elements](https://github.com/epicoon/lxgo/tree/master/jspp/doc/elements.md)), in particular a widget's `initCss(css)` (see [Widgets](https://github.com/epicoon/lxgo/tree/master/jspp/doc/widgets.md)), reference tokens directly through `css.preset.*`:
 
 ```js

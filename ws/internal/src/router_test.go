@@ -60,6 +60,50 @@ func newTestApp(t *testing.T) kernel.IApp {
 	return app
 }
 
+// TestConnection_LxwsRequest_RoundTripsThroughRealMessageLoop is a
+// regression test: processRequest built its target struct via
+// `msgStruct := new(struct{...})` (already a pointer) and then passed
+// `&msgStruct` to cast.MapToStruct - a pointer to that pointer.
+// DictToStruct only unwraps one level of pointer before checking for a
+// struct, so every real __lxws_request__ message failed with "invalid
+// __lxws_request__ struct format: provided value is not a struct",
+// regardless of route or payload - Router.Handle itself (tested directly
+// above, bypassing processRequest) never exercised this and so never
+// caught it.
+func TestConnection_LxwsRequest_RoundTripsThroughRealMessageLoop(t *testing.T) {
+	s := newFakeServer()
+	t.Cleanup(s.close)
+	s.app = newTestApp(t)
+
+	s.Router().RegisterResource("/echo", func() kernel.IHttpResource {
+		return newWsTestResource()
+	})
+
+	c := newWSTestClient(t, s, "")
+	c.readHandshakeResponse()
+	c.readJSON() // handshake ack
+
+	c.sendJSON(map[string]any{
+		"__lxws_request__": map[string]any{"route": "/echo", "key": "k1"},
+		"__data__":         map[string]any{"a": 1},
+	})
+
+	resp := c.readJSON()
+	if errMsg, hasErr := resp["error"]; hasErr {
+		t.Fatalf("expected a successful __lxws_response__, got an error instead: %v", errMsg)
+	}
+	if resp["__lxws_response__"] != true {
+		t.Fatalf("expected a __lxws_response__ message, got %#v", resp)
+	}
+	if resp["key"] != "k1" {
+		t.Fatalf("expected the response to echo the request key, got %#v", resp)
+	}
+	code, _ := resp["code"].(float64)
+	if int(code) != http.StatusOK {
+		t.Fatalf("expected code 200, got %#v", resp["code"])
+	}
+}
+
 func TestRouter_Handle_UnknownRoute404(t *testing.T) {
 	s := newFakeServer()
 	t.Cleanup(s.close)

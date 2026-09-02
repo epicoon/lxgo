@@ -23,11 +23,11 @@ class Checkbox extends lx.Box {
 			cursor: 'pointer'
 		}, {
 			hover: {
-				boxShadow: '0 0 6px ' + css.preset.widgetIconColor,
+				boxShadow: '0 0 6px ' + css.presetValue('widgetIconColor', '#DFD8B7'),
 			},
 			active: {
 				backgroundColor: '#dedede',
-				boxShadow: '0 0 8px ' + css.preset.widgetIconColor,
+				boxShadow: '0 0 8px ' + css.presetValue('widgetIconColor', '#DFD8B7'),
 			}
 		});
 		css.inheritClass('lx-Checkbox-1', 'lx-Checkbox-0', {

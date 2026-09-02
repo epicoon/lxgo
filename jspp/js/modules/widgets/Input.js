@@ -15,7 +15,7 @@ class Input extends lx.Rect {
 		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-Input', 'Input', {
 		}, {
-			focus: 'border: 1px solid ' + css.preset.checkedMainColor,
+			focus: 'border: 1px solid ' + css.presetValue('checkedMainColor', '#378028'),
 			disabled: 'opacity: 0.5'
 		});
 	}

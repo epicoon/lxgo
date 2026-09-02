@@ -15,9 +15,9 @@ lx.import(
  *      Tables css-classes depends on lx.app.root and not connected with lx.Calendar instanse
  *      Need to refactor - ?make table rerendered every time?
  */
-let __menu = null;
-let __oldDate = null;
-let __active = null;
+let _menu = null;
+let _oldDate = null;
+let _active = null;
 
 let _dayTitles = [
     lx.i18n('monday'), lx.i18n('tuesday'), lx.i18n('wednesday'),
@@ -55,17 +55,17 @@ class Calendar extends lx.Input {
         css.useExtender(lx.BasicCssContext);
         css.inheritClass('lx-Calendar', 'Input');
         css.inheritClass('lx-Calendar-daysTable', 'AbstractBox', {
-            color: css.preset.textColor,
+            color: css.presetValue('textColor', '#BABABA'),
             overflow: 'hidden'
         });
         css.inheritClass('lx-Calendar-monthTable', 'AbstractBox', {
-            color: css.preset.textColor
+            color: css.presetValue('textColor', '#BABABA'),
         });
         css.addClass('lx-Calendar-monthItem', {
             cursor: 'pointer'
         }, {
             hover: {
-                backgroundColor: css.preset.checkedDarkColor
+                backgroundColor: css.presetValue('checkedDarkColor', '#2f6a22'),
             }
         });
         css.addAbstractClass('lx-Calendar-arroy', {
@@ -84,19 +84,19 @@ class Calendar extends lx.Input {
             cursor: 'pointer'
         });
         css.addClass('lx-Calendar-dayTitle', {
-            background: css.preset.widgetGradient,
-            color: css.preset.widgetIconColor
+            background: css.presetValue('widgetGradient', 'linear-gradient(to bottom, #59574F, #403F3A)'),
+            color: css.presetValue('widgetIconColor', '#DFD8B7')
         });
         css.addClass('lx-Calendar-today', {
-            background: css.preset.widgetGradient,
-            color: css.preset.widgetIconColor,
+            background: css.presetValue('widgetGradient', 'linear-gradient(to bottom, #59574F, #403F3A)'),
+            color: css.presetValue('widgetIconColor', '#DFD8B7'),
             cursor: 'pointer'
         });
         css.addAbstractClass('lx-Calendar-every-day', {
             cursor: 'pointer'
         }, {
             hover: {
-                backgroundColor: css.preset.checkedDarkColor
+                backgroundColor: css.presetValue('checkedDarkColor', '#2f6a22')
             }
         });
         css.inheritClasses({
@@ -104,8 +104,8 @@ class Calendar extends lx.Input {
             'lx-Calendar-side-day': { color: 'gray' }
         }, 'lx-Calendar-every-day');
         css.addClass('lx-Calendar-current-day', {
-            background: css.preset.widgetGradient,
-            color: css.preset.widgetIconColor
+            background: css.presetValue('widgetGradient', 'linear-gradient(to bottom, #59574F, #403F3A)'),
+            color: css.presetValue('widgetIconColor', '#DFD8B7')
         });
     }
 
@@ -160,11 +160,11 @@ class Calendar extends lx.Input {
 
 // @lx:<context CLIENT:
 function _handler_open() {
-    __active = this;
-    __oldDate = this.date.format();
-    __renew();
+    _active = this;
+    _oldDate = this.date.format();
+    _renew();
 
-    let menu = __getMenu();
+    let menu = _getMenu();
     menu.show();
     menu.satelliteTo(this);
     lx.on('mouseup', _lxHandler_outclick);
@@ -175,32 +175,32 @@ function _handler_blur() {
 }
 
 function _lxHandler_outclick(event) {
-    if (__active === null) return;
+    if (_active === null) return;
     event = event || window.event;
 
     let widget = event.target.__lx;
-    if (widget === __active) return;
-    if (widget && widget.ancestor({is:__menu})) return;
-    __close(event);
+    if (widget === _active) return;
+    if (widget && widget.ancestor({is:_menu})) return;
+    _close(event);
 }
 
-function __close(event) {
-    let menu = __getMenu();
+function _close(event) {
+    let menu = _getMenu();
     menu.hide();
     lx(menu)>>monthContainer.hide();
     lx.off('mouseup', _lxHandler_outclick);
 
-    if (__active.date.format() != __oldDate)
-        __active.trigger('change', event);
-    __active = null;
+    if (_active.date.format() != _oldDate)
+        _active.trigger('change', event);
+    _active = null;
 }
 
-function __renew() {
-    let date = __active.date,
-        list = __getMenu(),
+function _renew() {
+    let date = _active.date,
+        list = _getMenu(),
         actDate = date.getDate();
 
-    __active.value(date.format());
+    _active.value(date.format());
     lx(list)>>year.value(date.getFullYear());
     lx(list)>>month.text(_monthTitles[date.getMonth()]);
 
@@ -236,14 +236,14 @@ function __renew() {
 }
 
 function _handler_setDate(event) {
-    let calendar = __active;
+    let calendar = _active;
     calendar.date.reset(this.__date);
     calendar.value( calendar.date.format() );
-    __close(event);
+    _close(event);
 }
 
-function __getMenu() {
-    if (__menu) return __menu;
+function _getMenu() {
+    if (_menu) return _menu;
 
     const calendarMenu = new lx.Box({
         parent: lx.app.root,
@@ -264,22 +264,22 @@ function __getMenu() {
         let head = new lx.Box();
         head.grid({cols: 14, indent: '5px', minWidth: '10px'});
         head.add(lx.Box, { width: 1, css: 'lx-Calendar-arroyL', click:()=>{
-            __active.date.shiftYear(-1);
-            __renew();
+            _active.date.shiftYear(-1);
+            _renew();
         }});
         head.add(lx.Input, { width: 4, key: 'year' });
         head.add(lx.Box, { width: 1, css: 'lx-Calendar-arroyR', click:()=>{
-            __active.date.shiftYear(1);
-            __renew();
+            _active.date.shiftYear(1);
+            _renew();
         }});
         head.add(lx.Box, { width: 1, css: 'lx-Calendar-arroyL', click:()=>{
-            __active.date.shiftMonth(-1);
-            __renew();
+            _active.date.shiftMonth(-1);
+            _renew();
         }});
         head.add(lx.Box, { width: 6, key: 'month', css:'lx-Calendar-month' });
         head.add(lx.Box, { width: 1 , css: 'lx-Calendar-arroyR', click:()=>{
-            __active.date.shiftMonth(1);
-            __renew();
+            _active.date.shiftMonth(1);
+            _renew();
         }});
 
         let month = lx(head)>month;
@@ -301,9 +301,9 @@ function __getMenu() {
             day.click(_handler_setDate);
         });
         (new lx.Box({ key: 'currentDay', css: 'lx-Calendar-today', click:(e)=>{
-            __active.date.reset();
-            __active.value(__active.date.format());
-            __close(e);
+            _active.date.reset();
+            _active.value(_active.date.format());
+            _close(e);
         }})).align(lx.CENTER, lx.MIDDLE);
     tableContainer.end();
 
@@ -314,14 +314,14 @@ function __getMenu() {
             el.align(lx.CENTER, lx.MIDDLE);
             el.click(()=>{
                 monthContainer.hide();
-                __active.date.setMonth(i);
-                __renew();
+                _active.date.setMonth(i);
+                _renew();
             });
         }
     });
     monthContainer.hide();
 
-    __menu = calendarMenu;
+    _menu = calendarMenu;
     return calendarMenu;
 }
 // @lx:context>

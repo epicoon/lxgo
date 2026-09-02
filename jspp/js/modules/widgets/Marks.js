@@ -32,11 +32,11 @@ class Marks extends lx.Box {
 		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-Marks-mark', 'ActiveButton');
 		css.addClass('lx-Marks-active', {
-			backgroundColor: css.preset.checkedDarkColor,
-			color: css.preset.checkedSoftColor
+			backgroundColor: css.presetValue('checkedDarkColor', '#2f6a22'),
+			color: css.presetValue('checkedSoftColor', '#50b73a')
 		});
 		css.addClass('lx-Marks-close', {
-			color: css.preset.widgetIconColor,
+			color: css.presetValue('widgetIconColor', '#DFD8B7'),
 			'@icon': ['\\2715', {fontSize:14}]
 		});
 		css.inheritClass('lx-Marks-hint', 'AbstractBox', {

@@ -1,10 +1,10 @@
 package plugins
 
 import (
-	"path/filepath"
 	"regexp"
 
 	"github.com/epicoon/lxgo/jspp"
+	"github.com/epicoon/lxgo/jspp/internal/utils"
 	"github.com/epicoon/lxgo/kernel"
 	lxApp "github.com/epicoon/lxgo/kernel/app"
 )
@@ -29,26 +29,22 @@ func newPluginPathfinder(plugin jspp.IPlugin) *pluginPathfinder {
 // "{snippet:PluginName.Key}" (a snippet registered in another plugin's
 // server.snippetsMap) - see jspp doc/plugins.md's path syntax.
 func (p *pluginPathfinder) GetAbsPath(path string) string {
+	if len(path) == 0 {
+		return ""
+	}
+
 	if path[0] == '@' {
 		return p.plugin.App().Pathfinder().GetAbsPath(path)
 	}
 
-	if path[0] == '{' {
-		// {plugin:PluginName}/path/to/file
-		re := regexp.MustCompile(`^\{plugin:([^}]+?)\}(.*)$`)
-		matches := re.FindStringSubmatch(path)
-		if len(matches) == 3 {
-			plugin := p.plugin.Preprocessor().PluginManager().Get(matches[1])
-			if plugin == nil {
-				p.plugin.Preprocessor().LogError("can not find plugin '%s'", matches[1])
-				return ""
-			}
-			return filepath.Join(plugin.Pathfinder().GetRoot(), matches[2])
-		}
+	if pPath, ok := utils.ResolvePluginPath(p.plugin.Preprocessor(), path); ok {
+		return pPath
+	}
 
+	if path[0] == '{' {
 		// {snippet:PluginName.SnippetName}
-		re = regexp.MustCompile(`^\{snippet:([^.]+?)\.(.+)\}$`)
-		matches = re.FindStringSubmatch(path)
+		re := regexp.MustCompile(`^\{snippet:([^.]+?)\.(.+)\}$`)
+		matches := re.FindStringSubmatch(path)
 		if len(matches) == 3 {
 			plugin := p.plugin.Preprocessor().PluginManager().Get(matches[1])
 			if plugin == nil {

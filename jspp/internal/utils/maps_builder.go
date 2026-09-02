@@ -209,6 +209,10 @@ func checkPath(
 	mmMap *[]jspp.IJSModuleData,
 	ppMap *[]jspp.IPluginData,
 ) error {
+	// Symlinks are skipped.
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
 	if op.Modules {
 		if err := checkModulePath(pp, path, info, mmMap); err != nil {
 			return err
@@ -258,7 +262,8 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 		}
 	}
 
-	jsData := pp.ModulesMap().NewData(match[1], entryPath)
+	moduleName := match[1]
+	jsData := pp.ModulesMap().NewData(moduleName, entryPath)
 
 	re = regexp.MustCompile(`@lx:module-data: *(.+?) *= *([^;]+?) *;`)
 	matches := re.FindAllStringSubmatch(code, -1)
@@ -272,6 +277,7 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 	}
 
 	*mmMap = append(*mmMap, jsData)
+
 	return nil
 }
 

@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.02
+Version: v0.1.0-alpha.31
+Changes:
+- add: `IApp` gains `SelfApp()`, mirroring the self-binding `AppComponent` already had - `InitApp` now hands an
+  embedding app struct's own outward-facing instance back to the base `*app.App`, so code holding only a `kernel.IApp`
+  reaches the outer struct's own method overrides instead of always resolving to `*app.App`'s
+- fix: `http.Resource.App()` returned the base app straight from its context, losing any embedding struct's
+  overrides - now returns `SelfApp()` when one is bound, falling back to the base app otherwise
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.17
 Version: v0.1.0-alpha.30
 Changes:

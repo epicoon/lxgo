@@ -27,12 +27,12 @@ class Switch extends lx.Box {
 				borderRadius: '50%',
 				transition: 'transform 0.3s',
 			},
-			'.active'    : { backgroundColor: css.preset.checkedMainColor },
-			'.pending': { backgroundColor: css.preset.neutralMainColor },
-			'.error'     : { backgroundColor: css.preset.hotMainColor },
-			'.active:before'    : { transform: 'translateX(22px)' },
+			'.active' : { backgroundColor: css.presetValue('checkedMainColor', '#378028') },
+			'.pending': { backgroundColor: css.presetValue('neutralMainColor', '#F5E76E') },
+			'.error'  : { backgroundColor: css.presetValue('hotMainColor', '#ED6A76') },
+			'.active:before' : { transform: 'translateX(22px)' },
 			'.pending:before': { transform: 'translateX(22px)' },
-			'.error:before'     : { transform: 'translateX(22px)' },
+			'.error:before'  : { transform: 'translateX(22px)' },
 		});
 	}
 

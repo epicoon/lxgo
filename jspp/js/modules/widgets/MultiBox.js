@@ -31,7 +31,7 @@ class MultiBox extends lx.Box {
 	static initCss(css) {
 		css.useExtender(lx.BasicCssContext);
 		css.inheritClass('lx-MultiBox', 'AbstractBox', {
-			color: css.preset.textColor
+			color: css.presetValue('textColor', '#BABABA')
 		});
 	}
 

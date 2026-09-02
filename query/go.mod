@@ -3,7 +3,7 @@ module github.com/epicoon/lxgo/query
 go 1.23.2
 
 require (
-	github.com/epicoon/lxgo/kernel v0.1.0-alpha.30
+	github.com/epicoon/lxgo/kernel v0.1.0-alpha.31
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.1
 )

@@ -121,7 +121,11 @@ func buildCore(com cmd.ICommand) error {
 	absPath, _ := filepath.Abs(filename)
 	parentDir := filepath.Dir(filepath.Dir(absPath))
 
-	pp, _ := jsppComp.AppComponent(app)
+	pp, err := jsppComp.AppComponent(app)
+	if err != nil {
+		return errors.New("JSPreprocessor component not defined")
+	}
+
 	utils.BuildCore(pp, parentDir, c.Flag("src"))
 
 	fmt.Println("Done")
@@ -156,7 +160,10 @@ func buildMap(com cmd.ICommand, op utils.MapBuilderOptions) error {
 	if app == nil {
 		return errors.New("command require access to application through 'app' option")
 	}
-	pp, _ := jsppComp.AppComponent(app)
+	pp, err := jsppComp.AppComponent(app)
+	if err != nil {
+		return errors.New("JSPreprocessor component not defined")
+	}
 
 	root := app.Pathfinder().GetRoot()
 	goModPath := filepath.Join(root, "go.mod")

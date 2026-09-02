@@ -26,9 +26,9 @@ class CssContextExtender {
      * @param {string|Array<string>} valName
      * @param {any|Array<any>} defaultVal
      * @param {Function} [modifier]
-     * @returns {lx.PresetFieldtHolder}
+     * @returns {lx.PresetFieldHolder}
      */
     static presetValue(valName, defaultVal, modifier = null) {
-        return new lx.PresetFieldtHolder(valName, defaultVal, modifier);
+        return new lx.PresetFieldHolder(null, valName, defaultVal, modifier);
     }
 }

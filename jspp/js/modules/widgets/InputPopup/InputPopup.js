@@ -7,8 +7,8 @@ lx.import(
 );
 
 // @lx:<context CLIENT:
-let __instance = null,
-	__active = null;
+let _instance = null,
+	_active = null;
 // @lx:context>
 
 /**
@@ -19,10 +19,10 @@ let __instance = null,
 class InputPopup extends lx.Box {
 	static initCss(css) {
 		css.addClass('lx-InputPopup-back', {
-			color: css.preset.textColor,
-			backgroundColor: css.preset.bodyBackgroundColor,
-			borderRadius: css.preset.borderRadius,
-			border: 'solid 1px ' + css.preset.widgetBorderColor,
+			color: css.presetValue('textColor', '#BABABA'),
+			backgroundColor: css.presetValue('bodyBackgroundColor', '#3C3F41'),
+			borderRadius: css.presetValue('borderRadius', '5px'),
+			border: 'solid 1px ' + css.presetValue('widgetBorderColor', '#646464'),
 		});
 	}
 
@@ -44,14 +44,14 @@ class InputPopup extends lx.Box {
 	}
 
 	static open(title, captions, defaults = []) {
-		if (!__instance)
-			__instance = new lx.InputPopup({parent: lx.app.root});
-		return __instance.open(title, captions, defaults);
+		if (!_instance)
+			_instance = new lx.InputPopup({parent: lx.app.root});
+		return _instance.open(title, captions, defaults);
 	}
 
 	static close() {
-		if (__instance)
-			_close(__instance);
+		if (_instance)
+			_close(_instance);
 	}
 
 	open(title, captions, defaults = []) {
@@ -97,7 +97,7 @@ class InputPopup extends lx.Box {
 		if (top < 0) top = 0;
 		lx(this)>stream.top(top + 'px');
 
-		__active = this;
+		_active = this;
 		this.show();
 
 		lx.app.keyboard.onKeydown(13, _onConfirm);
@@ -161,12 +161,12 @@ function _renderContent(self) {
 }
 
 function _onConfirm() {
-	if (!__active) return;
-	let callback = __active.holder._confirmCallback;
+	if (!_active) return;
+	let callback = _active.holder._confirmCallback;
 	if (callback) {
 		let values = [];
-		if (lx(__active)>stream.contains('r')) {
-			let rows = lx(__active)>stream>r;
+		if (lx(_active)>stream.contains('r')) {
+			let rows = lx(_active)>stream>r;
 			if (rows) {
 				if (!lx.isArray(rows)) rows = [rows];
 				rows.forEach(a=>values.push(lx(a)>input.value()));
@@ -177,18 +177,18 @@ function _onConfirm() {
 		else if (lx.isArray(callback))
 			callback[1].call(callback[0], values);
 	} 
-	_close(__active);
+	_close(_active);
 }
 
 function _onReject() {
-	if (!__active) return;
-	let callback = __active.holder._rejectCallback;
+	if (!_active) return;
+	let callback = _active.holder._rejectCallback;
 	if (callback) {
 		if (lx.isFunction(callback)) callback();
 		else if (lx.isArray(callback))
 			callback[1].call(callback[0]);
 	} 
-	_close(__active);
+	_close(_active);
 }
 
 function _close(popup) {

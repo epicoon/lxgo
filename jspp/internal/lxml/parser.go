@@ -13,6 +13,7 @@ import (
 	"github.com/epicoon/lxgo/jspp/internal/lxml/cvt"
 	"github.com/epicoon/lxgo/jspp/internal/lxml/parser"
 	"github.com/epicoon/lxgo/jspp/internal/lxml/tree"
+	"github.com/epicoon/lxgo/jspp/internal/utils"
 )
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -82,9 +83,10 @@ func (p *lxmlParser) ParseText(text string) (string, error) {
 		return "", nil
 	}
 
-	// Create tree
-	l := len(p.lines)
-	for i := 0; i < l; i++ {
+	// Create tree - driven by p.currentLine itself rather than a separate
+	// counter, since parseLine can advance p.currentLine past the line it
+	// started on (see joinContinuationLines).
+	for p.currentLine < len(p.lines) {
 		p.parseLine()
 		if p.HasError() {
 			return "", errors.New(p.err)
@@ -213,6 +215,14 @@ func (p *lxmlParser) parseLine() {
 	re = regexp.MustCompile(`^(?: |\t)*<?[/*&]?\b[\w\d\._]+\b>?\s*`)
 	line = re.ReplaceAllString(line, "")
 
+	// A widget's "(...)"/"{...}" attribute is raw JS and can itself span
+	// several physical lines (e.g. a multi-line array literal) without an
+	// explicit trailing "\" - pull in following lines here, before the
+	// widget parser's own bracket matching runs against a single line.
+	if lineType == cvt.NodeTypeWidget {
+		line = p.joinContinuationLines(line)
+	}
+
 	// Make node
 	nodeParser := p.newNodeParser(lineType, depth)
 	if nodeParser == nil {
@@ -271,6 +281,91 @@ func (p *lxmlParser) getDepth(shift string) int {
 	}
 
 	return depth
+}
+
+// joinContinuationLines pulls in following physical lines (advancing
+// p.currentLine), space-joining each into line, for as long as line's
+// round/curly/square brackets aren't yet balanced - so a widget's "(...)" or
+// "{...}" attribute (raw JS, per doc/lxml.md) can span several physical
+// lines the same way a real multi-line JS array/object literal would,
+// without needing an explicit trailing "\" on every line the way joining
+// separate attributes does.
+func (p *lxmlParser) joinContinuationLines(line string) string {
+	for !bracketsBalanced(line) && p.currentLine+1 < len(p.lines) {
+		p.currentLine++
+		line += " " + strings.TrimLeft(p.lines[p.currentLine], " \t")
+	}
+	return line
+}
+
+// bracketsBalanced reports whether code's '(', '{' and '[' characters are
+// all closed by the end of code, skipping over string/comment/regex-literal
+// spans the same way utils.FindMatchingBrace does so a bracket character
+// inside one of those doesn't throw off the count.
+func bracketsBalanced(code string) bool {
+	depth := 0
+	var quote byte
+	var lastSignificant byte
+	n := len(code)
+
+	for i := 0; i < n; i++ {
+		ch := code[i]
+
+		if quote != 0 {
+			if ch == '\\' && i+1 < n {
+				i++
+				continue
+			}
+			if ch == quote {
+				quote = 0
+				lastSignificant = 'x'
+			}
+			continue
+		}
+
+		if ch == '\'' || ch == '"' || ch == '`' {
+			quote = ch
+			continue
+		}
+
+		if ch == '/' && i+1 < n && code[i+1] == '/' {
+			for i < n && code[i] != '\n' {
+				i++
+			}
+			continue
+		}
+
+		if ch == '/' && i+1 < n && code[i+1] == '*' {
+			if end := strings.Index(code[i+2:], "*/"); end != -1 {
+				i = i + 2 + end + 1
+				continue
+			}
+		}
+
+		if ch == '/' && utils.LooksLikeRegexStart(lastSignificant) {
+			if end := utils.FindRegexLiteralEnd(code, i+1); end != -1 {
+				i = end
+				for i+1 < n && utils.IsRegexFlag(code[i+1]) {
+					i++
+				}
+				lastSignificant = 'x'
+				continue
+			}
+		}
+
+		switch ch {
+		case '(', '{', '[':
+			depth++
+		case ')', '}', ']':
+			depth--
+		}
+
+		if ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' {
+			lastSignificant = ch
+		}
+	}
+
+	return depth <= 0
 }
 
 func (p *lxmlParser) newNodeParser(lineType, depth int) cvt.INodeParser {

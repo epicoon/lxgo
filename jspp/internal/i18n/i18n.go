@@ -35,11 +35,33 @@ func (m *I18nMap) Get(lang string, key string) string {
 
 func (m *I18nMap) Localize(text string, lang string) string {
 	langMap, ok := m.tr[lang]
+	return LocalizeWithLookup(text, func(key string) string {
+		if !ok {
+			return ""
+		}
+		return langMap[key]
+	})
+}
 
-	re := regexp.MustCompile(`lx\.i18n\(`)
+// LocalizeWithLookup replaces every lx.i18n(key) / lx.i18n(key,
+// {placeholders}) call in text with lookup(key)'s translation (placeholders
+// substituted in, if any), or the key itself (stripped of any leading
+// module-<name>- prefix) if lookup returns "".
+//
+// It exists as its own entry point, separate from Localize's single fixed
+// dictionary, so a caller juggling more than one translation source (e.g. a
+// module's own i18n data plus a plugin's own) can offer both to ONE pass
+// via a single combined lookup - running two independent Localize passes
+// back to back doesn't work for that: the first pass's own "no translation
+// found - fall back to the bare key" would give up permanently on any key
+// only the second pass actually has, since by the time the second pass
+// runs, that call's lx.i18n(...) syntax has already been rewritten away.
+func LocalizeWithLookup(text string, lookup func(key string) string) string {
+	markerRe := regexp.MustCompile(`lx\.i18n\(`)
+	modulePrefixRe := regexp.MustCompile(`^module\-[^\-]+\-`)
 	do := true
 	for do {
-		inxs := re.FindStringIndex(text)
+		inxs := markerRe.FindStringIndex(text)
 		if len(inxs) == 0 {
 			do = false
 			continue
@@ -54,17 +76,16 @@ func (m *I18nMap) Localize(text string, lang string) string {
 		key, params = extractParams(key)
 		key = strings.Trim(key, `'"`)
 
-		var tr string
-		if ok {
-			tr = langMap[key]
-		}
+		tr := lookup(key)
 		if tr != "" {
 			if len(params) > 0 {
 				tr = "`" + tr + "`"
 				pp := make([]string, len(params))
 				i := 0
-				for key, val := range params {
-					pp[i] = key + "=" + val
+				for name, val := range params {
+					mangled := "i18n_" + name
+					pp[i] = mangled + "=" + val
+					tr = regexp.MustCompile(`\$\{\s*`+regexp.QuoteMeta(name)+`\s*\}`).ReplaceAllLiteralString(tr, "${"+mangled+"}")
 					i++
 				}
 				spp := "let " + strings.Join(pp, ",") + ";"
@@ -76,8 +97,7 @@ func (m *I18nMap) Localize(text string, lang string) string {
 			continue
 		}
 
-		re = regexp.MustCompile(`^module\-[^\-]+\-`)
-		key = re.ReplaceAllString(key, "")
+		key = modulePrefixRe.ReplaceAllString(key, "")
 		text = strings.Replace(text, orig, "'"+key+"'", 1)
 	}
 
@@ -95,12 +115,21 @@ func extractParams(text string) (string, map[string]string) {
 	key := match[1]
 	sParams := strings.Split(strings.Trim(match[2], "{}\n\r\t"), ",")
 	for _, item := range sParams {
-		pare := strings.Split(item, ":")
-		if len(pare) != 2 {
-			//TODO log error
+		item = strings.Trim(item, " \n\r\t")
+		if item == "" {
 			continue
 		}
-		m[strings.Trim(pare[0], " \n\r\t")] = strings.Trim(pare[1], " \n\r\t")
+		pare := strings.Split(item, ":")
+		switch len(pare) {
+		case 1:
+			// JS shorthand property syntax - {points} means {points: points}.
+			name := strings.Trim(pare[0], " \n\r\t")
+			m[name] = name
+		case 2:
+			m[strings.Trim(pare[0], " \n\r\t")] = strings.Trim(pare[1], " \n\r\t")
+		default:
+			//TODO log error
+		}
 	}
 
 	return key, m

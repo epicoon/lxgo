@@ -33,11 +33,11 @@ class Paginator extends lx.Box {
         css.addClass('lx-Paginator', {
             gridTemplateRows: '100% !important',
             overflow: 'hidden',
-            color: css.preset.textColor,
+            color: css.presetValue('textColor', '#BABABA'),
             whiteSpace: 'nowrap',
             textOverflow: 'ellipsis',
-            border: 'solid 1px ' + css.preset.widgetBorderColor,
-            borderRadius: css.preset.borderRadius
+            border: 'solid 1px ' + css.presetValue('widgetBorderColor', '#646464'),
+            borderRadius: css.presetValue('borderRadius', '5px')
         });
         css.addClass('lx-Paginator-middle', {
             width: 'auto'
@@ -46,14 +46,14 @@ class Paginator extends lx.Box {
             cursor: 'pointer'
         });
         css.addAbstractClass('Paginator-button', {
-            background: css.preset.widgetGradient,
-            color: css.preset.widgetIconColor,
+            background: css.presetValue('widgetGradient', 'linear-gradient(to bottom, #59574F, #403F3A)'),
+            color: css.presetValue('widgetIconColor', '#DFD8B7'),
             cursor: 'pointer'
         });
         css.inheritClass(
             'lx-Paginator-active',
             'Paginator-button',
-            { borderRadius: css.preset.borderRadius }
+            { borderRadius: css.presetValue('borderRadius', '5px') }
         );
         css.inheritClasses({
             'lx-Paginator-to-finish': { '@icon': ['\\00BB', {paddingBottom:'10px'}] },

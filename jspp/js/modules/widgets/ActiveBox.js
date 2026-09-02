@@ -26,44 +26,44 @@ class ActiveBox extends lx.Box {
 
 	static initCss(css) {
 		css.useExtender(lx.BasicCssContext);
-		let shadowSize = css.preset.shadowSize + 2,
+		let shadowSize = +css.presetValue('shadowSize', 10) + 2,
 			shadowShift = Math.floor(shadowSize * 0.5);
 		css.addClass('lx-ActiveBox', {
 			overflow: 'hidden',
-			borderRadius: css.preset.borderRadius,
+			borderRadius: css.presetValue('borderRadius', '5px'),
 			boxShadow: '0 '+shadowShift+'px '+shadowSize+'px rgba(0,0,0,0.5)',
 			minWidth: '50px',
 			minHeight: '75px',
-			backgroundColor: css.preset.bodyBackgroundColor
+			backgroundColor: css.presetValue('bodyBackgroundColor', '#3C3F41')
 		});
 		css.addClass('lx-ActiveBox-header', {
 			overflow: 'hidden',
 			whiteSpace: 'nowrap',
 			textOverflow: 'ellipsis',
-			color: css.preset.textColor,
+			color: css.presetValue('textColor', '#BABABA'),
 			cursor: 'move',
-			borderRadius: css.preset.borderRadius,
+			borderRadius: css.presetValue('borderRadius', '5px'),
 			boxShadow: '0 0px 3px rgba(0,0,0,0.5) inset',
-			background: css.preset.widgetGradient
+			background: css.presetValue('widgetGradient', 'linear-gradient(to bottom, #59574F, #403F3A)')
 		});
 		css.addClass('lx-ActiveBox-close', {
 			cursor: 'pointer',
-			color: css.preset.widgetIconColor,
+			color: css.presetValue('widgetIconColor', '#DFD8B7'),
 			'@icon': ['\\2715', {fontSize:10, paddingBottom:'3px'}]
 		});
 		css.addClass('lx-ActiveBox-headerText', {
 			fontWeight: 'bold',
-			color: css.preset.headerTextColor
+			color: css.presetValue('headerTextColor', '#DFD8B7')
 		});
 		css.addClass('lx-ActiveBox-body', {
 			overflow: 'auto',
-			backgroundColor: css.preset.altBodyBackgroundColor
+			backgroundColor: css.presetValue('altBodyBackgroundColor', '#3C3B37')
 		});
 		css.addClass('lx-ActiveBox-resizer', {
 			cursor: 'se-resize',
-			borderRadius: css.preset.borderRadius,
-			color: css.preset.widgetIconColor,
-			backgroundColor: css.preset.bodyBackgroundColor,
+			borderRadius: css.presetValue('borderRadius', '5px'),
+			color: css.presetValue('widgetIconColor', '#DFD8B7'),
+			backgroundColor: css.presetValue('bodyBackgroundColor', '#3C3F41'),
 			'@icon': ['\\21F2', {fontSize:10, paddingBottom:'0px'}],
 			opacity: 0
 		}, {

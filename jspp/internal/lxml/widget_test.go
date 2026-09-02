@@ -114,6 +114,31 @@ func TestParseText_InterpolationInRawHTML(t *testing.T) {
 	}
 }
 
+// TestParseText_MultilineArrayAttributeWithoutBackslash is a regression
+// test: a widget's "(...)" attribute is documented as raw JS, but the
+// parser used to require an explicit trailing "\" to join separate physical
+// lines - an attribute list containing a JS array literal that itself spans
+// several lines (with no backslash, since the array's own commas/brackets
+// already make the continuation unambiguous, same as plain JS) used to fail
+// with "wrong brackets format" because the "(...)" never closed on its own
+// first physical line.
+func TestParseText_MultilineArrayAttributeWithoutBackslash(t *testing.T) {
+	pp := newTestPreprocessor(t)
+	src := "<lx.Box> @filter (cols:3, labels:[\n" +
+		"    1,\n" +
+		"    2,\n" +
+		"    3\n" +
+		"])\n"
+
+	code, err := lxml.NewParser(pp).ParseText(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(code, "labels:[ 1, 2, 3 ]") {
+		t.Fatalf("expected the multi-line array attribute joined into the config, got: %s", code)
+	}
+}
+
 // TestParseText_InterpolationInTextAttributeAndRawHTMLTogether covers both
 // contexts appearing in the same compiled widget - each must be resolved
 // independently by procInserts's quote-tracking (double-quoted text still

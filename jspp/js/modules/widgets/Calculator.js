@@ -19,15 +19,15 @@ lx.import(
 class Calculator extends lx.Box {
     static initCss(css) {
         css.addClass('lx-calc-nbut', {
-            backgroundColor: css.preset.textBackgroundColor + ' !important'
+            backgroundColor: css.presetValue('textBackgroundColor', '#45494A')
         });
         css.addClass('lx-calc-cbut', {
-            backgroundColor: css.preset.coldDeepColor + ' !important'
+            backgroundColor: css.presetValue('coldDeepColor', '#5F369C')
         });
         css.addClass('lx-calc-abut', {
         });
         css.addClass('lx-calc-rbut', {
-            backgroundColor: css.preset.checkedDeepColor + ' !important'
+            backgroundColor: css.presetValue('checkedDeepColor', '#255c19')
         });
     }
 

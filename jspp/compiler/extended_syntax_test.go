@@ -53,6 +53,144 @@ func TestApplyExtendedSyntax_Const(t *testing.T) {
 	}
 }
 
+// TestApplyExtendedSyntax_Const_NoTrailingSemicolon checks that a trailing
+// ";" is optional - its presence or absence must not change the result.
+func TestApplyExtendedSyntax_Const_NoTrailingSemicolon(t *testing.T) {
+	src := "class Foo {\n@lx:const BAR = 42\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "static get BAR(){return 42;}") {
+		t.Fatalf("expected @lx:const rewritten to a static getter, got %q", got)
+	}
+}
+
+// TestApplyExtendedSyntax_Const_MultilineMarker checks the "@lx:const alone
+// on its own line, NAME = value on the next" shape.
+func TestApplyExtendedSyntax_Const_MultilineMarker(t *testing.T) {
+	src := "class Foo {\n@lx:const\nBAR = 42;\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "static get BAR(){return 42;}") {
+		t.Fatalf("expected @lx:const rewritten to a static getter, got %q", got)
+	}
+}
+
+// TestApplyExtendedSyntax_Const_StringValueWithInternalSemicolon is a
+// regression test: the old regex-based value capture ([^;]+?) stopped at
+// the FIRST ";" it saw, so a string value containing its own ";" (a
+// perfectly normal thing for a string to contain) got truncated instead of
+// running to its own closing quote.
+func TestApplyExtendedSyntax_Const_StringValueWithInternalSemicolon(t *testing.T) {
+	src := `class Foo {` + "\n" + `@lx:const STR = "a b; c d";` + "\n" + `}`
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `static get STR(){return "a b; c d";}`
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected %q in result, got %q", want, got)
+	}
+}
+
+// TestApplyExtendedSyntax_Const_MultilineArrayValue checks a multi-line,
+// nested array value - the old regex-based capture couldn't span lines or
+// track bracket nesting at all.
+func TestApplyExtendedSyntax_Const_MultilineArrayValue(t *testing.T) {
+	src := "class Foo {\n@lx:const\nA = [\n\t[1, 2],\n\t[3, 4]\n]\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := "static get A(){return [\n\t[1, 2],\n\t[3, 4]\n];}"
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected %q in result, got %q", want, got)
+	}
+}
+
+// TestApplyExtendedSyntax_Const_MultilineObjectValue checks a multi-line
+// object value with nested arrays/objects of its own.
+func TestApplyExtendedSyntax_Const_MultilineObjectValue(t *testing.T) {
+	src := "class Foo {\n@lx:const\nA = {\n\ta: [1, 2],\n\tb: [3, 4],\n\tc: {e: 123},\n}\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := "static get A(){return {\n\ta: [1, 2],\n\tb: [3, 4],\n\tc: {e: 123},\n};}"
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected %q in result, got %q", want, got)
+	}
+}
+
+// TestApplyExtendedSyntax_Const_MultipleDeclarations checks that several
+// @lx:const declarations in the same class - mixing shapes - are all found
+// and rewritten, not just the first one.
+func TestApplyExtendedSyntax_Const_MultipleDeclarations(t *testing.T) {
+	src := "class Foo {\n@lx:const A = 1;\n@lx:const B = 2;\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "static get A(){return 1;}") || !strings.Contains(got, "static get B(){return 2;}") {
+		t.Fatalf("expected both constants rewritten, got %q", got)
+	}
+}
+
+// TestApplyExtendedSyntax_Const_UnterminatedStringIsAnError checks that a
+// malformed value (a string that never closes) is reported as an error
+// instead of silently producing broken output.
+func TestApplyExtendedSyntax_Const_UnterminatedStringIsAnError(t *testing.T) {
+	src := "class Foo {\n@lx:const BAR = \"never closed\n}"
+	if _, err := applyExtendedSyntax(src, "test.js"); err == nil {
+		t.Fatal("expected an error for the unterminated string value, got nil")
+	}
+}
+
+func TestApplyExtendedSyntax_Behavior(t *testing.T) {
+	src := "class Foo extends Bar {\n@lx:behavior SomeBehavior;\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "static __injectBehaviors(){SomeBehavior.injectInto(this);}") {
+		t.Fatalf("expected @lx:behavior rewritten to __injectBehaviors(), got %q", got)
+	}
+	if strings.Contains(got, "@lx:behavior") {
+		t.Fatalf("expected the @lx:behavior directive stripped, got %q", got)
+	}
+}
+
+func TestApplyExtendedSyntax_Behaviors_Plural_MultipleNames(t *testing.T) {
+	src := "class Foo extends Bar {\n@lx:behaviors First, Second;\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := "static __injectBehaviors(){First.injectInto(this);Second.injectInto(this);}"
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected both behaviors injected in order, got %q", got)
+	}
+}
+
+// TestApplyExtendedSyntax_Behavior_NoExtends_LeftAlone is a regression test:
+// @lx:behavior only makes sense on a class whose ancestry reaches
+// lx.Object.__afterDefinition (which calls __injectBehaviors() if present) -
+// generating that static method on a class with no "extends" at all would
+// define a method nothing ever calls, silently no-op'ing the behavior.
+func TestApplyExtendedSyntax_Behavior_NoExtends_LeftAlone(t *testing.T) {
+	src := "class Foo {\n@lx:behavior SomeBehavior;\n}"
+	got, err := applyExtendedSyntax(src, "test.js")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(got, "__injectBehaviors") {
+		t.Fatalf("expected @lx:behavior left untouched on a class with no extends, got %q", got)
+	}
+}
+
 func TestApplyExtendedSyntax_Namespace(t *testing.T) {
 	src := "@lx:namespace lx;\nclass Foo extends Bar {\n}"
 	got, err := applyExtendedSyntax(src, "test.js")

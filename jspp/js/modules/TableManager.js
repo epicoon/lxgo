@@ -7,10 +7,10 @@ const DEFAULT_AUTO_ROW_ADDING = false;
 // Allows text entry into cells
 const DEFAULT_CELL_ENTER_ENABLE = true;
 
-let __isActive = false;
-let __tables = [];
-let __activeTable = null;
-let __activeCell = null;
+let _isActive = false;
+let _tables = [];
+let _activeTable = null;
+let _activeCell = null;
 
 /**
  * Events:
@@ -21,18 +21,18 @@ let __activeCell = null;
 class TableManager extends lx.Element {
     static initCss(css) {
         css.addClasses({
-            'lx-TM-table': 'border: ' + css.preset.checkedMainColor + ' solid 3px !important',
-            'lx-TM-row': 'background-color: ' + css.preset.checkedMainColor + ' !important',
-            'lx-TM-cell': 'background-color: ' + css.preset.checkedMainColor + ' !important'
+            'lx-TM-table': 'border: ' + css.presetValue('checkedMainColor', '#378028') + ' solid 3px !important',
+            'lx-TM-row': 'background-color: ' + css.presetValue('checkedMainColor', '#378028') + ' !important',
+            'lx-TM-cell': 'background-color: ' + css.presetValue('checkedMainColor', '#378028') + ' !important'
         });
     }
     
     static register(table, config = {}) {
         lx.app.cssManager.addElement(this);
 
-        if (!(table instanceof lx.Table) || __tables.includes(table)) return;
-        if (__tables.lxEmpty()) this.start();
-        __tables.push(table);
+        if (!(table instanceof lx.Table) || _tables.includes(table)) return;
+        if (_tables.lxEmpty()) this.start();
+        _tables.push(table);
 
         table.__interactiveInfo = {
             cellsForSelect: lx.getFirstDefined(config.cellsForSelect, DEFAULT_CELLS_FOR_SELECT),
@@ -56,47 +56,47 @@ class TableManager extends lx.Element {
     }
 
     static unregister(tab) {
-        if (__tables.lxEmpty()) return;
-        var index = __tables.indexOf(tab);
+        if (_tables.lxEmpty()) return;
+        var index = _tables.indexOf(tab);
         if (index != -1) {
-            var table = __tables[index];
+            var table = _tables[index];
             delete table.__interactiveInfo;
             delete table.activeCell;
             delete table.activeRow;
             table.off('click', _handlerClick);
-            __tables.splice(index, 1);
+            _tables.splice(index, 1);
         }
-        if (__tables.lxEmpty()) this.stop();
+        if (_tables.lxEmpty()) this.stop();
     }
 
     static start() {
-        if (__isActive) return;
+        if (_isActive) return;
         lx.on('keydown', _handlerKeyDown);
         lx.on('keyup', _handlerKeyUp);
         lx.on('mouseup', _handlerOutclick);
-        __isActive = true;
+        _isActive = true;
     }
 
     static stop() {
-        if (!__isActive) return;
+        if (!_isActive) return;
         this.unselect();
         lx.off('keydown', _handlerKeyDown);
         lx.off('keyup', _handlerKeyUp);
         lx.off('mouseup', _handlerOutclick);
-        __isActive = false;
+        _isActive = false;
     }
 
     static unselect() {
-        if (!__activeTable) return;
+        if (!_activeTable) return;
 
-        __activeTable.trigger('selectionChange', __activeTable.newEvent({
+        _activeTable.trigger('selectionChange', _activeTable.newEvent({
             newCell: null,
-            oldCell: __activeCell
+            oldCell: _activeCell
         }));
 
-        _removeClasses(__activeTable, __activeCell);
-        __activeCell = null;
-        __activeTable = null;
+        _removeClasses(_activeTable, _activeCell);
+        _activeCell = null;
+        _activeTable = null;
     }
 }
 
@@ -138,23 +138,23 @@ function _handlerClick(event) {
         : target.ancestor((ancestor)=>ancestor.lxClassName() == 'TableCell');
     if (!newCell) return;
 
-    if (__activeCell == newCell) {
+    if (_activeCell == newCell) {
         _enterCell(event);
         return;
     }
 
-    var lastTab = __activeTable,
-        lastCell = __activeCell,
+    var lastTab = _activeTable,
+        lastCell = _activeCell,
         newTab = newCell.table();
 
     if (lastTab && newTab == lastTab) _actualizeCellClass(lastCell, newCell);
     else {
         if (lastTab) _removeClasses( lastTab, lastCell );
-        __activeTable = newTab;
+        _activeTable = newTab;
         _applyClasses( newTab, newCell );
     }
 
-    __activeCell = newCell;
+    _activeCell = newCell;
     if (newTab.__interactiveInfo.cellsForSelect) {
         var ac = newTab.activeCell();
         if (ac) ac.removeClass(lx.TableManager.cellCss);
@@ -169,18 +169,18 @@ function _handlerClick(event) {
 }
 
 function _handlerOutclick(event) {
-    if (!__activeTable) return;
+    if (!_activeTable) return;
     event = event || window.event;
-    if ( __activeTable.containGlobalPoint(event.clientX, event.clientY) ) return;
+    if ( _activeTable.containGlobalPoint(event.clientX, event.clientY) ) return;
     lx.TableManager.unselect();
 }
 
 function _handlerKeyDown(event) {
-    if (__activeTable == null) return;
+    if (_activeTable == null) return;
     event = event || window.event;
     var code = (event.charCode) ? event.charCode: event.keyCode;
 
-    var inputOn = ( __activeCell && __activeCell.contains('input') );
+    var inputOn = ( _activeCell && _activeCell.contains('input') );
 
     switch (code) {
         case 38: _toUp(event);    if (!inputOn) event.preventDefault(); break;
@@ -191,12 +191,12 @@ function _handlerKeyDown(event) {
 }
 
 function _handlerKeyUp(event) {
-    if (__activeTable == null) return;
+    if (_activeTable == null) return;
     event = event || window.event;
     var code = (event.charCode) ? event.charCode: event.keyCode;
     if (code == 13) _enterCell(event);
     else if (code == 27) {
-        let cell = __activeCell;
+        let cell = _activeCell;
 
         console.log(cell);
 
@@ -205,10 +205,10 @@ function _handlerKeyUp(event) {
 }
 
 function _enterCell(event) {
-    let tab = __activeTable;
+    let tab = _activeTable;
     if (!tab || !tab.__interactiveInfo.cellEnterEnable) return;
 
-    let cell = __activeCell;
+    let cell = _activeCell;
     if (cell && !cell.isEditable()) {
         cell.setEditable(true);
         cell.on('blur', ()=>cell.setEditable(false));
@@ -221,10 +221,10 @@ function _enterCell(event) {
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function _toUp(event) {
-    var cell = __activeCell;
+    var cell = _activeCell;
     if ( cell.contains('input') ) return;
 
-    var tab = __activeTable,
+    var tab = _activeTable,
         coords = cell.indexes(),
         rowNum = coords[0],
         colNum = coords[1];
@@ -236,7 +236,7 @@ function _toUp(event) {
 
     if (tab.__interactiveInfo.cellsForSelect)
         tab.__interactiveInfo.row = rowNum - 1;
-    __activeCell = newCell;
+    _activeCell = newCell;
 
     _actualizeCellClass(cell, newCell);
 
@@ -251,12 +251,12 @@ function _toUp(event) {
 }
 
 function _toDown(event) {
-    var cell = __activeCell;
+    var cell = _activeCell;
     if ( cell.contains('input') ) return;
 
-    event = event || __activeTable.newEvent();
+    event = event || _activeTable.newEvent();
 
-    var tab = __activeTable,
+    var tab = _activeTable,
         coords = cell.indexes(),
         rowNum = coords[0],
         colNum = coords[1];
@@ -273,7 +273,7 @@ function _toDown(event) {
 
     if (tab.__interactiveInfo.cellsForSelect)
         tab.__interactiveInfo.row = rowNum + 1;
-    __activeCell = newCell;
+    _activeCell = newCell;
 
     _actualizeCellClass(cell, newCell);
 
@@ -289,10 +289,10 @@ function _toDown(event) {
 }
 
 function _toLeft(event) {
-    var cell = __activeCell;
+    var cell = _activeCell;
     if ( cell.contains('input') ) return;
 
-    var tab = __activeTable,
+    var tab = _activeTable,
         coords = cell.indexes(),
         rowNum = coords[0],
         colNum = coords[1];
@@ -303,7 +303,7 @@ function _toLeft(event) {
 
     if (tab.__interactiveInfo.cellsForSelect)
         tab.__interactiveInfo.col = colNum - 1;
-    __activeCell = newCell;
+    _activeCell = newCell;
 
     _actualizeCellClass(cell, newCell);
 
@@ -318,10 +318,10 @@ function _toLeft(event) {
 }
 
 function _toRight(event) {
-    var cell = __activeCell;
+    var cell = _activeCell;
     if ( cell.contains('input') ) return;
 
-    var tab = __activeTable,
+    var tab = _activeTable,
         coords = cell.indexes(),
         rowNum = coords[0],
         colNum = coords[1];
@@ -332,7 +332,7 @@ function _toRight(event) {
 
     if (tab.__interactiveInfo.cellsForSelect)
         tab.__interactiveInfo.col = colNum + 1;
-    __activeCell = newCell;
+    _activeCell = newCell;
 
     _actualizeCellClass(cell, newCell);
 

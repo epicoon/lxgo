@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/epicoon/lxgo/jspp/internal/i18n"
 )
 
 func TestCutComments(t *testing.T) {
@@ -45,6 +47,34 @@ func TestCutComments(t *testing.T) {
 			got := c.cutComments(tc.in)
 			if got != tc.want {
 				t.Fatalf("cutComments(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestBlankComments checks the position-preserving sibling of cutComments:
+// same detection rules (strings/regex literals are left alone, only real
+// comments are touched), but every input byte has a same-length output byte
+// - a comment becomes spaces (its own newlines kept as newlines), nothing is
+// removed. findImportCalls relies on this to keep byte offsets valid against
+// the original code it's searching.
+func TestBlankComments(t *testing.T) {
+	cases := []struct {
+		name, in, want string
+	}{
+		{"single_line", "a();\n// comment\nb();\n", "a();\n          \nb();\n"},
+		{"multi_line", "a();/* comment\nspanning */b();", "a();          \n           b();"},
+		{"string_with_comment_marker_untouched", `let x = "a // b";`, `let x = "a // b";`},
+		{"regex_literal_with_slash_star_in_char_class_not_a_comment", "let re = /[/*]/; b();", "let re = /[/*]/; b();"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := blankComments(tc.in)
+			if got != tc.want {
+				t.Fatalf("blankComments(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+			if len(got) != len(tc.in) {
+				t.Fatalf("blankComments(%q) changed length: got %d, want %d", tc.in, len(got), len(tc.in))
 			}
 		})
 	}
@@ -103,6 +133,52 @@ func TestClearI18n(t *testing.T) {
 	got = clearI18n(`x = lx.i18n(plain);`)
 	if got != `x = 'plain';` {
 		t.Fatalf("unexpected result for bare identifier: %q", got)
+	}
+}
+
+// TestClearI18n_WithPlaceholdersArg is a regression test: clearI18n used to
+// match a call's key with a single regex requiring the call to end right
+// after it ([\w\d_\-.]+ then a literal ")"), so a call with a second,
+// placeholders argument (lx.i18n(key, {...})) never matched at all and was
+// left completely untouched in the output - a bare identifier reference
+// (or, for a quoted key, a call encoding/json-invalid to eval) rather than
+// the documented "falls back to the key as a plain string" behavior.
+func TestClearI18n_WithPlaceholdersArg(t *testing.T) {
+	got := clearI18n(`x = lx.i18n(applyChip.fill, {points: totalPoints});`)
+	if got != `x = 'applyChip.fill';` {
+		t.Fatalf("unexpected result for bare identifier with placeholders: %q", got)
+	}
+
+	got = clearI18n(`x = lx.i18n('module-mymod-greeting', {name: user.name});`)
+	if got != `x = 'greeting';` {
+		t.Fatalf("unexpected result for quoted key with placeholders: %q", got)
+	}
+}
+
+// TestApplyI18n_ModuleMissKeyStillResolvedByPluginI18n is a regression
+// test: applyI18n used to run the module-level translation source
+// (modulesI18n) and the app/plugin-level one (i18n) as two independent
+// Localize passes, one after the other. A key present ONLY in the second
+// source but not the first (a very ordinary case - module data and
+// plugin/app data cover different keys) got "resolved" by the first pass's
+// own fallback (no translation found - replace with the bare key) before
+// the second pass ever got a chance to look at it, since by then the call
+// had already been rewritten from lx.i18n(...) into a plain string.
+func TestApplyI18n_ModuleMissKeyStillResolvedByPluginI18n(t *testing.T) {
+	c := &Compiler{
+		modulesI18n: map[string]map[string]string{
+			"en-EN": {"module-Some-key": "irrelevant"},
+		},
+		i18n: i18n.NewI18nMap(map[string]map[string]string{
+			"en-EN": {"root.pointsTable": "Score table"},
+		}),
+	}
+	got, err := c.applyI18n(`a = lx.i18n(root.pointsTable);`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != `a = 'Score table';` {
+		t.Fatalf("got %q, want the plugin-level translation applied", got)
 	}
 }
 

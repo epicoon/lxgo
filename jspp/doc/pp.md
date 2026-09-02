@@ -64,7 +64,7 @@ etc. — practically every class in this package) resolve as a namespaced
 global rather than requiring an explicit import. A class with no
 `@lx:namespace` in front of it is left as a plain top-level declaration.
 
-Inside a class body, `@lx:const NAME = value;` declares a read-only class
+Inside a class body, `@lx:const NAME = value` declares a read-only class
 constant:
 ```js
 class ModelTypeEnum {
@@ -77,6 +77,41 @@ class ModelTypeEnum {
 //   static get STRING(){return 'string';}
 // }
 ```
+The trailing `;` is optional either way. `value` can be a bare scalar (read
+up to the first whitespace or `;`), a quoted string — which may itself
+contain a `;` without ending the value early, since a string's own closing
+quote is what actually ends it — or an array/object literal, matched by its
+own brackets so it can freely span multiple lines and nest further arrays/
+objects:
+```js
+class Board {
+    @lx:const
+    LAYOUT = [
+        [1, 2],
+        [3, 4],
+    ];
+}
+```
+
+Also inside a class body — but only one that itself has an `extends` —
+`@lx:behavior Name;` (or `@lx:behaviors Name1, Name2;` for several at once)
+mixes in an [`lx.Behavior`](https://github.com/epicoon/lxgo/tree/master/jspp/js/src/common/tools/behavior/Behavior.js)
+subclass's methods:
+```js
+class Radio extends lx.Checkbox {
+    @lx:behaviors SomeBehavior;
+}
+// compiles to:
+// class Radio extends lx.Checkbox {
+//   static __injectBehaviors(){SomeBehavior.injectInto(this);}
+// }
+```
+`lx.Object.__afterDefinition()` calls `__injectBehaviors()` right after the
+class is defined, if the class declares one — that's what actually runs
+`SomeBehavior.injectInto(this)`, copying `SomeBehavior`'s methods onto the
+class. A class with no `extends` at all never reaches `lx.Object`'s
+`__afterDefinition`, so `@lx:behavior(s)` is only recognized where there's
+an ancestor to call it.
 
 Two more shorthands, usable anywhere (not just inside a class):
 * `lx.self(NAME)` → `this.constructor.NAME` — read a static member from an
@@ -193,6 +228,10 @@ const config = lx.json('data/defaults.json');
 The path is resolved the same way as elsewhere in the preprocessor (relative
 to the app's own path configuration). If the file can't be read or parsed,
 the directive is replaced with `null` and a build-time error is logged.
+A YAML mapping's keys don't need to be quoted even when they read as
+another scalar type (`0:`, `true:`, ...) - they're stringified when the
+data is turned into the JS literal, same as a JS object's own keys always
+are.
 
 
 ## <a name="macros">Macros</a>

@@ -16,7 +16,7 @@ class LabeledGroup extends lx.Box {
 			display: 'grid',
 			gridAutoFlow: 'row',
 			gridGap: '.8em',
-			color: css.preset.textColor
+			color: css.presetValue('textColor', '#BABABA')
 		});
 		css.addClass('lx-LabeledGroup-item', {
 			position: 'relative',

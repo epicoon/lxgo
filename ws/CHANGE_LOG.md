@@ -1,4 +1,15 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.02
+Version: v0.1.0-alpha.9
+Changes:
+- add: `component.Dial`/`ws.IClient` - an outbound WS connection this process opens to a remote `WSServer`, speaking
+  the same `__lxws_request__`/`__lxws_response__` protocol a browser client's `request()` uses (`Send`, `Request`,
+  `Close`; `onPush`/`onDropped` callbacks for anything outside a pending `Request`)
+- fix: `Connection.processRequest` passed a pointer-to-a-pointer to `cast.MapToStruct` (its target was already
+  `new(struct{...})`), so every real `__lxws_request__` message failed regardless of route or payload -
+  `Router.Handle`'s own tests called it directly and never exercised `processRequest`, so this went uncaught
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.05
 Version: v0.1.0-alpha.8
 Changes:

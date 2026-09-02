@@ -459,7 +459,6 @@ func (c *Connection) handshake() (*bufio.Reader, string, error) {
 
 	verStr := headers["sec-websocket-version"]
 	if verStr == "" {
-		// TODO param from config?
 		verStr = "13"
 	}
 	ver, err := strconv.Atoi(verStr)
@@ -905,7 +904,7 @@ func (c *Connection) processRequest(message map[string]any) {
 		} `dict:"__lxws_request__"`
 		Data any `dict:"__data__"`
 	})
-	if err := cast.MapToStruct(message, &msgStruct); err != nil {
+	if err := cast.MapToStruct(message, msgStruct); err != nil {
 		c.server.LifecycleError("invalid __lxws_request__ struct format: %v", err)
 		return
 	}

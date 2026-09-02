@@ -39,6 +39,7 @@ const defaultShutdownTimeout = 5 * time.Second
 // App is the default kernel.IApp implementation - embed it in your own
 // application struct and override at least ConfigPath.
 type App struct {
+	self            kernel.IApp
 	port            int
 	pathfinder      kernel.IPathfinder
 	config          kernel.IDict
@@ -131,12 +132,29 @@ func InitApp(app kernel.IApp, c kernel.IDict) error {
 		}
 	}
 
+	if binder, ok := app.(appSelfBinder); ok {
+		binder.setSelf(app)
+	}
+
 	return nil
+}
+
+type appSelfBinder interface {
+	setSelf(self kernel.IApp)
+}
+
+func (app *App) setSelf(self kernel.IApp) {
+	app.self = self
 }
 
 // BaseApp returns app itself.
 func (app *App) BaseApp() kernel.IApp {
 	return app
+}
+
+// SelfApp returns the wrapping IApp
+func (app *App) SelfApp() kernel.IApp {
+	return app.self
 }
 
 // ConfigPath returns "" - override this in your embedding application struct.

@@ -13,15 +13,15 @@
 class Table extends lx.Box  {
 	static initCss(css) {
 		css.addClass('lx-Table', {
-			borderRadius: css.preset.borderRadius,
-			color: css.preset.textColor
+			borderRadius: css.presetValue('borderRadius', '5px'),
+			color: css.presetValue('textColor', '#BABABA')
 		});
 		css.addClass('lx-Table-row', {
 			overflow: 'hidden',
 		}, {
 			'first-child': 'border: 0px',
-			'nth-child(2n)': 'background-color: ' + css.preset.bodyBackgroundColor,
-			'nth-child(2n+1)': 'background-color: ' + css.preset.altBodyBackgroundColor
+			'nth-child(2n)': 'background-color: ' + css.presetValue('bodyBackgroundColor', '#3C3F41'),
+			'nth-child(2n+1)': 'background-color: ' + css.presetValue('altBodyBackgroundColor', '#3C3B37')
 		});
 		css.addClass('lx-Table-cell', {
 			height: '100%',

@@ -4,8 +4,8 @@
 lx.import(lx.Button);
 
 // @lx:<context CLIENT:
-let __instance = null,
-	__active = null;
+let _instance = null,
+	_active = null;
 // @lx:context>
 
 /**
@@ -18,10 +18,10 @@ class ConfirmPopup extends lx.Box {
 
 	static initCss(css) {
 		css.addClass('lx-ConfirmPopup-back', {
-			color: css.preset.textColor,
-			backgroundColor: css.preset.bodyBackgroundColor,
-			borderRadius: css.preset.borderRadius,
-			border: 'solid 1px ' + css.preset.widgetBorderColor,
+			color: css.presetValue('textColor', '#BABABA'),
+			backgroundColor: css.presetValue('bodyBackgroundColor', '#3C3F41'),
+			borderRadius: css.presetValue('borderRadius', '5px'),
+			border: 'solid 1px ' + css.presetValue('widgetBorderColor', '#646464'),
 		});
 	}
 
@@ -54,14 +54,14 @@ class ConfirmPopup extends lx.Box {
 	}
 
 	static open(message, extraButtons = {}, buttonColsCount = 2) {
-		if (!__instance)
-			__instance = new lx.ConfirmPopup({parent: lx.app.root});
-		return __instance.open(message, extraButtons, buttonColsCount);
+		if (!_instance)
+			_instance = new lx.ConfirmPopup({parent: lx.app.root});
+		return _instance.open(message, extraButtons, buttonColsCount);
 	}
 
 	static close() {
-		if (__instance)
-			_close(__instance);
+		if (_instance)
+			_close(_instance);
 	}
 
 	open(message, extraButtons = {}, buttonColsCount = 2) {
@@ -74,7 +74,7 @@ class ConfirmPopup extends lx.Box {
 		if (top < 0) top = 0;
 		lx(this)>stream.top(top + 'px');
 
-		__active = this;
+		_active = this;
 		this.show();
 
 		lx.app.keyboard.onKeydown(13, _onConfirm);
@@ -174,25 +174,25 @@ function _renderContent(self) {
 }
 
 function _onConfirm() {
-	if (!__active) return;
-	let callback = __active.holder._confirmCallback;
+	if (!_active) return;
+	let callback = _active.holder._confirmCallback;
 	if (callback) {
 		if (lx.isFunction(callback)) callback();
 		else if (lx.isArray(callback))
 			callback[1].call(callback[0]);
 	} 
-	_close(__active);
+	_close(_active);
 }
 
 function _onReject() {
-	if (!__active) return;
-	let callback = __active.holder._rejectCallback;
+	if (!_active) return;
+	let callback = _active.holder._rejectCallback;
 	if (callback) {
 		if (lx.isFunction(callback)) callback();
 		else if (lx.isArray(callback))
 			callback[1].call(callback[0]);
 	} 
-	_close(__active);
+	_close(_active);
 }
 
 function _onExtra(holder, name) {
@@ -206,13 +206,13 @@ function _onExtra(holder, name) {
 }
 
 function _close(popup) {
-	if (!__active) return;
+	if (!_active) return;
 	popup.hide();
 	popup.holder._confirmCallback = null;
 	popup.holder._rejectCallback = null;
 	_clearExtraButtons(popup.holder);
 	lx.app.keyboard.offKeydown(13, _onConfirm);
 	lx.app.keyboard.offKeydown(27, _onReject);
-	__active = null;
+	_active = null;
 }
 // @lx:context>

@@ -49,6 +49,9 @@ type IApp interface {
 	// BaseApp returns the underlying *app.App - useful when IApp is wrapped.
 	BaseApp() IApp
 
+	// SelfApp returns the wrapping IApp
+	SelfApp() IApp
+
 	// SetPort overrides the port from config.
 	SetPort(p int)
 

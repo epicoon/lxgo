@@ -87,15 +87,7 @@ type AppComponent struct {
 	self kernel.IAppComponent
 }
 
-// selfBinder lets InitComponent hand a component its own outward-facing
-// instance back to itself. Go embedding has no virtual dispatch: a call to
-// c.LogCategory() from a method defined on *AppComponent always resolves to
-// *AppComponent's own LogCategory(), even when c is embedded in a struct
-// that overrides it - the override is a distinct method promoted onto the
-// outer type, never reached through the embedded receiver. Routing
-// Log/LogWarning/LogError through the bound self (an interface value whose
-// dynamic type is the outer struct) restores the override.
-type selfBinder interface {
+type compSelfBinder interface {
 	setSelf(self kernel.IAppComponent)
 }
 
@@ -149,7 +141,7 @@ func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) er
 	// not the *AppComponent it embeds) - handing it back to AppComponent lets
 	// Log/LogWarning/LogError call LogCategory() through it, so an embedding
 	// struct's override actually takes effect. See selfBinder.
-	if binder, ok := c.(selfBinder); ok {
+	if binder, ok := c.(compSelfBinder); ok {
 		binder.setSelf(c)
 	}
 

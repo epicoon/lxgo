@@ -1,6 +1,10 @@
 package ws
 
-import "github.com/epicoon/lxgo/kernel"
+import (
+	"time"
+
+	"github.com/epicoon/lxgo/kernel"
+)
 
 // APP_COMPONENT_KEY is the key this component registers itself under via
 // kernel.IApp.SetComponent - see AppComponent in the component package.
@@ -198,6 +202,45 @@ type IConnection interface {
 	// SetCreatedChannelsCount overrides the created-channels count directly -
 	// used to restore it across a reconnect.
 	SetCreatedChannelsCount(n int)
+}
+
+// IClient is an outbound WS connection this process opened to a remote WS
+// server - see internal/src.Client for the implementation, and
+// component.Dial to open one. Unlike IConnection (a server's own view of
+// one of the many connections it accepted), there is exactly one known peer
+// here - no reconnection window, channel membership, or ConnRepo
+// bookkeeping.
+//
+// It owns the connection's single read loop from the moment it's created,
+// dispatching every received message either to whichever Request is
+// currently waiting on it or to the onPush callback given at construction -
+// there is no exposed Receive(), so nothing outside the implementation can
+// contend with that loop for the connection's incoming side.
+type IClient interface {
+	// Send encodes payload as a WS frame of the given type ("text"/
+	// "binary"/"close"/"ping"/"pong") and writes it to the socket, masked -
+	// RFC 6455 requires every client->server frame to be masked.
+	Send(payload any, typ string) error
+
+	// Request sends a request for route (with the given params, nil meaning
+	// none) and blocks for its matching response, or until timeout elapses.
+	// The returned Response's Body is already decoded from JSON, exactly
+	// once - callers never see the wire-level response frame. This is the
+	// same request/response protocol a server's IRouter.Handle answers and
+	// a browser client's own request() method uses.
+	Request(route string, params map[string]any, timeout time.Duration) (Response, error)
+
+	// Close closes the underlying connection.
+	Close() error
+}
+
+// Response is a Request's answer, standardized the same way for every
+// IClient - Code, Headers and a Body already parsed from JSON, matching
+// what a browser client's own request() resolves with.
+type Response struct {
+	Code    int
+	Headers map[string]any
+	Body    any
 }
 
 // IChannelRepo is the server's channel registry.

@@ -94,8 +94,8 @@ Attributes can appear in any order, each recognized by its leading character:
 | `[m:name]` / `[matrix:name]` | binds to matrix field `name`; the widget must then have exactly one nested widget line, used as the item template for every matrix entry |
 | `[_]` | marks the widget as volumetric (auto-sized from content) |
 | `[l:t:w:h]` | sets geometry — see [Geometry](#geometry) below |
-| `(...)` | raw JS object entries, merged as-is into the widget's config object |
-| `{...}` | raw JS object entries used as the widget's `data` |
+| `(...)` | raw JS object entries, merged as-is into the widget's config object; can itself span multiple physical lines (e.g. a multi-line array/object literal value) with no `\` needed — unclosed brackets pull in following lines automatically, same as plain JS |
+| `{...}` | raw JS object entries used as the widget's `data`; same multi-line behavior as `(...)` above |
 | `#method` / `#method(args)` | calls `.method(args)` on the created widget after construction; repeatable. If `args` looks like `key:value` pairs, it is wrapped in `{}` automatically |
 
 Example:
