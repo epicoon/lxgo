@@ -49,12 +49,12 @@ class CssContext {
      * @param {lx.CssContext} context
      */
     merge(context) {
-        this.abstractClasses.lxMerge(context.abstractClasses, true);
-        this.classes.lxMerge(context.classes, true);
+        Object.assign(this.abstractClasses, context.abstractClasses);
+        Object.assign(this.classes, context.classes);
+        Object.assign(this.styles, context.styles);
         this.mixins.lxMerge(context.mixins, true);
         this.proxyContexts.lxMerge(context.proxyContexts);
         this.sequens.lxMerge(context.sequens);
-        this.styles.lxMerge(context.styles, true);
     }
 
     /**

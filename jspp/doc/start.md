@@ -50,9 +50,14 @@
       AppConfig: frontend/lx-app.yaml
       # Optional: the side to build css from JS-preprocessor. Available values: client (by default), server
       CssScopeRenderSide: server
-      # Optional: directories with JS-modules which are not in the Go modules
-      Modules:
+      # Optional: directories with JS-modules which are not in the Go modules;
+      #  outside the app root, files get copied into ModsPath
+      ModulesSrc:
         - /path/to/modules
+      # Optional: same as ModulesSrc, but outside the app root the module's
+      #  own real path is kept as-is instead of being copied into ModsPath
+      ModulesLinks:
+        - /path/to/linked/modules
       # Optional: directories with plugins which are not in the Go modules
       Plugins:
         - /path/to/plugins

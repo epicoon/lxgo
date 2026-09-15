@@ -181,16 +181,22 @@ func (r *renderer) prepareFiller() (*filler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal json lx-info for plugin '%s': %v", plugin.Name(), err)
 	}
+	// infoLx is already a complete, self-contained JSON value (including,
+	// for any live widget with its own custom per-instance code, a "js"
+	// field carrying a full previously-compiled class definition as an
+	// escaped JSON string).
+	const infoPlaceholder = "__LX_INFO_JSON_PLACEHOLDER__"
 	code, err := pp.CompilerBuilder().
 		SetClientContext().
 		SetAppContext().
 		SetLang(r.lang).
 		UseModules(res.Assets.Modules).
-		SetCode(fmt.Sprintf(`lx.app.root.setPlugin({info:{root:'%s',lx:%s}})`, res.Root, string(infoLx))).
+		SetCode(fmt.Sprintf(`lx.app.root.setPlugin({info:{root:'%s',lx:%s}})`, res.Root, infoPlaceholder)).
 		Compiler().Run()
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal json lx-info for plugin '%s': %v", plugin.Name(), err)
 	}
+	code = strings.Replace(code, infoPlaceholder, string(infoLx), 1)
 
 	// Page title and icon
 	title := plugin.Config().Page().Title()

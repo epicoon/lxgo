@@ -259,33 +259,51 @@ func isNum(s string) bool {
 	return re.MatchString(s)
 }
 
-var insertRe = regexp.MustCompile(`\$\{([^}]+?)\}(")?`)
+var insertRe = regexp.MustCompile(`\$\{([^}]+?)\}`)
 
-// replaceInserts rewrites ${expr} into double-quoted-string concatenation:
-// ${text} -> "+text+" (or just "+text, when ${expr} closes the string, i.e.
-// is immediately followed by the closing "). Used outside backtick-quoted
-// spans - see procInserts.
-func replaceInserts(str string) string {
-	return insertRe.ReplaceAllStringFunc(str, func(s string) string {
-		match := insertRe.FindStringSubmatch(s)
-		if len(match) != 3 {
-			return s
+// replaceInserts rewrites ${expr} into string concatenation using the quote
+// character q that encloses this span in the source (' or ", whichever the
+// author actually used): ${text} -> q+text+q, or just q+text when ${expr}
+// is the last thing before the closing quote - in which case the closing
+// quote itself must be dropped too (there's no literal text left for it to
+// delimit), so the caller is told via needsClosing whether to still emit
+// it. str is the content strictly between a matching pair of quotes
+// (delimiters already stripped) - see procInserts, which finds those pairs
+// and supplies q.
+func replaceInserts(str string, q byte) (result string, needsClosing bool) {
+	matches := insertRe.FindAllStringSubmatchIndex(str, -1)
+	if matches == nil {
+		return str, true
+	}
+
+	quote := string(q)
+	var out strings.Builder
+	pos := 0
+	lastEnd := -1
+	for _, m := range matches {
+		start, end, exprStart, exprEnd := m[0], m[1], m[2], m[3]
+		out.WriteString(str[pos:start])
+		out.WriteString(quote + "+" + str[exprStart:exprEnd])
+		if end != len(str) {
+			out.WriteString("+" + quote)
 		}
-		if match[2] == "\"" {
-			return "\"+" + match[1]
-		}
-		return "\"+" + match[1] + "+\""
-	})
+		pos = end
+		lastEnd = end
+	}
+	out.WriteString(str[pos:])
+	return out.String(), lastEnd != len(str)
 }
 
-// procInserts rewrites ${expr} into double-quoted-string concatenation
-// (see replaceInserts) everywhere in str, EXCEPT inside backtick-quoted
-// spans (a raw HTML block's `html:` value - see getConfigCode) - there,
-// ${expr} is already valid JS template-literal interpolation and needs no
-// rewriting; doing it anyway would splice "+expr+" into the middle of a
-// backtick string, breaking it. A backtick that itself appears inside a
-// '...'/"..." string (with backslash-escape support) doesn't count as
-// entering such a span.
+// procInserts rewrites ${expr} into string concatenation (see
+// replaceInserts) inside every '...'/"..." span in str, each using its own
+// quote character - so a single-quoted attribute value gets '+expr+' and a
+// double-quoted one gets "+expr+", matching whichever the author wrote.
+// Backtick-quoted spans (a raw HTML block's `html:` value - see
+// getConfigCode) are left untouched instead: there, ${expr} is already
+// valid JS template-literal interpolation, and rewriting it would splice
+// concatenation syntax into the middle of a backtick string, breaking it.
+// A backtick that itself appears inside a '...'/"..." string (with
+// backslash-escape support) doesn't count as entering such a span.
 func procInserts(str string) string {
 	n := len(str)
 	var out strings.Builder
@@ -302,23 +320,29 @@ func procInserts(str string) string {
 			}
 			if ch == quote {
 				if quote == '`' {
-					out.WriteString(str[segStart : i+1])
-					segStart = i + 1
+					out.WriteString(str[segStart:i])
+					out.WriteByte(quote)
+				} else {
+					content, needsClosing := replaceInserts(str[segStart:i], quote)
+					out.WriteString(content)
+					if needsClosing {
+						out.WriteByte(quote)
+					}
 				}
+				segStart = i + 1
 				quote = 0
 			}
 			continue
 		}
 
 		if ch == '\'' || ch == '"' || ch == '`' {
-			if ch == '`' {
-				out.WriteString(replaceInserts(str[segStart:i]))
-				segStart = i
-			}
+			out.WriteString(str[segStart:i])
+			out.WriteByte(ch)
+			segStart = i + 1
 			quote = ch
 		}
 	}
 
-	out.WriteString(replaceInserts(str[segStart:]))
+	out.WriteString(str[segStart:])
 	return out.String()
 }

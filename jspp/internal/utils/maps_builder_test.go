@@ -170,7 +170,7 @@ func TestCheckPath_SkipsBrokenSymlink(t *testing.T) {
 
 	var mmMap []jspp.IJSModuleData
 	var ppMap []jspp.IPluginData
-	if err := checkPath(pp, linkPath, info, MapBuilderOptions{Modules: true, Plugins: true}, &mmMap, &ppMap); err != nil {
+	if err := checkPath(pp, linkPath, info, MapBuilderOptions{Modules: true, Plugins: true}, false, &mmMap, &ppMap); err != nil {
 		t.Fatalf("checkPath on a broken symlink returned an error instead of skipping it: %v", err)
 	}
 	if len(mmMap) != 0 {

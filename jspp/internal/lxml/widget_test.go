@@ -92,6 +92,26 @@ func TestParseText_InterpolationInTextAttribute(t *testing.T) {
 	}
 }
 
+// TestParseText_InterpolationInSingleQuotedAttribute is a regression test:
+// ${expr} used to be rewritten into double-quoted concatenation
+// unconditionally, regardless of which quote the source actually used - a
+// single-quoted value like 'hello ${name}!' came out as 'hello "+name+"!',
+// where the outer single quotes are the real string delimiters and
+// everything between them, including the "/+ characters, is literal text.
+// The rewrite must match the source's own quote character instead.
+func TestParseText_InterpolationInSingleQuotedAttribute(t *testing.T) {
+	pp := newTestPreprocessor(t)
+	src := "<lx.Box> (text:'hello ${name}!')\n"
+
+	code, err := lxml.NewParser(pp).ParseText(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(code, `text:'hello '+name+'!'`) {
+		t.Fatalf("expected interpolation compiled to single-quoted string concatenation, got: %s", code)
+	}
+}
+
 // TestParseText_InterpolationInRawHTML is a regression test: raw HTML nested
 // under a widget compiles into a `html:` field wrapped in JS backticks
 // (a real template literal), so ${expr} there is already valid JS and needs

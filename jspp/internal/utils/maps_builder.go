@@ -55,7 +55,10 @@ func BuildMaps(pp jspp.IPreprocessor, op MapBuilderOptions) error {
 func GetModulesSrcList(pp jspp.IPreprocessor) ([]string, error) {
 	mmPaths := make([]string, 0, 1)
 
-	for _, path := range pp.Config().Modules {
+	for _, path := range pp.Config().ModulesSrc {
+		mmPaths = append(mmPaths, pp.App().Pathfinder().GetAbsPath(path))
+	}
+	for _, path := range pp.Config().ModulesLinks {
 		mmPaths = append(mmPaths, pp.App().Pathfinder().GetAbsPath(path))
 	}
 
@@ -143,13 +146,25 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 				return nil, nil, fmt.Errorf("failed to clear modules path '%s': %w", modsPath, err)
 			}
 		}
-		for _, p := range pp.Config().Modules {
+		for _, p := range pp.Config().ModulesSrc {
 			dir := pp.App().Pathfinder().GetAbsPath(p)
 			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return nil
 				}
-				if err := checkPath(pp, path, info, MapBuilderOptions{Modules: true}, &mmMap, &ppMap); err != nil {
+				if err := checkPath(pp, path, info, MapBuilderOptions{Modules: true}, false, &mmMap, &ppMap); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		for _, p := range pp.Config().ModulesLinks {
+			dir := pp.App().Pathfinder().GetAbsPath(p)
+			filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return nil
+				}
+				if err := checkPath(pp, path, info, MapBuilderOptions{Modules: true}, true, &mmMap, &ppMap); err != nil {
 					return err
 				}
 				return nil
@@ -169,7 +184,7 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 				if err != nil {
 					return nil
 				}
-				if err := checkPath(pp, path, info, MapBuilderOptions{Plugins: true}, &mmMap, &ppMap); err != nil {
+				if err := checkPath(pp, path, info, MapBuilderOptions{Plugins: true}, false, &mmMap, &ppMap); err != nil {
 					return err
 				}
 				return nil
@@ -191,7 +206,7 @@ func getMaps(pp jspp.IPreprocessor, op MapBuilderOptions) ([]jspp.IJSModuleData,
 			if err != nil {
 				return nil
 			}
-			if err := checkPath(pp, path, info, op, &mmMap, &ppMap); err != nil {
+			if err := checkPath(pp, path, info, op, false, &mmMap, &ppMap); err != nil {
 				return err
 			}
 			return nil
@@ -206,6 +221,7 @@ func checkPath(
 	path string,
 	info os.FileInfo,
 	op MapBuilderOptions,
+	useLink bool,
 	mmMap *[]jspp.IJSModuleData,
 	ppMap *[]jspp.IPluginData,
 ) error {
@@ -214,7 +230,7 @@ func checkPath(
 		return nil
 	}
 	if op.Modules {
-		if err := checkModulePath(pp, path, info, mmMap); err != nil {
+		if err := checkModulePath(pp, path, info, useLink, mmMap); err != nil {
 			return err
 		}
 	}
@@ -226,7 +242,7 @@ func checkPath(
 	return nil
 }
 
-func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap *[]jspp.IJSModuleData) error {
+func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, useLink bool, mmMap *[]jspp.IJSModuleData) error {
 	if info.IsDir() || !strings.HasSuffix(path, ".js") {
 		return nil
 	}
@@ -255,6 +271,12 @@ func checkModulePath(pp jspp.IPreprocessor, path string, info os.FileInfo, mmMap
 
 	if strings.HasPrefix(entryPath, root) {
 		entryPath, _ = filepath.Rel(root, entryPath)
+	} else if useLink {
+		// ModulesLinks: keep entryPath as the module's own real absolute
+		// path - it's read straight from there at build time, so any of its
+		// own relative lx.import("./...") stay resolvable exactly as they
+		// are at the source. Only ModulesSrc funnels an out-of-root module
+		// through ModsPath.
 	} else if modsPath != "" {
 		entryPath, err = makeCopy(&code, path, modsPath)
 		if err != nil {

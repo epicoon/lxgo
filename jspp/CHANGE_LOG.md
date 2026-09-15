@@ -1,4 +1,28 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.16
+Version: v0.1.0-alpha.35
+Changes:
+- add: `JSPreprocessor.Modules` split into `ModulesSrc` (unchanged behavior - external modules get copied into
+  `ModsPath`) and `ModulesLinks` (new - the module's own real path is kept as-is instead of being copied, so edits
+  are picked up without rebuilding the map and relative `lx.import("./...")` calls reaching outside the module's own
+  directory keep resolving)
+- fix: `lx.ml` attribute interpolation (`${expr}`) always rewrote into double-quoted string concatenation regardless
+  of the source's own quote character, breaking a single-quoted attribute value like `'hello ${name}!'`
+- fix: a plugin's rendered page could have its embedded per-widget compiled JS (the `info.lx` JSON's own `js` field)
+  corrupted by being spliced into the JS source string before compilation - it's now substituted in afterward via a
+  placeholder
+- fix: plugin compilation picked the first regex match for its own class-instantiation boilerplate, which could
+  actually belong to an inlined dependency emitting the same generically-named pattern - now takes the last match,
+  since the plugin's own class always compiles in last
+- fix: `CssContext.merge()` merged `abstractClasses`/`classes`/`styles` (plain object maps) with the Array-oriented
+  `lxMerge`, silently not merging them correctly - switched to `Object.assign`
+- fix: a CSS scope's per-class `initCss` lookup followed the prototype chain, so a subclass without its own
+  `initCss` could pick up and re-run a parent class's - now checks only the class's own property
+- fix: `Box.checkContentResize()` had no reentrancy guard, letting a resize cascade recurse into itself
+- fix: the `Image` widget only rescaled once on load and never again if its container was resized afterward - now
+  watches the container via `ResizeObserver` for the widget's lifetime
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.02
 Version: v0.1.0-alpha.34
 Changes:

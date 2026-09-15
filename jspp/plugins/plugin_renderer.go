@@ -323,18 +323,28 @@ func (r *pluginRenderer) compileMainJs() {
 
 	r.addAssets(compiler)
 
+	// pCode inlines every lx.import()'d dependency's own compiled class
+	// ahead of this file's own (modulesCode + code ordering, see
+	// compiler.buildCode) - a dependency named the same generic way (e.g.
+	// lx.Plugin's own JS class token is just "Plugin", same as any
+	// subclass extending it) produces the exact same boilerplate earlier
+	// in pCode. The plugin's own class is always the last one compiled in,
+	// so its boilerplate is reliably the *last* match, never the first.
 	pattern = `if\('([^']+)' in ([^)]+)\)return`
 	re = regexp.MustCompile(pattern)
-	sub := re.FindStringSubmatch(pCode)
-	if len(sub) == 3 {
-		loc = re.FindStringIndex(pCode)
+	subs := re.FindAllStringSubmatch(pCode, -1)
+	locs := re.FindAllStringIndex(pCode, -1)
+	if len(subs) > 0 {
+		sub := subs[len(subs)-1]
+		loc = locs[len(locs)-1]
 		pCode = pCode[:loc[1]] + "}" + pCode[loc[1]:]
 		pCode = pCode[:loc[1]-6] + "{__plugin__=new " + sub[2] + "." + sub[1] + "(config); " + pCode[loc[1]-6:]
 	}
 
 	pattern = `Plugin\.__afterDefinition\(\);`
 	re = regexp.MustCompile(pattern)
-	loc = re.FindStringIndex(pCode)
+	locs = re.FindAllStringIndex(pCode, -1)
+	loc = locs[len(locs)-1]
 	pCode = pCode[:loc[1]] + "__plugin__=new Plugin(config);" + pCode[loc[1]:]
 
 	r.output.Js = `(config)=>{let __plugin__=null;` + pCode + `return __plugin__;}`
@@ -471,9 +481,14 @@ func (r *pluginRenderer) getServerCodeBlank() string {
 
 		r.addAssets(compiler)
 
+		// Same reasoning as the client-side compile above: pCode inlines
+		// lx.Plugin's own compiled class (also named "Plugin" at the JS
+		// token level) ahead of this file's own, so the last match is the
+		// plugin's own boilerplate, not the first.
 		pattern := `Plugin\.__afterDefinition\(\);`
 		re := regexp.MustCompile(pattern)
-		loc := re.FindStringIndex(pCode)
+		locs := re.FindAllStringIndex(pCode, -1)
+		loc := locs[len(locs)-1]
 		r.serverCodeBlank = "lx.import(lx.Plugin); (()=>{" +
 			pCode[:loc[1]] +
 			"lx.globalContext.$plugin=new Plugin(%s);" +

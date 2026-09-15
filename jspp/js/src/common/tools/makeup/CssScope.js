@@ -148,7 +148,8 @@ function _initCss(self, elemClass) {
     let fInitCss = null;
     const injections = preset.injectElementsCss();
     if (className in injections) fInitCss = injections[className];
-    else if (elemClass.initCss && !lx.app.functionHelper.isEmptyFunction(elemClass.initCss))
+    else if (Object.prototype.hasOwnProperty.call(elemClass, 'initCss')
+            && !lx.app.functionHelper.isEmptyFunction(elemClass.initCss))
         fInitCss = elemClass.initCss;
     if (fInitCss === null) return null;
 

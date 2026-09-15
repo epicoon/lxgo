@@ -81,12 +81,25 @@ class Image extends lx.Rect {
 				);
 			this.width(sizes[1] + 'px');
 			this.height(sizes[0] + 'px');
-			this.off('load', scale);
 			this.trigger('scale');
 		};
-		
-		if (this.isLoaded()) scale.call(this);
-		else this.on('load', scale);
+
+		function init() {
+			if (!this.parent) return;
+
+			let container = this.parent.getContainer().getDomElem(),
+				ro = new ResizeObserver(() => scale.call(this));
+			ro.observe(container);
+			this.on('beforeDestruct', () => ro.disconnect());
+		}
+
+		if (this.isLoaded()) {
+			init.call(this);
+		} else {
+			this.on('load', function() {
+				init.call(this);
+			});
+		}
 		return this;
 	}
 	// @lx:context>

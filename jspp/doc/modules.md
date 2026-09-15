@@ -33,13 +33,21 @@ file for the module map (see below). A module can also carry metadata via
 Modules that ship with the package itself live under `js/modules/*` (and are
 found automatically, since the map builder scans the whole Go module). For
 modules that belong to your application and aren't a Go package, list their
-directories in `JSPreprocessor.Modules`:
+directories in `JSPreprocessor.ModulesSrc`:
 ```yaml
 Components:
   JSPreprocessor:
-    Modules:
+    ModulesSrc:
       - /path/to/modules
 ```
+A module found outside the app root gets copied into `ModsPath` when the map
+is (re)built, so the compiled bundle doesn't depend on that external
+directory still existing at the same path later on.
+`JSPreprocessor.ModulesLinks` works the same way for finding modules, but the
+modules map records the module's own real path as-is instead of copying it -
+useful during development, when you want edits picked up without rebuilding
+the map on every save, or when the module has relative `lx.import("./...")`
+calls reaching outside its own directory that a copy would leave broken.
 
 
 ## Using a module
@@ -63,7 +71,8 @@ something your dependencies already import themselves.
 Resolving a module argument requires knowing which file implements which
 module name in advance — that mapping is the **modules map**: a JSON file
 built by scanning every `.js` file reachable by the preprocessor (the current
-Go module's dependencies, plus `JSPreprocessor.Modules` paths) for the
+Go module's dependencies, plus `JSPreprocessor.ModulesSrc`/`ModulesLinks`
+paths) for the
 `@lx:module` directive, and stored under `Components.JSPreprocessor.MapsPath`.
 
 The map has to be (re)built explicitly whenever you add a new module or

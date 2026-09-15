@@ -193,18 +193,25 @@ class Box extends lx.Rect {
 
     checkContentResize(e) {
         if (e && e.boxInitiator === this) return;
+        if (this.__inContentResize) return;
         e = e || this.newEvent({
             boxInitiator: this
         });
-        let sizes = this.getScrollSize(),
+        this.__inContentResize = true;
+        let res;
+        try {
+            let sizes = this.getScrollSize();
             res = this.__sizeHolder.refreshContent(sizes.width, sizes.height);
-        if (res) {
-            this.trigger('contentResize');
-            const container = __getContainer(this);
-            if (container !== this)
-                container.trigger('contentResize');
-            if (!this.checkResize(e))
-                this.children.forEach(c=>c.checkResize(e));
+            if (res) {
+                this.trigger('contentResize');
+                const container = __getContainer(this);
+                if (container !== this)
+                    container.trigger('contentResize');
+                if (!this.checkResize(e))
+                    this.children.forEach(c=>c.checkResize(e));
+            }
+        } finally {
+            this.__inContentResize = false;
         }
         return res;
     }

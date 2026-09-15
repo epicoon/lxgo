@@ -113,12 +113,15 @@ class CssManager extends lx.AppComponentSettable {
         }
 
         const isDefault = (prefix === ''),
-            presetKey = isDefault ? preset.lxFullClassName() : prefix;
+            presetKey = isDefault ? this.getPresetName() : prefix;
 
         if (this.presets.has(presetKey)) {
             let ePreset = this.presets.get(presetKey);
-            if (ePreset.preset.lxFullClassName() !== preset.lxFullClassName()) {
-                lx.logError('Preset "' + prefix + '" already exists');
+            if (ePreset.lxFullClassName() !== preset.lxFullClassName()) {
+                lx.logError('Preset "' + prefix + '" already exists but types mismatch: "' +
+                    ePreset.lxFullClassName() + "expected, but" +
+                    preset.lxFullClassName() + "got."
+                );
                 return;
             }
             preset = ePreset;
@@ -176,7 +179,9 @@ class CssManager extends lx.AppComponentSettable {
      * @returns {lx.CssPreset|null}
      */
     getPreset(name = null) {
-        if (name === null || name === '')
+        _promiseDefaultScope(this);
+
+        if (name === null || name === this.getPresetName())
             return this.presets.get(this.getPresetName());
 
         if (lx.isString(name))
@@ -202,10 +207,11 @@ class CssManager extends lx.AppComponentSettable {
      * @returns {Array<String>}
      */
     getScopeNames() {
-        let map = this.scopes.lxClone();
+        _promiseDefaultScope(this);
+        let scopeKeys = Object.keys(this.scopes.getAll());
         if (this.settings.scopes)
-            map.lxMerge(this.settings.scopes);
-        return Object.keys(map);
+            scopeKeys.lxMerge(Object.keys(this.settings.scopes));
+        return scopeKeys;
     }
 
     /**
@@ -222,17 +228,17 @@ class CssManager extends lx.AppComponentSettable {
     }
 
     /**
-     * @param {String} name
+     * @param {String|null} name
      * @returns {lx.CssScope|null}
      */
-    getScope(name = '') {
+    getScope(name = null) {
+        if (name === null)
+            name = this.getPresetName();
+        _promiseDefaultScope(this);
         if (!this.scopes.has(name)) {
-            if (!this.settings.scopes || !(name in this.settings.scopes)) {
-                if (name !== '') return null;
-                this.createPresetScope(lx.CssPreset, '');
-            } else {
-                this.createPresetScope(this.settings.scopes[name], name);
-            }
+            if (!this.settings.scopes || !(name in this.settings.scopes))
+                return null;
+            this.createPresetScope(this.settings.scopes[name], name);
         }
         return this.scopes.get(name);
     }
@@ -291,6 +297,16 @@ class CssManager extends lx.AppComponentSettable {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+function _promiseDefaultScope(self) {
+    const name = self.getPresetName();
+    if (self.scopes.has(name)) return;
+    if (!self.settings.scopes || !(name in self.settings.scopes)) {
+        self.createPresetScope(lx.CssPreset, name);
+        return;
+    }
+    self.createPresetScope(self.settings.scopes[name], name);
+}
 
 class PresetsList {
     /**
