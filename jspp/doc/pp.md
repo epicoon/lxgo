@@ -298,6 +298,29 @@ build: module-level translations (keys are automatically namespaced as
 `module-<ModuleName>-<key>` so different modules' short keys don't collide)
 and the application's own top-level translations.
 
+A translation value that is entirely `${^path}` (note the leading `^`,
+which is what tells it apart from a `${name}` placeholder) is a file
+reference instead of literal text: the file is read in and used as the
+translation's actual content, rendered through the same markdown engine as
+[`lx.md(...)`](#md) when the path ends in `.md`, taken as plain text
+otherwise. The path is resolved relative to the i18n YAML file the value is
+written in - handy for a block of text too large to comfortably live inline
+in the YAML. Each language section points at its own file, the same way any
+other key would.
+```yaml
+en-EN:
+  game.rules: "${^rules.en.md}"
+ru-RU:
+  game.rules: "${^rules.ru.md}"
+```
+```js
+// Renders whichever of rules.en.md/rules.ru.md matches the current build's
+// language into HTML, inlined as an ordinary translated string
+lx.i18n('game.rules');
+```
+A missing referenced file behaves like a missing `lx.md(...)` target - the
+key resolves to an empty string rather than failing the build.
+
 
 ## <a name="config">Forwarding a backend config parameter</a>
 

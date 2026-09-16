@@ -1,5 +1,18 @@
 ------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.16
+Version: v0.1.0-alpha.36
+Changes:
+- add: an i18n YAML value that is entirely `${^path}` is now a file reference instead of literal text - the
+  referenced file's content becomes the translation, rendered through the same markdown engine as `lx.md(...)` when
+  the path ends in `.md`, taken as plain text otherwise; the path resolves relative to the i18n file it's written
+  in, and a missing file degrades to an empty string rather than failing the build (same as `lx.md(...)`)
+- fix: a translated string spliced into generated JS via `lx.i18n(...)` was concatenated into its surrounding
+  quotes/backticks with no escaping - a translation containing a quote, backslash, backtick, `$`, or newline could
+  silently produce broken JS; now properly escaped for both the plain single-quoted form and the backtick
+  template-literal form used with `lx.i18n(key, {params})`
+
+------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.16
 Version: v0.1.0-alpha.35
 Changes:
 - add: `JSPreprocessor.Modules` split into `ModulesSrc` (unchanged behavior - external modules get copied into

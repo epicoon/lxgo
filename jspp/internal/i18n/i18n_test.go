@@ -159,6 +159,78 @@ func TestI18nMap_Localize_UntranslatedKeyDoesNotStopLaterOnes(t *testing.T) {
 	}
 }
 
+// TestI18nMap_Localize_BackslashInTranslationIsEscaped is a regression
+// test: a literal backslash in a translation must itself be escaped first,
+// before any of the other escaping - otherwise a translation like `C:\new`
+// would turn `\n` into an actual (unintended) newline escape once quoted.
+func TestI18nMap_Localize_BackslashInTranslationIsEscaped(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"path": `C:\new\folder`},
+	})
+	got := m.Localize(`x = lx.i18n('path');`, "en")
+	want := `x = 'C:\\new\\folder';`
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// TestI18nMap_Localize_WithParams_BackslashInTranslationIsEscaped mirrors
+// the single-quoted case above for the template-literal (params) path.
+func TestI18nMap_Localize_WithParams_BackslashInTranslationIsEscaped(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"path": `C:\new\${name}`},
+	})
+	got := m.Localize("x = lx.i18n('path', {name: userName});", "en")
+	if !strings.Contains(got, "return `C:\\\\new\\\\${i18n_name}`") {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// TestI18nMap_Localize_QuoteInTranslationDoesNotBreakOut is a regression
+// test: a translation spliced into a single-quoted JS string literal via
+// naive concatenation used to let its own quote character break out of the
+// literal, corrupting the surrounding JS.
+func TestI18nMap_Localize_QuoteInTranslationDoesNotBreakOut(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"greeting": `Say 'hi' to <a href="x">them</a>`},
+	})
+	got := m.Localize(`x = lx.i18n('greeting');`, "en")
+	want := "x = 'Say \\'hi\\' to <a href=\"x\">them</a>';"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// TestI18nMap_Localize_NewlineInTranslationDoesNotBreakOut is a regression
+// test: a JS string literal (single- or double-quoted) can't contain a
+// literal newline at all - naive concatenation used to splice one in
+// verbatim, producing a syntax error.
+func TestI18nMap_Localize_NewlineInTranslationDoesNotBreakOut(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"greeting": "line one\nline two"},
+	})
+	got := m.Localize(`x = lx.i18n('greeting');`, "en")
+	want := `x = 'line one\nline two';`
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// TestI18nMap_Localize_WithParams_BacktickAndDollarDoNotBreakOut is a
+// regression test: a translation used with placeholders is spliced into a
+// backtick template literal - its own backtick or ${...}-looking text used
+// to be able to break out of the literal or be misread as an unintended
+// interpolation, on top of the real, mangled one the caller asked for.
+func TestI18nMap_Localize_WithParams_BacktickAndDollarDoNotBreakOut(t *testing.T) {
+	m := NewI18nMap(map[string]map[string]string{
+		"en": {"greeting": "Run `${evil}` then ${name}"},
+	})
+	got := m.Localize("x = lx.i18n('greeting', {name: userName});", "en")
+	if !strings.Contains(got, "return `Run \\`\\${evil}\\` then ${i18n_name}`") {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestExtractParams_NoParams(t *testing.T) {
 	key, params := extractParams("greeting")
 	if key != "greeting" || len(params) != 0 {

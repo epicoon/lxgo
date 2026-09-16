@@ -79,19 +79,20 @@ func LocalizeWithLookup(text string, lookup func(key string) string) string {
 		tr := lookup(key)
 		if tr != "" {
 			if len(params) > 0 {
-				tr = "`" + tr + "`"
+				tr = escapeTemplateLiteral(tr)
 				pp := make([]string, len(params))
 				i := 0
 				for name, val := range params {
 					mangled := "i18n_" + name
 					pp[i] = mangled + "=" + val
-					tr = regexp.MustCompile(`\$\{\s*`+regexp.QuoteMeta(name)+`\s*\}`).ReplaceAllLiteralString(tr, "${"+mangled+"}")
+					tr = regexp.MustCompile(`\\\$\{\s*`+regexp.QuoteMeta(name)+`\s*\}`).ReplaceAllLiteralString(tr, "${"+mangled+"}")
 					i++
 				}
+				tr = "`" + tr + "`"
 				spp := "let " + strings.Join(pp, ",") + ";"
 				tr = fmt.Sprintf("(()=>{%sreturn %s})()", spp, tr)
 			} else {
-				tr = "'" + tr + "'"
+				tr = "'" + escapeSingleQuoted(tr) + "'"
 			}
 			text = strings.Replace(text, orig, tr, 1)
 			continue
@@ -102,6 +103,53 @@ func LocalizeWithLookup(text string, lookup func(key string) string) string {
 	}
 
 	return text
+}
+
+// escapeSingleQuoted escapes s so it can be embedded in a single-quoted JS
+// string literal without its own quote/backslash/newline content breaking
+// out of the literal - a JS string literal (single- or double-quoted)
+// can't contain a literal, unescaped newline at all.
+func escapeSingleQuoted(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '\'':
+			b.WriteString(`\'`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// escapeTemplateLiteral escapes s so it can be embedded in a JS template
+// literal (backtick string) without its own backtick/backslash/${...}
+// content breaking out of the literal or being misread as an
+// interpolation. It runs before the caller splices the real, mangled
+// ${i18n_name} interpolations back in (see LocalizeWithLookup) - each
+// param's own now-escaped \${name} is matched and replaced with its real,
+// unescaped ${i18n_name} counterpart at that point.
+func escapeTemplateLiteral(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '`':
+			b.WriteString("\\`")
+		case '$':
+			b.WriteString(`\$`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func extractParams(text string) (string, map[string]string) {

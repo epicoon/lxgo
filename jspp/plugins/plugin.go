@@ -5,12 +5,16 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/epicoon/lxgo/jspp"
 	"github.com/epicoon/lxgo/jspp/elems"
 	"github.com/epicoon/lxgo/jspp/internal/i18n"
+	"github.com/epicoon/lxgo/jspp/internal/md"
 	"github.com/epicoon/lxgo/kernel"
 	"gopkg.in/yaml.v3"
 )
@@ -119,13 +123,49 @@ func (p *Plugin) I18n() jspp.II18nMap {
 					p.Preprocessor().LogError("Duplicate translation in i18n files for plugin '%s': key - %s", p.Name(), key)
 					continue
 				}
-				trMap[lang][key] = tr
+				resolved, err := resolveI18nFileRef(tr, fullPath)
+				if err != nil {
+					p.Preprocessor().LogError("Can not resolve i18n file reference for plugin '%s', key '%s': %s", p.Name(), key, err)
+					resolved = ""
+				}
+				trMap[lang][key] = resolved
 			}
 		}
 	}
 
 	p.i18n = i18n.NewI18nMap(trMap)
 	return p.i18n
+}
+
+// i18nFileRefRe matches an i18n value that is entirely a file reference:
+// ${^relative/path}. The leading ^ (as opposed to a plain ${name}
+// placeholder, substituted at lx.i18n(key, {params}) call sites - see
+// package i18n) marks it as "read this file in", not "fill in this
+// variable".
+var i18nFileRefRe = regexp.MustCompile(`^\$\{\^(.+)\}$`)
+
+// resolveI18nFileRef checks whether tr is entirely a file reference
+// (${^path}) and, if so, returns the referenced file's content in its
+// place - rendered through the markdown engine when the path ends in
+// ".md", taken as plain text otherwise. The path is resolved relative to
+// the directory of yamlPath (the i18n file tr came from). tr is returned
+// unchanged, with no error, when it isn't a file reference at all.
+func resolveI18nFileRef(tr, yamlPath string) (string, error) {
+	sub := i18nFileRefRe.FindStringSubmatch(tr)
+	if sub == nil {
+		return tr, nil
+	}
+
+	fullPath := filepath.Join(filepath.Dir(yamlPath), sub[1])
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("can not read i18n-referenced file '%s': %w", fullPath, err)
+	}
+
+	if strings.HasSuffix(fullPath, ".md") {
+		return md.Convert(string(data)), nil
+	}
+	return string(data), nil
 }
 
 /** @abstract */
