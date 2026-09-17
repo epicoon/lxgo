@@ -14,8 +14,12 @@ var (
 	blockquotePrefixRe    = regexp.MustCompile(`^> ?`)
 	leading4SpacesRe      = regexp.MustCompile(`^ {4}`)
 	trailingDoubleSpaceRe = regexp.MustCompile(`  $`)
-	orderedNestedItemRe   = regexp.MustCompile(`^ {4}\d+\. `)
-	unorderedNestedItemRe = regexp.MustCompile(`^ {4}(\*|\+|-) `)
+
+	// A list-nesting level is 2 spaces wide - matching the content column of
+	// a "- "/"* "/"+ " marker.
+	leadingListLevelRe    = regexp.MustCompile(`^ {2}`)
+	orderedNestedItemRe   = regexp.MustCompile(`^ {2}\d+\. `)
+	unorderedNestedItemRe = regexp.MustCompile(`^ {2}(\*|\+|-) `)
 )
 
 // parse converts raw markdown text into a tree of blocks.
@@ -28,8 +32,13 @@ func parse(mdText string) []mdBlock {
 	return processMap(lines)
 }
 
-// normalizeLine converts tab/space leading whitespace into a 4-space-per-level
-// indent unit, and treats whitespace-only lines as empty.
+// normalizeLine converts tab/space leading whitespace into a 2-space-per-unit
+// indent, and treats whitespace-only lines as empty. The unit is 2 spaces so
+// list-item nesting (aligned to a "- "/"* "/"+ " marker's content column) is
+// captured precisely; indented-code-block detection wants a coarser 4-space
+// threshold and checks indent >= 2 for that (see checkCodeBlock). A tab
+// counts as one whole code-block level (2 units), same as it did before this
+// unit was halved.
 func normalizeLine(raw string) mdLine {
 	line := raw
 	if allWhitespaceRe.MatchString(line) {
@@ -38,14 +47,14 @@ func normalizeLine(raw string) mdLine {
 
 	var indent int
 	if m := leadingSpacesRe.FindStringSubmatch(line); m[1] != "" {
-		indent = len(m[1]) / 4
+		indent = len(m[1]) / 2
 	} else {
 		m := leadingTabsRe.FindStringSubmatch(line)
-		indent = len(m[1])
+		indent = len(m[1]) * 2
 	}
 
 	origin := line
-	normalized := leadingWhitespaceRe.ReplaceAllString(line, strings.Repeat(" ", indent*4))
+	normalized := leadingWhitespaceRe.ReplaceAllString(line, strings.Repeat(" ", indent*2))
 
 	return mdLine{line: normalized, originLine: origin, indent: indent}
 }
@@ -124,7 +133,7 @@ func processListBlock(b *mdBlock) {
 				farLineData = &nf
 			} else {
 				current.line = trailingDoubleSpaceRe.ReplaceAllString(current.line, "<br>")
-				current.line = current.line + " " + next.line
+				current.line = current.line + " " + strings.TrimLeft(next.line, " ")
 				lines = removeAt(lines, i+1)
 				l--
 				lines[i] = current
@@ -161,7 +170,7 @@ func processListBlock(b *mdBlock) {
 		for !done {
 			if tempLineData.line != "" {
 				tempLineData.indent--
-				tempLineData.line = leading4SpacesRe.ReplaceAllString(tempLineData.line, "")
+				tempLineData.line = leadingListLevelRe.ReplaceAllString(tempLineData.line, "")
 			}
 			nestedLines = append(nestedLines, tempLineData)
 			toDelete[j] = true

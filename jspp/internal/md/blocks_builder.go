@@ -174,7 +174,9 @@ func checkTable(b *blocksBuilder, pd *parseData) {
 }
 
 func checkCodeBlock(b *blocksBuilder, pd *parseData) {
-	if pd.indent != 0 && b.isCurrentType(
+	// indent is in 2-space units (see normalizeLine), so >= 2 is the real
+	// 4-space indented-code-block threshold.
+	if pd.indent >= 2 && b.isCurrentType(
 		typeNone, typeCodeBlock,
 		typeTitle1, typeTitle2, typeTitle3, typeTitle4, typeTitle5, typeTitle6,
 	) {
