@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -16,10 +15,6 @@ type manager struct {
 }
 
 var m = new(manager)
-
-func (m *manager) prepare() {
-	m.parseArgs(os.Args[1:])
-}
 
 // parseArgs fills in cmdRoute/cmdName/subName/params from args.
 func (m *manager) parseArgs(args []string) {

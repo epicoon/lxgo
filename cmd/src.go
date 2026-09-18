@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -14,13 +15,29 @@ func Init(cmds CommandsList) {
 }
 
 // Run parses os.Args, resolves the matching command/action from the
-// CommandsList passed to Init, and executes it - call this from main.
+// CommandsList passed to Init, and executes it - call this from main. If the
+// command can't be resolved or validated, or its Exec/action fails, an error
+// is printed and the process exits with status 1 (so a shell script or a
+// container entrypoint can tell a failure from success); Run doesn't return in
+// that case, so it must be the last thing main does.
 func Run() {
-	m.prepare()
+	if code := run(os.Args[1:]); code != exitOK {
+		os.Exit(code)
+	}
+}
+
+const (
+	exitOK      = 0
+	exitFailure = 1
+)
+
+// run executes the command line args and returns the process exit code.
+func run(args []string) int {
+	m.parseArgs(args)
 	cc, err := m.defineConstructor()
 	if err != nil {
 		fmt.Printf("Can not exec: %s\n", err)
-		return
+		return exitFailure
 	}
 
 	help := false
@@ -41,43 +58,45 @@ func Run() {
 		} else {
 			printActionInfo(command, m.subName)
 		}
-		return
+		return exitOK
 	}
 
 	err = command.BeforeExec()
 	if err != nil {
 		fmt.Printf("Can not exec: %s\n", err)
-		return
+		return exitFailure
 	}
 
 	err = command.Exec()
 	if errors.Is(ErrNotImplementedExec, err) {
 		if command.Action() == "" {
 			printInfo(command)
-			return
+			return exitOK
 		}
 
 		action := command.ActiveAction()
 		if action == nil {
 			fmt.Printf("Action handler is undefined: %s\n", command.Action())
-			return
+			return exitFailure
 		}
 
 		if err := validate(command); err != nil {
 			fmt.Printf("Can not execute the command: %v\n", err)
-			return
+			return exitFailure
 		}
 
 		err := action(command)
 		if err != nil {
 			fmt.Printf("Error occurred while action executing: %s\n", err)
-			return
+			return exitFailure
 		}
-		return
+		return exitOK
 	}
 	if err != nil {
 		fmt.Printf("Error occurred while action executing: %s\n", err)
+		return exitFailure
 	}
+	return exitOK
 }
 
 // GetOptions type-asserts the first element of opt to T, returning T's zero

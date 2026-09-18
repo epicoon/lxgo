@@ -1,6 +1,6 @@
 # Package for console commands creating in lxgo/kernel applications
 
-> Actual version: `v0.1.0-alpha.9`. [Details](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.10`. [Details](https://github.com/epicoon/lxgo/tree/master/cmd/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -49,6 +49,13 @@ func main() {
 ```
 
 3. After that `go run .` will do the same as before
+
+`cmd.Run()` exits the process with status 1 when the command can't be resolved
+or its parameters don't validate, or when `BeforeExec`, `Exec` or the action
+returns an error (the error is printed first); a successful run, `--help` and a
+command listing its actions exit with 0. Return the error from `Exec` instead
+of printing it and returning `nil`, otherwise the run counts as successful.
+Since `Run` doesn't return on failure, call it last in `main`.
 
 
 ## Create your console command

@@ -1,4 +1,14 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.18
+Version: v0.1.0-alpha.10
+Changes:
+- fix: `Run` always exited with status 0 - a command that couldn't be resolved, failed parameter validation, or
+  returned an error from `BeforeExec`/`Exec`/its action printed the error and still reported success, so a shell
+  script or a container entrypoint couldn't tell a failure from success; it now exits with status 1 (a successful
+  run, `--help` and a command with no action, which lists its actions, still exit with 0). `Run` doesn't return on
+  failure, so it should be the last call in `main`
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.05
 Version: v0.1.0-alpha.9
 Changes:
