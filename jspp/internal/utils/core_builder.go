@@ -38,9 +38,8 @@ func buildClient(pp jspp.IPreprocessor, ppRoot string, srcFlag bool) error {
 	} else {
 		destPath = pp.App().Pathfinder().GetAbsPath(pp.Config().CorePath)
 	}
-	err = os.WriteFile(destPath, []byte(code), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %v", err)
+	if err = writeFile(destPath, code); err != nil {
+		return err
 	}
 
 	return nil
@@ -61,10 +60,20 @@ func buildServer(pp jspp.IPreprocessor, ppRoot string) error {
 	re := regexp.MustCompile(`\.js$`)
 	destPath = re.ReplaceAllString(destPath, "-server.js")
 
-	err = os.WriteFile(destPath, []byte(code), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %v", err)
+	if err = writeFile(destPath, code); err != nil {
+		return err
 	}
 
+	return nil
+}
+
+// writeFile creates the destination directory when it doesn't exist yet.
+func writeFile(path, code string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("failed to create directory for '%s': %v", path, err)
+	}
+	if err := os.WriteFile(path, []byte(code), 0644); err != nil {
+		return fmt.Errorf("failed to write to file: %v", err)
+	}
 	return nil
 }

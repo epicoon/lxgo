@@ -1,9 +1,23 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.09.18
+Version: v0.1.0-alpha.38
+Changes:
+- refactor: `lx.LanguageSwitcher` is no longer a `lx.Dropbox` wrapper - it's now a flag-icon switcher (current
+  locale's flag + code, click opens a flag + name list); flag images aren't built in, the caller supplies them via
+  a new `flags` config option (locale key -> image path)
+- fix: `jspp:build-core` created no output directory and swallowed the write error (printing `Done` with nothing
+  built) - on a fresh clone, where the git-ignored build directory doesn't exist yet, `core.js`/`core-server.js`
+  were silently never produced; it now creates the directory and reports failures
+- fix: a plugin render that failed (a root snippet that couldn't be compiled or executed, e.g. because `core.js` hadn't
+  been built yet) was still written to the plugin cache, so the broken result kept being served after the cause
+  was fixed; a render with errors is no longer cached
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.17
 Version: v0.1.0-alpha.37
 Changes:
 - fix: nested unordered lists in Markdown text now render correctly
-d
+
 ------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.16
 Version: v0.1.0-alpha.36

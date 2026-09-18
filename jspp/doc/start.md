@@ -30,6 +30,7 @@
       # on - use cache
       # off - do not use cache
       # dev - use cache but check plugin dependencies to rebuild if needed
+      # A plugin render that hit compile errors is never stored in the cache.
       PluginCacheType: on
       # Preprocessor automatically creates links to asset files
       #  to hide the real location on the server

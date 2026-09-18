@@ -54,6 +54,7 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 	// Prepare plugin code
 	pCode := pr.getServerCode(pData)
 	if pCode == "" {
+		pr.snippetFailed = true
 		return false
 	}
 
@@ -65,7 +66,7 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 	}
 	sData, err := json.Marshal(sDataStruct)
 	if err != nil {
-		sr.pp.LogError("error while snippet '%s' data serialization for plugin '%s': %v", sr.path, plugin.Name(), err)
+		sr.fail("error while snippet '%s' data serialization for plugin '%s': %v", sr.path, plugin.Name(), err)
 		return false
 	}
 	snippetData := string(sData)
@@ -107,7 +108,7 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 		Compiler()
 	code, err := compiler.Run()
 	if err != nil {
-		sr.pp.LogError("can not compile snippet code '%s': %s", sr.path, err)
+		sr.fail("can not compile snippet code '%s': %s", sr.path, err)
 		return false
 	}
 
@@ -121,17 +122,17 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 		Executor()
 	rawRes, err := executor.Exec()
 	if err != nil {
-		sr.pp.LogError("can not execute snippet code '%s': %s", sr.path, err)
+		sr.fail("can not execute snippet code '%s': %s", sr.path, err)
 		return false
 	}
 	if rawRes.Fatal() != "" {
-		sr.pp.LogError("can not execute snippet code '%s':\n%s", sr.path, rawRes.Fatal())
+		sr.fail("can not execute snippet code '%s':\n%s", sr.path, rawRes.Fatal())
 		return false
 	}
 
 	err = cast.MapToStruct(rawRes.Result().(map[string]any), &res)
 	if err != nil {
-		sr.pp.LogError("can not get snippet '%s' render result: %v", sr.path, err)
+		sr.fail("can not get snippet '%s' render result: %v", sr.path, err)
 		return false
 	}
 
@@ -148,6 +149,12 @@ func (sr *snippetRenderer) runSnippetCode() bool {
 	}
 
 	return true
+}
+
+// fail logs a snippet problem and marks the plugin render as failed.
+func (sr *snippetRenderer) fail(format string, args ...any) {
+	sr.pp.LogError(format, args...)
+	sr.pr.snippetFailed = true
 }
 
 func (sr *snippetRenderer) getPluginData() map[string]any {
@@ -196,11 +203,11 @@ func (sr *snippetRenderer) fillSnippet(data map[string]any) {
 			Params map[string]any `dict:"params"`
 		}{}
 		if err := cast.MapToStruct(rawSnippetInfo.(map[string]any), &inf); err != nil {
-			sr.pp.LogError("wrong snippet settings '%v' for plugin '%s': %v", rawSnippetInfo, sr.plugin.Name(), err)
+			sr.fail("wrong snippet settings '%v' for plugin '%s': %v", rawSnippetInfo, sr.plugin.Name(), err)
 		}
 
 		if inf.Path == "" {
-			sr.pp.LogError("wrong snippet path for plugin '%s'", sr.plugin.Name())
+			sr.fail("wrong snippet path for plugin '%s'", sr.plugin.Name())
 			continue
 		}
 
@@ -224,11 +231,11 @@ func (sr *snippetRenderer) addSnippet(hash, path string, params map[string]any) 
 		if _, err := os.Stat(fullPath); err == nil {
 			fromSnippetsArr = append(fromSnippetsArr, fullPath)
 		} else if !os.IsNotExist(err) {
-			sr.pp.LogError("problem with snippet '%s.%s', file '%s': %v", sr.plugin.Name(), path, fullPath, err)
+			sr.fail("problem with snippet '%s.%s', file '%s': %v", sr.plugin.Name(), path, fullPath, err)
 		}
 	}
 	if len(fromSnippetsArr) > 1 {
-		sr.pp.LogError("there are several '%s' snippet files: %v for plugin %s", path, fromSnippetsArr, sr.plugin.Name())
+		sr.fail("there are several '%s' snippet files: %v for plugin %s", path, fromSnippetsArr, sr.plugin.Name())
 		return nil
 	}
 	fromSnippets := ""
@@ -256,7 +263,7 @@ func (sr *snippetRenderer) addSnippet(hash, path string, params map[string]any) 
 	if _, err := os.Stat(fullPath); err == nil {
 		fromRelative = fullPath
 	} else if !os.IsNotExist(err) {
-		sr.pp.LogError("problem with snippet '%s.%s', file '%s': %v", sr.plugin.Name(), path, fullPath, err)
+		sr.fail("problem with snippet '%s.%s', file '%s': %v", sr.plugin.Name(), path, fullPath, err)
 	}
 	if fromRelative != "" {
 		if !slices.Contains(paths, fromRelative) {
@@ -265,10 +272,10 @@ func (sr *snippetRenderer) addSnippet(hash, path string, params map[string]any) 
 	}
 
 	if len(paths) == 0 {
-		sr.pp.LogError("snippet '%s.%s' not found", sr.plugin.Name(), path)
+		sr.fail("snippet '%s.%s' not found", sr.plugin.Name(), path)
 		return nil
 	} else if len(paths) > 1 {
-		sr.pp.LogError("there are several paths for snippet '%s.%s': %v", sr.plugin.Name(), path, paths)
+		sr.fail("there are several paths for snippet '%s.%s': %v", sr.plugin.Name(), path, paths)
 		return nil
 	}
 

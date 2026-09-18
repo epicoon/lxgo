@@ -29,12 +29,14 @@ type pluginRenderer struct {
 	title  string
 	icon   string
 
-	compiled   bool
-	key        string
-	rootSR     *snippetRenderer
-	nested     []*pluginRenderer
-	nestedConf []*nestedPluginConf
-	depFiles   map[string]bool
+	compiled bool
+
+	snippetFailed bool
+	key           string
+	rootSR        *snippetRenderer
+	nested        []*pluginRenderer
+	nestedConf    []*nestedPluginConf
+	depFiles      map[string]bool
 
 	html            string
 	rootSnippetKey  string
@@ -138,7 +140,7 @@ func (r *pluginRenderer) run() *jspp.PluginRenderInfo {
 	return result
 }
 
-func (r *pluginRenderer) compileProcess() {
+func (r *pluginRenderer) compileProcess() bool {
 	if r.compileMainJs(); r.HasErrors() {
 		r.pp.LogError("error while plugin '%s' JS-compile: %v", r.plugin.Name(), r.GetFirstError())
 	}
@@ -147,6 +149,8 @@ func (r *pluginRenderer) compileProcess() {
 	r.compileSnippet()
 	// Get: r.output.Snippets
 	// Get: r.nestedConf
+
+	return !r.HasErrors() && !r.snippetFailed
 }
 
 func (r *pluginRenderer) compile() {
@@ -163,9 +167,10 @@ func (r *pluginRenderer) compile() {
 		r.compileProcess()
 	case CACHE_ON:
 		if !cache.Exists() {
-			r.compileProcess()
-			if err := cache.Save(); err != nil {
-				r.pp.LogError("can not save cache for plugin '%s': %v", r.plugin.Name(), err)
+			if r.compileProcess() {
+				if err := cache.Save(); err != nil {
+					r.pp.LogError("can not save cache for plugin '%s': %v", r.plugin.Name(), err)
+				}
 			}
 		} else if err := cache.Load(); err != nil {
 			r.pp.LogError("can not load cache for plugin '%s', recompiling: %v", r.plugin.Name(), err)
@@ -173,9 +178,10 @@ func (r *pluginRenderer) compile() {
 		}
 	case CACHE_DEV:
 		if !cache.Exists() || cache.DepsChanged() {
-			r.compileProcess()
-			if err := cache.Save(); err != nil {
-				r.pp.LogError("can not save cache for plugin '%s': %v", r.plugin.Name(), err)
+			if r.compileProcess() {
+				if err := cache.Save(); err != nil {
+					r.pp.LogError("can not save cache for plugin '%s': %v", r.plugin.Name(), err)
+				}
 			}
 		} else if err := cache.Load(); err != nil {
 			r.pp.LogError("can not load cache for plugin '%s', recompiling: %v", r.plugin.Name(), err)

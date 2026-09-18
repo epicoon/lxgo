@@ -126,7 +126,9 @@ func buildCore(com cmd.ICommand) error {
 		return errors.New("JSPreprocessor component not defined")
 	}
 
-	utils.BuildCore(pp, parentDir, c.Flag("src"))
+	if err := utils.BuildCore(pp, parentDir, c.Flag("src")); err != nil {
+		return err
+	}
 
 	fmt.Println("Done")
 	return nil
