@@ -1,5 +1,15 @@
 ------------------------------------------------------------------------------------------------------------------------
 Date: 2026.10.06
+Version: v0.1.0-alpha.11
+Changes:
+- fix: `WSServer.Stop` could hang indefinitely once any connection was live - it waited on its `WaitGroup` for every
+  connection handler goroutine to return before closing anything, but a handler sits in a blocking read on its
+  socket that only returns once the client sends something or the connection is closed from this side; an idle,
+  otherwise-healthy client (nothing wrong with it - just not sending anything right then) kept `Stop` waiting
+  forever. `Stop` now closes every currently live connection itself before waiting on the `WaitGroup`
+
+------------------------------------------------------------------------------------------------------------------------
+Date: 2026.10.06
 Version: v0.1.0-alpha.10
 Changes:
 - add: `WSServer.Start`, with no port configured for it, mounts the WS endpoint on the application's own HTTP server

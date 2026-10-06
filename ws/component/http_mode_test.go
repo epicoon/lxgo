@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/epicoon/lxgo/kernel"
 	"github.com/epicoon/lxgo/kernel/apptest"
@@ -206,5 +207,54 @@ func TestWSServer_ServeUpgrade_IPLimitRejectsBeforeHandshakeResponse(t *testing.
 
 	if _, err := Dial(addr, wsHTTPPath, func(any) {}, nil); err == nil {
 		t.Fatalf("expected the second Dial (same IP, over MaxConnectionsPerIp) to fail outright with no handshake response, got a successful connection")
+	}
+}
+
+// TestWSServer_Stop_DoesNotHangOnLiveConnection is a regression test: Stop()
+// used to wait on its WaitGroup for every connection handler goroutine to
+// return before closing anything - but a hijacked connection's handler sits
+// in a blocking read on its socket, which never returns on its own for a
+// connection that's simply idle (nothing was ever sent to make it error
+// out). A real browser tab left connected and otherwise idle reproduced
+// this directly: Stop() hung until the OS-level process kill, since
+// s.conns.Close() (which would have run next) only ever closes already-
+// disconnected (tombstoned) connections, never a still-live one. Here, the
+// client deliberately never disconnects or sends anything after the
+// handshake - Stop() must still close the live connection itself and
+// return promptly.
+func TestWSServer_Stop_DoesNotHangOnLiveConnection(t *testing.T) {
+	app := newAppWithWSServerConfig(t, kernel.Dict{})
+	if err := SetAppComponent(app, "Components.WSServer"); err != nil {
+		t.Fatalf("SetAppComponent: %v", err)
+	}
+	s, err := AppComponent(app)
+	if err != nil {
+		t.Fatalf("AppComponent: %v", err)
+	}
+	s.channels.Init()
+
+	srv := httptest.NewServer(http.HandlerFunc(s.serveUpgrade))
+	t.Cleanup(srv.Close)
+	addr := strings.TrimPrefix(srv.URL, "http://")
+
+	pushes := make(chan any, 8)
+	client, err := Dial(addr, wsHTTPPath, func(msg any) { pushes <- msg }, nil)
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	t.Cleanup(func() { client.Close() })
+
+	recvPush(t, pushes) // handshake ack - the connection is now live and idle
+
+	done := make(chan struct{})
+	go func() {
+		s.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("Stop() did not return within 2s - a live, idle connection's blocking read is never unblocked on its own")
 	}
 }

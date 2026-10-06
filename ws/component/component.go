@@ -306,8 +306,8 @@ func (s *WSServer) serveUpgrade(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// Stop closes the listener and waits for in-flight connections and
-// background sweepers to finish.
+// Stop closes the listener, closes every currently live connection and
+// waits for their handler goroutines and background sweepers to finish.
 func (s *WSServer) Stop() {
 	s.mu.Lock()
 	ln := s.listener
@@ -316,6 +316,9 @@ func (s *WSServer) Stop() {
 		if err := ln.Close(); err != nil {
 			log.Printf("listener close error: %v", err)
 		}
+	}
+	for _, c := range s.conns.GetAll() {
+		c.Close()
 	}
 	s.wg.Wait()
 	s.conns.Close()
