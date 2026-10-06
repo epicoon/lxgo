@@ -1,6 +1,7 @@
 package src
 
 import (
+	"bufio"
 	"maps"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -64,6 +65,7 @@ func (c *fakeConnection) SharedDataForChannel(ch ws.IChannel) map[string]any {
 }
 
 func (c *fakeConnection) Handle() {}
+func (c *fakeConnection) HandleHijacked(*bufio.Reader, string) {}
 
 func (c *fakeConnection) Send(payload any, typ string, masked bool) error {
 	c.sent = append(c.sent, fakeSent{payload: payload, typ: typ, masked: masked})

@@ -1,4 +1,23 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.10.06
+Version: v0.1.0-alpha.39
+Changes:
+- add: `AssetLinksPath.Outer` can now be an absolute `http(s)://` URL (a CDN, or the app's own externally-reachable
+  address), not only a path relative to the page's own origin - asset links are built as full URLs in that case
+  instead of local paths
+- add: an absolute asset source URL whose host:port matches the app's own (`kernel.IApp.Host()`/`Port()`) is
+  recognized as self-referencing and symlinked locally instead of being left as a literal external URL
+- add: the plugin pathfinder's `{@param(Dotted.Config.Path)}` syntax substitutes a string value from the app's own
+  config into a resolved path (plugin asset/dependency paths, snippet includes, etc.)
+- add: `Dependencies.promiseModules` accepts an explicit `url`, routing the `get-modules` request to that address
+  instead of the current page's default origin - `setPlugin`'s rendered descriptor can embed this itself
+  (`modDepUrl` on the root plugin's `conf`), so callers don't have to build the request by hand
+- refactor: `lx.Language`'s settings key is `list` (locale -> `{name, flag}`), not `options` (locale -> name) -
+  `options()` still returns the locale->name map for compatibility, and a new `flags()` returns locale->flag
+- fix: `lx.import(...)` splicing left a dangling or redundant trailing `;` behind in some cases (e.g. an import
+  that resolved to no-op, a path already compiled elsewhere) - the statement's own terminator is now swallowed too
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.18
 Version: v0.1.0-alpha.38
 Changes:

@@ -16,6 +16,8 @@ type JSPreprocessorConfig struct {
 	PluginCacheType string
 	AssetLinksPath  struct {
 		Inner string
+		// Outer is either a URL path served by this app, or an absolute
+		// http(s) URL when assets are published elsewhere.
 		Outer string
 	}
 	AppConfig          string

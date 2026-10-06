@@ -17,7 +17,7 @@ import (
 // To coerces v to T - a generic-typed wrapper around Value.
 func To[T any](v any) (T, error) {
 	var zero T
-	target := reflect.TypeOf(&zero).Elem()
+	target := reflect.TypeFor[T]()
 
 	result, err := Value(v, target)
 	if err != nil {

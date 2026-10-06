@@ -56,6 +56,9 @@ class LanguageSwitcher extends lx.Box {
 	// @lx:<context CLIENT:
 	clientRender(config) {
 		super.clientRender(config);
+		if (this.flags.lxEmpty()) {
+			this.flags = lx.app.lang.flags();
+		}
 		this._list = null;
 		this.click(()=>_toggle(this));
 		_setCurrent(this, lx.app.lang.current());

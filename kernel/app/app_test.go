@@ -75,6 +75,33 @@ func TestApp_Run_StartsComponentsAndReturnsOnSIGTERM(t *testing.T) {
 	}
 }
 
+func TestInitApp_RequiresHost(t *testing.T) {
+	a := app.NewApp()
+	if err := app.InitApp(a, kernel.Dict{"Port": 0}); err == nil {
+		t.Fatal("expected InitApp to fail with no \"Host\" key, got nil")
+	}
+}
+
+func TestInitApp_RequiresPort(t *testing.T) {
+	a := app.NewApp()
+	if err := app.InitApp(a, kernel.Dict{"Host": "localhost"}); err == nil {
+		t.Fatal("expected InitApp to fail with no \"Port\" key, got nil")
+	}
+}
+
+func TestInitApp_SetsHostAndPort(t *testing.T) {
+	a, err := apptest.New(kernel.Dict{"Port": 8081, "Host": "example.com"})
+	if err != nil {
+		t.Fatalf("apptest.New: %v", err)
+	}
+	if a.Port() != 8081 {
+		t.Fatalf("Port() = %d, want 8081", a.Port())
+	}
+	if a.Host() != "example.com" {
+		t.Fatalf("Host() = %q, want \"example.com\"", a.Host())
+	}
+}
+
 // waitFor polls cond every few milliseconds, failing t with msg if it
 // hasn't become true within shutdownTestTimeout.
 func waitFor(t *testing.T, cond func() bool, msg string) {

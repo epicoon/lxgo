@@ -1,4 +1,4 @@
-Local: config-local.yaml
+Import: [config-local.yaml]
 
 Templates:
   - Dir: templates

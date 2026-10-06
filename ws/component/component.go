@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"sync"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -12,6 +13,20 @@ import (
 	"github.com/epicoon/lxgo/ws"
 	"github.com/epicoon/lxgo/ws/internal/src"
 )
+
+// wsHTTPPath is the fixed path a WSServer with no Port configured (see
+// Start) mounts itself on, on the app's own HTTP router.
+const wsHTTPPath = "/ws"
+
+// wsConfigPortMissing reports whether Port was left out of app's config
+// for this WSServer entirely - as opposed to Config().Port being the
+// legitimate, pre-existing "let the OS pick an ephemeral port" value 0
+// (net.Listen's own convention), which Start's own behavior must keep
+// honoring. kernel.IApp.ConfigParam returns nil only when a path segment
+// is genuinely absent.
+func wsConfigPortMissing(s *WSServer) bool {
+	return s.App().ConfigParam(s.ConfigKey()+".Port") == nil
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * WSServer
@@ -208,8 +223,15 @@ func (s *WSServer) CreateMessage() ws.IMessage {
 	return src.NewMessage(s)
 }
 
-// Start opens the TCP listener and blocks, accepting connections until Stop
-// is called (or the listener errors) - run it in its own goroutine.
+// Start, with Components.WSServer.Port configured (including explicitly to
+// 0, net.Listen's own "let the OS pick an ephemeral port" convention),
+// opens its own TCP listener and blocks, accepting connections until Stop
+// is called (or the listener errors) - run it in its own goroutine. With
+// Port left out of the config entirely, it instead mounts the WS endpoint
+// on the app's own HTTP server (see wsHTTPPath) and returns immediately -
+// every incoming connection is then accepted and driven by that HTTP
+// server, not by this method, so there is nothing left here to block on;
+// the same `go ws.Start()` call site works unchanged either way.
 func (s *WSServer) Start() error {
 	// Deliberately not in AfterInit(): that runs synchronously inside
 	// SetAppComponent, before application code has a chance to call
@@ -218,6 +240,12 @@ func (s *WSServer) Start() error {
 	// DefaultChannel) here instead means ChannelCreatedHandler is guaranteed
 	// to already be registered by the time it fires for it.
 	s.channels.Init()
+
+	if wsConfigPortMissing(s) {
+		http.Handle(wsHTTPPath, http.HandlerFunc(s.serveUpgrade))
+		log.Printf("WS mounted on the app's own HTTP server at %s", wsHTTPPath)
+		return nil
+	}
 
 	addr := fmt.Sprintf("%s:%d", s.Config().Host, s.Config().Port)
 	ln, err := net.Listen("tcp", addr)
@@ -245,6 +273,37 @@ func (s *WSServer) Start() error {
 			c.Handle()
 		}()
 	}
+}
+
+// serveUpgrade is Start's HTTP-mounted mode handler (see wsHTTPPath) - a
+// plain http.HandlerFunc that completes the WS handshake by hijacking the
+// request's connection (src.HijackUpgrade), then drives it exactly like a
+// connection accepted by Start's own listener would be, just via
+// HandleHijacked instead of Handle.
+func (s *WSServer) serveUpgrade(w http.ResponseWriter, r *http.Request) {
+	conn, bufrw, origin, resp, err := src.HijackUpgrade(w, r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	c := src.NewConnection(s, conn)
+	if !s.Connections().CheckIPLimit(c) {
+		s.LifecycleLog("limit for IP: %v", c.IP())
+		conn.Close()
+		return
+	}
+
+	if err := src.WriteUpgradeResponse(bufrw, resp); err != nil {
+		conn.Close()
+		return
+	}
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		c.HandleHijacked(bufrw.Reader, origin)
+	}()
 }
 
 // Stop closes the listener and waits for in-flight connections and

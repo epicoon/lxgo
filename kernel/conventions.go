@@ -55,6 +55,17 @@ type IApp interface {
 	// SetPort overrides the port from config.
 	SetPort(p int)
 
+	// Port returns the app's own HTTP port.
+	Port() int
+
+	// SetHost overrides the host from config.
+	SetHost(h string)
+
+	// Host returns the app's own declared host - the value other code
+	// uses to know where this app is reachable at (e.g. to tell its own
+	// address apart from an external one).
+	Host() string
+
 	// ConfigPath returns the path config.yaml was loaded from.
 	ConfigPath() string
 
@@ -445,6 +456,16 @@ type IHandleContext interface {
 	// Params returns all of the context's parameters.
 	Params() map[string]any
 
+	// SetPathSegments replaces the context's path-parameter values -
+	// matched out of the route's own "{name}"/"*{name}" segments (see
+	// IRouter.RegisterResource).
+	SetPathSegments(segments map[string]string)
+
+	// PathSegments returns the route's path-parameter values, keyed by
+	// name - nil if the matched route had none (an exact, placeholder-free
+	// route, or this context was never routed at all).
+	PathSegments() map[string]string
+
 	// Set stores a value under key, for use across middleware/the resource.
 	Set(key any, value any)
 
@@ -506,6 +527,10 @@ type IHttpResource interface {
 
 	// Method returns the HTTP method.
 	Method() string
+
+	// PathSegments returns the matched route's path-parameter values, by
+	// name - see IHandleContext.PathSegments.
+	PathSegments() map[string]string
 
 	// ResponseWriter returns the underlying http.ResponseWriter.
 	ResponseWriter() http.ResponseWriter

@@ -1,6 +1,6 @@
 # Authentication microservice
 
-> Actual version: `v0.1.0-alpha.8`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.9`. [Details](https://github.com/epicoon/lxgo/tree/master/auth/CHANGE_LOG.md)
 
 There are ways to use the service:
 * [Full ready-to-use solution for lxgo/kernel applications](#full-sol)
@@ -185,7 +185,7 @@ what's specific to `lxgo/auth`.
 
 1. **Configuration.** `config.yaml` holds the shared/committed part (templates, session cookie name); anything
    machine-specific (`Port`, `Database`, `Settings`) belongs in a git-ignored `config-local.yaml` referenced via
-   `Local: config-local.yaml` — see kernel's [local config](https://github.com/epicoon/lxgo/tree/master/kernel#lconfig).
+   `Import: [config-local.yaml]` — see kernel's [import config](https://github.com/epicoon/lxgo/tree/master/kernel#limport).
 2. **Database.** Add a `Database` section (in the local config, per above) — see kernel's [database
    connection](https://github.com/epicoon/lxgo/tree/master/kernel#db) for the exact keys.
 3. **Run migrations** to create the schema: `go run . migrator:up` (see [Console commands](#cmds) below and

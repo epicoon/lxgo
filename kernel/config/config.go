@@ -1,9 +1,11 @@
 // Package config loads and reads a kernel.Dict from YAML - Load reads the
-// file at path, merges in a local override file (the "Local" key) if
-// present, and substitutes "${VAR}"/"${VAR:-default}" placeholders from a
-// .env file and the process environment (the "Env" key). GetParam/HasParam/
-// SetParam then read/write individual parameters, with GetParam coercing
-// between common types (e.g. a YAML string into an int).
+// file at path, merges in any files named by its own "Import" key (a list
+// of paths, each relative to the file that names it, each resolved the
+// same cascading way itself - see Load's own doc comment), and substitutes
+// "${VAR}"/"${VAR:-default}" placeholders from a .env file and the process
+// environment (the "Env" key). GetParam/HasParam/SetParam then read/write
+// individual parameters, with GetParam coercing between common types (e.g.
+// a YAML string into an int).
 package config
 
 import (
@@ -11,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -18,29 +21,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Load reads and parses the YAML config file at path, merging in a local
-// override file and applying environment-variable substitution - see the
-// package doc comment for the full behavior.
+// Load reads and parses the YAML config file at path, merging in its own
+// "Import" cascade (see loadCascade) and applying environment-variable
+// substitution - see the package doc comment for the full behavior.
 func Load(path string) (kernel.IDict, error) {
-	conf, err := load(path)
+	conf, err := loadCascade(path)
 	if err != nil {
 		return nil, err
 	}
 
 	dir := filepath.Dir(path)
-
-	if HasParam(conf, "Local") {
-		lPath, err := GetParam[string](conf, "Local")
-		if err != nil {
-			return conf, fmt.Errorf("wrong type for local config path: %v", err)
-		}
-		lPath = filepath.Join(dir, lPath)
-		lConf, err := load(lPath)
-		if err != nil {
-			return conf, fmt.Errorf("can not read local config: %v", err)
-		}
-		mergeRecursive(*conf, *lConf)
-	}
 
 	envPath := filepath.Join(dir, ".env")
 	required := false
@@ -102,6 +92,44 @@ func load(path string) (*kernel.Dict, error) {
 	}
 
 	return &config, nil
+}
+
+// loadCascade reads the YAML config file at path, then merges in each file
+// named by its own top-level "Import" key, in array order - a later entry
+// overwrites fields set by an earlier one or by path's own content (see
+// mergeRecursive). Each import path is relative to path's own directory,
+// not necessarily the original, top-level config's - and is itself fully
+// resolved the same way first (its own "Import", if any, included), so
+// import chains cascade to any depth.
+func loadCascade(path string) (*kernel.Dict, error) {
+	conf, err := load(path)
+	if err != nil {
+		return nil, err
+	}
+
+	rawImports, ok := (*conf)["Import"]
+	if !ok {
+		return conf, nil
+	}
+	imports, ok := rawImports.([]any)
+	if !ok {
+		return conf, fmt.Errorf("wrong type for \"Import\": expected a list of paths")
+	}
+
+	dir := filepath.Dir(path)
+	for i, raw := range imports {
+		iPath, ok := raw.(string)
+		if !ok {
+			return conf, fmt.Errorf("wrong type for \"Import\"[%d]: expected a string path", i)
+		}
+		iConf, err := loadCascade(filepath.Join(dir, iPath))
+		if err != nil {
+			return conf, fmt.Errorf("can not read imported config %q: %w", iPath, err)
+		}
+		mergeRecursive(*conf, *iConf)
+	}
+
+	return conf, nil
 }
 
 func mergeRecursive(dst, src kernel.Dict) {
@@ -174,11 +202,11 @@ func envToConfig(conf *kernel.Dict, env map[string]any) error {
 	for k, v := range *conf {
 		str, ok := v.(string)
 		if ok {
-			if !strings.HasPrefix(str, "${") {
+			if !strings.Contains(str, "${") {
 				continue
 			}
 
-			val, err := defineEnvVal(str, env)
+			val, err := substituteEnvVars(str, env)
 			if err != nil {
 				return err
 			}
@@ -205,11 +233,11 @@ func envToSet(set any, env map[string]any) error {
 		for i, el := range arr {
 			str, ok := el.(string)
 			if ok {
-				if !strings.HasPrefix(str, "${") {
+				if !strings.Contains(str, "${") {
 					continue
 				}
 
-				val, err := defineEnvVal(str, env)
+				val, err := substituteEnvVars(str, env)
 				if err != nil {
 					return err
 				}
@@ -224,6 +252,30 @@ func envToSet(set any, env map[string]any) error {
 		}
 	}
 	return nil
+}
+
+// envVarPattern matches one "${VAR}"/"${VAR:-default}" placeholder.
+var envVarPattern = regexp.MustCompile(`\$\{([^}]*)\}`)
+
+// substituteEnvVars replaces every "${VAR}"/"${VAR:-default}" placeholder
+// in str with its resolved value.
+func substituteEnvVars(str string, env map[string]any) (string, error) {
+	var firstErr error
+	result := envVarPattern.ReplaceAllStringFunc(str, func(match string) string {
+		if firstErr != nil {
+			return match
+		}
+		val, err := defineEnvVal(match, env)
+		if err != nil {
+			firstErr = err
+			return match
+		}
+		return fmt.Sprint(val)
+	})
+	if firstErr != nil {
+		return "", firstErr
+	}
+	return result, nil
 }
 
 func defineEnvVal(str string, env map[string]any) (any, error) {

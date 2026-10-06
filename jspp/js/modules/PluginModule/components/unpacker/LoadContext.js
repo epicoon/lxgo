@@ -31,7 +31,8 @@ class LoadContext {
 		let modulesRequest = lx.app.dependencies.promiseModules({
 			modules: info.assets.modules,
 			immediately: false,
-			depend: true
+			depend: true,
+			url: this.pluginsInfo[this.rootKey].conf.modDepUrl
 		});
 		if (modulesRequest) synchronizer.register(modulesRequest);
 

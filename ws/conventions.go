@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"bufio"
 	"time"
 
 	"github.com/epicoon/lxgo/kernel"
@@ -72,8 +73,13 @@ type IWSServer interface {
 	// SetChannelCreatedHandler, or nil if none was set.
 	ChannelCreatedHandler() ChannelCreatedHandler
 
-	// Start opens the TCP listener and blocks, accepting connections until
-	// Stop is called (or the listener errors) - run it in its own goroutine.
+	// Start, with a port configured for this server, opens its own TCP
+	// listener and blocks, accepting connections until Stop is called (or
+	// the listener errors) - run it in its own goroutine. With no port
+	// configured, it instead mounts the WS endpoint on the application's
+	// own HTTP server and returns immediately - see the implementation's
+	// own config docs (e.g. component.WSServer's README) for the exact
+	// config key this switches on.
 	Start() error
 	// Stop closes the listener and waits for in-flight connections and
 	// background sweepers to finish.
@@ -169,6 +175,13 @@ type IConnection interface {
 	// Handle runs the connection's full lifecycle (handshake, origin check,
 	// message loop) - blocks until the connection closes.
 	Handle()
+	// HandleHijacked is Handle's counterpart for a connection whose WS
+	// handshake was already completed elsewhere (see an IWSServer's
+	// HTTP-mounted mode) - everything after a successful handshake (origin
+	// check, message loop) is otherwise identical. reader must be
+	// positioned right after the handshake's blank line. Blocks until the
+	// connection closes.
+	HandleHijacked(reader *bufio.Reader, origin string)
 	// Send encodes payload as a WS frame of the given type ("text"/"binary"/
 	// "close"/"ping"/"pong") and writes it to the socket.
 	Send(payload any, typ string, masked bool) error

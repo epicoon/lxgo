@@ -1,4 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.10.06
+Version: v0.1.0-alpha.9
+Changes:
+- chore: `config.yaml`/`config-local-example.yaml`/`testutils/config.yaml` updated for `lxgo-kernel`'s config
+  changes - `Local: config-local.yaml` is now `Import: [config-local.yaml]`, and `Host` is now a required key
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.08.06
 Version: v0.1.0-alpha.8
 Changes:

@@ -13,6 +13,7 @@ import (
 	"io"
 	"maps"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -184,7 +185,23 @@ func (c *Connection) Handle() {
 
 	// Successful handshake
 	c.server.LifecycleLog("handshake done for %s", c.ID())
+	c.run(reader, origin)
+}
 
+// HandleHijacked drives a Connection whose WS handshake was already
+// completed by an http.Handler (see HijackUpgrade/WriteUpgradeResponse and
+// component.WSServer's HTTP-mounted mode) - everything after a successful
+// handshake (origin check, message loop) is otherwise identical to Handle.
+func (c *Connection) HandleHijacked(reader *bufio.Reader, origin string) {
+	defer c.Close()
+	c.server.LifecycleLog("handshake done for %s", c.ID())
+	c.run(reader, origin)
+}
+
+// run drives a Connection after a successful WS handshake (origin check,
+// handshake-ack send, message loop) - shared by Handle and HandleHijacked,
+// which differ only in how the handshake itself happened.
+func (c *Connection) run(reader *bufio.Reader, origin string) {
 	// Origin check - runs right after the WS upgrade so a real close code
 	// (1002) can be delivered to the client; a raw HTTP-level rejection
 	// wouldn't carry a meaningful CloseEvent.code in a browser.
@@ -452,42 +469,98 @@ func (c *Connection) handshake() (*bufio.Reader, string, error) {
 		}
 	}
 
-	secKey, ok := headers["sec-websocket-key"]
-	if !ok || secKey == "" {
-		return nil, "", errors.New("missing Sec-WebSocket-Key")
+	resp, err := buildUpgradeResponse(func(key string) string {
+		return headers[strings.ToLower(key)]
+	})
+	if err != nil {
+		return nil, "", err
 	}
 
-	verStr := headers["sec-websocket-version"]
+	if _, err := c.conn.Write([]byte(resp)); err != nil {
+		return nil, "", fmt.Errorf("write handshake response: %w", err)
+	}
+
+	return reader, headers["origin"], nil
+}
+
+// buildUpgradeResponse validates a WS upgrade request's headers (read
+// through get, a case-insensitive single-header lookup) and returns the raw
+// "101 Switching Protocols" response text to write back - the same
+// validation/response-building logic regardless of whether the headers came
+// from a hand-parsed raw request (handshake, above) or an already-parsed
+// *http.Request (HijackUpgrade, below).
+func buildUpgradeResponse(get func(key string) string) (string, error) {
+	secKey := get("Sec-WebSocket-Key")
+	if secKey == "" {
+		return "", errors.New("missing Sec-WebSocket-Key")
+	}
+
+	verStr := get("Sec-WebSocket-Version")
 	if verStr == "" {
 		verStr = "13"
 	}
 	ver, err := strconv.Atoi(verStr)
 	if err != nil || ver < 6 {
-		return nil, "", fmt.Errorf("unsupported websocket version: %s", verStr)
+		return "", fmt.Errorf("unsupported websocket version: %s", verStr)
 	}
 
-	// Compute Sec-WebSocket-Accept
 	accept := computeAcceptKey(secKey)
 
-	// Prepare response
 	resp := "HTTP/1.1 101 Switching Protocols\r\n"
 	resp += "Upgrade: websocket\r\n"
 	resp += "Connection: Upgrade\r\n"
 	resp += "Sec-WebSocket-Accept: " + accept + "\r\n"
 
 	// If Subprotocol used: header "sec-websocket-protocol" need to be returned
-	if proto, ok := headers["sec-websocket-protocol"]; ok && proto != "" {
+	if proto := get("Sec-WebSocket-Protocol"); proto != "" {
 		//TODO - now return clients header
 		resp += "Sec-WebSocket-Protocol: " + proto + "\r\n"
 	}
 	resp += "\r\n"
 
-	_, err = c.conn.Write([]byte(resp))
-	if err != nil {
-		return nil, "", fmt.Errorf("write handshake response: %w", err)
+	return resp, nil
+}
+
+// HijackUpgrade validates r as a WS upgrade request and hijacks w's
+// underlying connection - the HTTP-mounted counterpart to handshake, for a
+// caller that mounted a WS endpoint on an existing http.Handler instead of
+// owning its own listener (see component.WSServer's HTTP-mounted mode).
+func HijackUpgrade(w http.ResponseWriter, r *http.Request) (conn net.Conn, bufrw *bufio.ReadWriter, origin, resp string, err error) {
+	if !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+		return nil, nil, "", "", errors.New("not a websocket upgrade request")
 	}
 
-	return reader, headers["origin"], nil
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		return nil, nil, "", "", errors.New("response writer does not support hijacking")
+	}
+
+	resp, err = buildUpgradeResponse(r.Header.Get)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	conn, bufrw, err = hijacker.Hijack()
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("hijack: %w", err)
+	}
+
+	return conn, bufrw, r.Header.Get("Origin"), resp, nil
+}
+
+// WriteUpgradeResponse writes resp (as returned by HijackUpgrade) to a
+// hijacked connection's buffered writer and flushes it - split out from
+// HijackUpgrade so a caller can run its own checks on the already-hijacked
+// connection (see HijackUpgrade's own doc comment) before committing to a
+// response the client will read as a successful upgrade.
+func WriteUpgradeResponse(bufrw *bufio.ReadWriter, resp string) error {
+	if _, err := bufrw.WriteString(resp); err != nil {
+		return fmt.Errorf("write handshake response: %w", err)
+	}
+	if err := bufrw.Flush(); err != nil {
+		return fmt.Errorf("flush handshake response: %w", err)
+	}
+	return nil
 }
 
 // checkOrigin reports whether origin is acceptable given the configured

@@ -5,8 +5,8 @@ go 1.23.2
 require (
 	github.com/epicoon/lxgo/auth_client v0.1.0-alpha.5
 	github.com/epicoon/lxgo/cmd v0.1.0-alpha.10
-	github.com/epicoon/lxgo/jspp v0.1.0-alpha.38
-	github.com/epicoon/lxgo/kernel v0.1.0-alpha.31
+	github.com/epicoon/lxgo/jspp v0.1.0-alpha.39
+	github.com/epicoon/lxgo/kernel v0.1.0-alpha.32
 	github.com/epicoon/lxgo/migrator v0.1.0-alpha.10
 	github.com/epicoon/lxgo/session v0.1.0-alpha.7
 	github.com/stretchr/testify v1.10.0

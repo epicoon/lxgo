@@ -57,5 +57,27 @@ func ResolvePluginPath(pp jspp.IPreprocessor, path string) (string, bool) {
 		return filepath.Join(plugin.Pathfinder().GetRoot(), matches[2]), true
 	}
 
+	// {@param(Dotted.Config.Path)}/rest/of/path - substitutes the app's
+	// own config value (kernel.IApp.ConfigParam) at that dotted path. The
+	// two failure cases below return ("", true), not ("", false) - the
+	// "{@param(...)}" syntax was recognized, so the caller must not fall
+	// through to treating the raw, unsubstituted directive text as a
+	// literal path (see pathfinder.GetAbsPath).
+	paramRe := regexp.MustCompile(`^\{@param\(([^)]+?)\)\}(.*)$`)
+	paramMatches := paramRe.FindStringSubmatch(path)
+	if len(paramMatches) == 3 {
+		val := pp.App().ConfigParam(paramMatches[1])
+		if val == nil {
+			pp.LogError("config param '%s' not found", paramMatches[1])
+			return "", true
+		}
+		str, ok := val.(string)
+		if !ok {
+			pp.LogError("config param '%s' is not a string (got %T)", paramMatches[1], val)
+			return "", true
+		}
+		return str + paramMatches[2], true
+	}
+
 	return "", false
 }

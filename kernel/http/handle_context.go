@@ -14,14 +14,15 @@ import (
 
 // HandleContext is the default kernel.IHandleContext implementation.
 type HandleContext struct {
-	app      kernel.IApp
-	route    string
-	method   string
-	writer   http.ResponseWriter
-	request  *http.Request
-	resource kernel.IHttpResource
-	params   map[string]any
-	metaData map[any]any
+	app          kernel.IApp
+	route        string
+	method       string
+	writer       http.ResponseWriter
+	request      *http.Request
+	resource     kernel.IHttpResource
+	params       map[string]any
+	pathSegments map[string]string
+	metaData     map[any]any
 }
 
 var _ kernel.IHandleContext = (*HandleContext)(nil)
@@ -98,6 +99,16 @@ func (c *HandleContext) SetParams(params map[string]any) {
 // Params returns all of the context's parameters.
 func (c *HandleContext) Params() map[string]any {
 	return c.params
+}
+
+// SetPathSegments replaces the context's path-parameter values.
+func (c *HandleContext) SetPathSegments(segments map[string]string) {
+	c.pathSegments = segments
+}
+
+// PathSegments returns the route's path-parameter values, by name.
+func (c *HandleContext) PathSegments() map[string]string {
+	return c.pathSegments
 }
 
 // Set stores a value under key, for use across middleware/the resource.

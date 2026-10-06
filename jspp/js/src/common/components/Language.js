@@ -4,7 +4,7 @@ class Language extends lx.AppComponentSettable {
      * @returns {string}
      */
     defaultSettingKey() {
-        return 'options';
+        return 'list';
     }
 
     /**
@@ -18,9 +18,24 @@ class Language extends lx.AppComponentSettable {
      * @returns {map[string]string}
      */
     options() {
-        if (this.settings.options)
-            return this.settings.options;
-        return {'en-EN': 'English'};
+        if (!this.settings.list)
+            return {'en-EN': 'English'};
+        let res = {};
+        for (let i in this.settings.list)
+            res[i] = this.settings.list[i].name;
+        return res;
+    }
+
+    /**
+     * @returns {map[string]string}
+     */
+    flags() {
+        if (!this.settings.list)
+            return {};
+        let res = {};
+        for (let i in this.settings.list)
+            res[i] = this.settings.list[i].flag;
+        return res;
     }
 
     /**
@@ -30,7 +45,7 @@ class Language extends lx.AppComponentSettable {
         if (this.current() == val) return;
 
         if (val != 'en-EN') {
-            if (!this.settings.options || !(val in this.settings.options)) {
+            if (!this.settings.list || !(val in this.settings.list)) {
                 lx.logError('Unknown language ' + val);
                 return;
             }

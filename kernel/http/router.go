@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -18,8 +17,34 @@ import (
 type Router struct {
 	app        kernel.IApp
 	resources  map[string]kernel.HttpResourcesList
+	templates  []*routeTemplate
 	assetsMap  map[string]string
 	middleware []kernel.FMiddleware
+}
+
+// routeTokenKind distinguishes a route template's segment kinds - see
+// parseRouteTemplate.
+type routeTokenKind int
+
+const (
+	routeTokenLiteral routeTokenKind = iota
+	routeTokenParam
+	routeTokenWildcard
+)
+
+// routeToken is one parsed segment of a route template.
+type routeToken struct {
+	kind    routeTokenKind
+	literal string // routeTokenLiteral
+	name    string // routeTokenParam or routeTokenWildcard
+}
+
+// routeTemplate is one registered route containing at least one "{name}" or
+// "*{name}" segment - see parseRouteTemplate and Router's own doc comment.
+type routeTemplate struct {
+	raw      string // the route string as registered, to merge re-registrations
+	tokens   []routeToken
+	handlers kernel.HttpResourcesList
 }
 
 var _ kernel.IRouter = (*Router)(nil)
@@ -79,17 +104,34 @@ func (router *Router) RegisterResources(routes kernel.HttpResourcesList) {
 }
 
 // RegisterResource registers a single route/method - an empty method
-// matches any HTTP method not otherwise registered for the route.
+// matches any HTTP method not otherwise registered for the route. route may
+// be a template (see Router's own doc comment) - panics if a "*{name}"
+// segment isn't route's last one, if more than one appears, or if either
+// placeholder form is given an empty name.
 func (router *Router) RegisterResource(route string, method string, cResource kernel.CHttpResource) {
 	method = strings.ToUpper(method)
+	if method == "" {
+		method = "ALL"
+	}
+
+	if tokens, isTemplate := parseRouteTemplate(route); isTemplate {
+		for _, t := range router.templates {
+			if t.raw == route {
+				t.handlers[method] = cResource
+				return
+			}
+		}
+		router.templates = append(router.templates, &routeTemplate{
+			raw:      route,
+			tokens:   tokens,
+			handlers: kernel.HttpResourcesList{method: cResource},
+		})
+		return
+	}
 
 	_, exists := router.resources[route]
 	if !exists {
 		router.resources[route] = make(kernel.HttpResourcesList)
-	}
-
-	if method == "" {
-		method = "ALL"
 	}
 
 	router.resources[route][method] = cResource
@@ -97,23 +139,14 @@ func (router *Router) RegisterResource(route string, method string, cResource ke
 
 // RegisterFileAssets registers static file routes: each key is a URL
 // prefix, each value the directory it's served from (resolved via the
-// app's pathfinder, if any).
+// app's pathfinder, if any). Served through the router's own pipeline
+// (a "{urlPrefix}*{path}" template route, see RegisterResource) like any
+// other resource - middleware runs for these requests too.
 func (router *Router) RegisterFileAssets(assets map[string]string) {
 	maps.Copy(router.assetsMap, assets)
 	for urlPrefix, dir := range assets {
-		http.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var filePath string
-			if router.app == nil {
-				filePath = filepath.Join(dir, r.URL.Path)
-			} else {
-				filePath = filepath.Join(router.app.Pathfinder().GetAbsPath(dir), r.URL.Path)
-				router.app.Events().Trigger(kernel.EVENT_APP_BEFORE_SEND_ASSET, kernel.Dict{
-					"request": r,
-					"file":    filePath,
-				})
-			}
-			http.ServeFile(w, r, filePath)
-		})))
+		route := strings.TrimSuffix(urlPrefix, "/") + "/*{" + assetPathParam + "}"
+		router.RegisterResource(route, "", newAssetHandler(router.app, dir))
 	}
 }
 
@@ -188,7 +221,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestedRoute, _ = strings.CutSuffix(requestedRoute, "/")
 	}
 
-	cResource, code := router.defineResource(requestedRoute, r.Method)
+	cResource, pathSegments, code := router.defineResource(requestedRoute, r.Method)
 	if code != 0 {
 		switch code {
 		case http.StatusNotFound:
@@ -206,6 +239,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	res := cResource()
 	res.Init()
+	res.Context().SetPathSegments(pathSegments)
 	if response := router.Handle(res, requestedRoute, w, r); response != nil {
 		ctx := res.Context()
 		if router.app != nil {
@@ -222,28 +256,155 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * PRIVATE
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-func (router *Router) defineResource(requestedRoute, method string) (kernel.CHttpResource, int) {
-	hList, ok := router.resources[requestedRoute]
-	if !ok {
-		return nil, http.StatusNotFound
+// defineResource resolves requestedRoute/method to a resource constructor -
+// an exact (placeholder-free) route match always wins over every template
+// (see Router's own doc comment); only once no exact route matches at all
+// does it fall back to the best-matching template, if any. pathSegments is
+// non-nil only for a template match.
+func (router *Router) defineResource(requestedRoute, method string) (cResource kernel.CHttpResource, pathSegments map[string]string, code int) {
+	if hList, ok := router.resources[requestedRoute]; ok {
+		cResource, code = pickHandler(hList, method)
+		return cResource, nil, code
 	}
 
-	var cHandler kernel.CHttpResource
-	try, exists := hList[method]
-	if exists {
-		cHandler = try
-	} else {
-		try, exists := hList["ALL"]
-		if exists {
-			cHandler = try
+	segments := splitPath(requestedRoute)
+	var best *templateMatch
+	var bestHandlers kernel.HttpResourcesList
+	for _, t := range router.templates {
+		m, ok := matchTemplate(t, segments)
+		if !ok {
+			continue
+		}
+		if best == nil || m.moreSpecificThan(*best) {
+			best = &m
+			bestHandlers = t.handlers
+		}
+	}
+	if best == nil {
+		return nil, nil, http.StatusNotFound
+	}
+
+	cResource, code = pickHandler(bestHandlers, method)
+	if code != 0 {
+		return nil, nil, code
+	}
+	return cResource, best.params, 0
+}
+
+// pickHandler selects method's handler from hList, falling back to "ALL" -
+// shared by both the exact-route and template-route resolution paths.
+func pickHandler(hList kernel.HttpResourcesList, method string) (kernel.CHttpResource, int) {
+	if try, exists := hList[method]; exists {
+		return try, 0
+	}
+	if try, exists := hList["ALL"]; exists {
+		return try, 0
+	}
+	return nil, http.StatusMethodNotAllowed
+}
+
+// splitPath splits route into its "/"-delimited segments, dropping the
+// leading "/" - nil for the root route ("/") or an empty string.
+func splitPath(route string) []string {
+	trimmed := strings.TrimPrefix(route, "/")
+	if trimmed == "" {
+		return nil
+	}
+	return strings.Split(trimmed, "/")
+}
+
+// parseRouteTemplate splits route into tokens, recognizing "{name}" (exactly
+// one path segment) and "*{name}" (every remaining segment, greedily, down
+// to zero) placeholders. ok is false (tokens nil) for a route with no
+// placeholder segment at all - the common case, registered as an exact
+// route instead. Panics on a malformed template (see RegisterResource).
+func parseRouteTemplate(route string) (tokens []routeToken, ok bool) {
+	segments := splitPath(route)
+	tokens = make([]routeToken, len(segments))
+	hasPlaceholder := false
+
+	for i, seg := range segments {
+		switch {
+		case strings.HasPrefix(seg, "*{") && strings.HasSuffix(seg, "}"):
+			name := seg[2 : len(seg)-1]
+			if name == "" {
+				panic(fmt.Sprintf("lxgo-kernel: route %q has an unnamed wildcard segment", route))
+			}
+			if i != len(segments)-1 {
+				panic(fmt.Sprintf("lxgo-kernel: route %q's wildcard segment %q must be its last one", route, seg))
+			}
+			tokens[i] = routeToken{kind: routeTokenWildcard, name: name}
+			hasPlaceholder = true
+		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}"):
+			name := seg[1 : len(seg)-1]
+			if name == "" {
+				panic(fmt.Sprintf("lxgo-kernel: route %q has an unnamed path-parameter segment", route))
+			}
+			tokens[i] = routeToken{kind: routeTokenParam, name: name}
+			hasPlaceholder = true
+		default:
+			tokens[i] = routeToken{kind: routeTokenLiteral, literal: seg}
 		}
 	}
 
-	if cHandler == nil {
-		return nil, http.StatusMethodNotAllowed
+	if !hasPlaceholder {
+		return nil, false
+	}
+	return tokens, true
+}
+
+// templateMatch is one routeTemplate's successful match against a request's
+// path segments - see matchTemplate.
+type templateMatch struct {
+	params      map[string]string
+	hasWildcard bool
+	paramCount  int
+}
+
+// moreSpecificThan reports whether m should be preferred over other when
+// both match the same request (see Router's own doc comment): no wildcard
+// beats having one; otherwise fewer named parameters wins.
+func (m templateMatch) moreSpecificThan(other templateMatch) bool {
+	if m.hasWildcard != other.hasWildcard {
+		return !m.hasWildcard
+	}
+	return m.paramCount < other.paramCount
+}
+
+// matchTemplate reports whether segments (see splitPath) matches t's
+// tokens, and if so, the resulting path-parameter values and the match's
+// specificity.
+func matchTemplate(t *routeTemplate, segments []string) (templateMatch, bool) {
+	params := make(map[string]string, len(t.tokens))
+	paramCount := 0
+
+	for i, tok := range t.tokens {
+		switch tok.kind {
+		case routeTokenLiteral:
+			if i >= len(segments) || segments[i] != tok.literal {
+				return templateMatch{}, false
+			}
+		case routeTokenParam:
+			if i >= len(segments) {
+				return templateMatch{}, false
+			}
+			params[tok.name] = segments[i]
+			paramCount++
+		case routeTokenWildcard:
+			// Always the template's last token (enforced by
+			// parseRouteTemplate) - consumes every remaining segment,
+			// including none (i == len(segments) is a valid, empty slice).
+			params[tok.name] = strings.Join(segments[i:], "/")
+			return templateMatch{params: params, hasWildcard: true, paramCount: paramCount}, true
+		}
 	}
 
-	return cHandler, 0
+	// No wildcard reached: every token must have consumed exactly one
+	// segment, with nothing left over.
+	if len(segments) != len(t.tokens) {
+		return templateMatch{}, false
+	}
+	return templateMatch{params: params, paramCount: paramCount}, true
 }
 
 func parseRoute(route string) (string, string) {

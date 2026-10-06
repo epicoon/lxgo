@@ -41,6 +41,7 @@ const defaultShutdownTimeout = 5 * time.Second
 type App struct {
 	self            kernel.IApp
 	port            int
+	host            string
 	pathfinder      kernel.IPathfinder
 	config          kernel.IDict
 	manageSocket    *manageSocket
@@ -98,7 +99,13 @@ func InitApp(app kernel.IApp, c kernel.IDict) error {
 		return fmt.Errorf("can not create new application: %s", err)
 	}
 
+	host, err := config.GetParam[string](c, "Host")
+	if err != nil {
+		return fmt.Errorf("can not create new application: %s", err)
+	}
+
 	app.SetPort(port)
+	app.SetHost(host)
 	app.SetConfig(c)
 
 	if config.HasParam(c, "ManageSocket") {
@@ -166,6 +173,21 @@ func (app *App) ConfigPath() string {
 // SetPort overrides the port from config.
 func (app *App) SetPort(p int) {
 	app.port = p
+}
+
+// Port returns the app's own HTTP port.
+func (app *App) Port() int {
+	return app.port
+}
+
+// SetHost overrides the host from config.
+func (app *App) SetHost(h string) {
+	app.host = h
+}
+
+// Host returns the app's own declared host.
+func (app *App) Host() string {
+	return app.host
 }
 
 // SetConfig replaces the application's config.

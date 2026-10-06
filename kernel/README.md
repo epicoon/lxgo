@@ -1,6 +1,6 @@
 # The package will help you create web-server
 
-> Actual version: `v0.1.0-alpha.31`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.32`. [Details](https://github.com/epicoon/lxgo/tree/master/kernel/CHANGE_LOG.md)
 
 You can create your own web-server - an application with components, routing and requests handling.
 
@@ -19,13 +19,14 @@ You can create your own web-server - an application with components, routing and
 
 ## Useful features:
 
+* [Path-parameter routes](#path-params)
 * [Templates](#tpl)
 * [Components](#components)
 * [Events](#events)
 * [Proxy API](#proxy)
 * [Database connection](#db)
 * [Graceful shutdown](#shutdown)
-* [Local config](#lconfig)
+* [Import config](#limport)
 * [Local managing](#lmanaging)
 
 
@@ -57,6 +58,10 @@ You can create your own web-server - an application with components, routing and
 
 ### <a name="link3">3. Create app configuration file `config.yaml` in the root directory of the app:</a>
 ```yaml
+# The host this app is reachable at - a declared value, used by other
+# code that needs to know this app's own address (e.g. to tell it apart
+# from an external one).
+Host: localhost
 # Port your app will use
 Port: 8081
 ```
@@ -389,6 +394,31 @@ func main() {
 
 ## Features
 
+### <a name="path-params">Path-parameter routes</a>
+A route may contain named placeholder segments, matched against an incoming
+request only once no exact (placeholder-free) route matches that same path
+at all - an exact route always wins over a template, however many templates
+would also match:
+```go
+router.RegisterResources(kernel.HttpResourcesList{
+    "/game/deps/{nodeKey}": NewGameDepsHandler,
+})
+```
+`{name}` matches exactly one path segment. `*{name}` - allowed only as a
+route's last segment, at most once - greedily matches every remaining
+segment, including none at all (`"/assets/*{rest}"` matches `/assets` too,
+with `rest` empty). When more than one template matches the same request,
+the one using fewer `*{name}` segments wins; a tie between two equally
+specific templates is broken by registration order.
+
+The matched values are available in the handler via `PathSegments()`:
+```go
+func (h *MyHandler) Run() kernel.IHttpResponse {
+    value := h.PathSegments()["valueNameInPath"]
+    // ...
+}
+```
+
 ### <a name="tpl">Templates</a>
 You can organize templates in different directories using `namespace`. An example of the application configuration:
 ```yaml
@@ -687,18 +717,24 @@ app.Final()
 ```
 
 
-### <a name="lconfig">Local config</a>
-You can use local configuration file:
+### <a name="limport">Import config</a>
+A config file can pull in other files via a top-level `Import` key - a
+list of paths, each relative to the file that names it. They're merged in
+array order on top of the current file's own content (a later entry
+overwrites fields set by an earlier one), recursively - each file can have
+its own `Import` too, resolved the same way.
+
+The common case is a git-ignored local override:
 1. Create the file `config-local.yaml` next to the `config.yaml` file
 ```yaml
 Params:
   LocalParam: test
 ```
-2. Add parameter `Local` to your `config.yaml` file
+2. Add parameter `Import` to your `config.yaml` file
 ```yaml
-Local: config-local.yaml
+Import: [config-local.yaml]
 ```
-3. Don't forget to set ignore local file by your VCS
+3. Don't forget to git-ignore the local file
 
 
 ### <a name="lmanaging">Local managing</a>

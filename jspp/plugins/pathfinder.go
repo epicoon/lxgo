@@ -25,9 +25,11 @@ func newPluginPathfinder(plugin jspp.IPlugin) *pluginPathfinder {
 
 // GetAbsPath resolves path against the plugin's root directory, additionally
 // supporting "@alias/..." (delegated to the app's own pathfinder),
-// "{plugin:Name}/rest/of/path" (another plugin's root) and
+// "{plugin:Name}/rest/of/path" (another plugin's root),
 // "{snippet:PluginName.Key}" (a snippet registered in another plugin's
-// server.snippetsMap) - see jspp doc/plugins.md's path syntax.
+// server.snippetsMap) and "{@param(Dotted.Config.Path)}/rest/of/path" (the
+// app's own config value at that path) - see jspp doc/plugins.md's path
+// syntax.
 func (p *pluginPathfinder) GetAbsPath(path string) string {
 	if len(path) == 0 {
 		return ""

@@ -1,4 +1,4 @@
-module github.com/epicoon/lxgo/session
+module github.com/epicoon/lxgo/cors
 
 go 1.23.2
 

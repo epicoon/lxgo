@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -13,6 +14,18 @@ type testResource struct {
 	ran               bool
 	processErrorsResp kernel.IHttpResponse
 	cReqForm          kernel.CForm
+	label             string
+}
+
+// labeledResource returns a kernel.CHttpResource constructing a
+// *testResource tagged with label, so a test can tell which of several
+// registered routes/templates actually got matched.
+func labeledResource(label string) kernel.CHttpResource {
+	return func() kernel.IHttpResource {
+		r := newTestResource()
+		r.label = label
+		return r
+	}
 }
 
 func newTestResource() *testResource {
@@ -173,4 +186,168 @@ func TestProcessResource_BeforeRunCallbacks_RunInOrder(t *testing.T) {
 	if len(order) != len(want) || order[0] != want[0] || order[1] != want[1] {
 		t.Fatalf("got %v, want %v", order, want)
 	}
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Template routes
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+func TestRouter_Template_MatchesAndExtractsParam(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/game/deps/{nodeKey}", "", labeledResource("deps"))
+
+	cResource, params, code := router.defineResource("/game/deps/abc123", "GET")
+
+	if code != 0 {
+		t.Fatalf("expected a match, got code %d", code)
+	}
+	res := cResource().(*testResource)
+	if res.label != "deps" {
+		t.Fatalf("expected the template route's handler, got label %q", res.label)
+	}
+	if params["nodeKey"] != "abc123" {
+		t.Fatalf("expected nodeKey=abc123, got %#v", params)
+	}
+}
+
+func TestRouter_ExactRouteAlwaysWinsOverTemplate(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/game/deps/{nodeKey}", "", labeledResource("template"))
+	router.RegisterResource("/game/deps/abc123", "", labeledResource("exact"))
+
+	cResource, params, code := router.defineResource("/game/deps/abc123", "GET")
+
+	if code != 0 {
+		t.Fatalf("expected a match, got code %d", code)
+	}
+	res := cResource().(*testResource)
+	if res.label != "exact" {
+		t.Fatalf("expected the exact route to win, got label %q", res.label)
+	}
+	if params != nil {
+		t.Fatalf("expected no path segments for an exact-route match, got %#v", params)
+	}
+}
+
+func TestRouter_Template_SegmentCountMismatch_NotFound(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/game/deps/{nodeKey}", "", labeledResource("deps"))
+
+	if _, _, code := router.defineResource("/game/deps", "GET"); code != http.StatusNotFound {
+		t.Fatalf("expected 404 for too few segments, got code %d", code)
+	}
+	if _, _, code := router.defineResource("/game/deps/abc/extra", "GET"); code != http.StatusNotFound {
+		t.Fatalf("expected 404 for too many segments, got code %d", code)
+	}
+}
+
+func TestRouter_Template_MultipleNamedParams(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/cartridges/{cartridge}/games/{game}", "", labeledResource("multi"))
+
+	_, params, code := router.defineResource("/cartridges/lxGames/games/ootv", "GET")
+
+	if code != 0 {
+		t.Fatalf("expected a match, got code %d", code)
+	}
+	if params["cartridge"] != "lxGames" || params["game"] != "ootv" {
+		t.Fatalf("expected both params extracted, got %#v", params)
+	}
+}
+
+func TestRouter_WildcardTemplate_CapturesRestIncludingEmpty(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/assets/*{rest}", "", labeledResource("assets"))
+
+	_, params, code := router.defineResource("/assets/css/main.css", "GET")
+	if code != 0 {
+		t.Fatalf("expected a match, got code %d", code)
+	}
+	if params["rest"] != "css/main.css" {
+		t.Fatalf("expected rest=\"css/main.css\", got %#v", params)
+	}
+
+	_, params, code = router.defineResource("/assets", "GET")
+	if code != 0 {
+		t.Fatalf("expected a match for the empty tail, got code %d", code)
+	}
+	if params["rest"] != "" {
+		t.Fatalf("expected rest=\"\" for the empty tail, got %#v", params)
+	}
+}
+
+func TestRouter_TemplateVsTemplate_FewerWildcardsWins(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/game/deps/*{rest}", "", labeledResource("wildcard"))
+	router.RegisterResource("/game/deps/{nodeKey}", "", labeledResource("param"))
+
+	cResource, params, code := router.defineResource("/game/deps/abc123", "GET")
+
+	if code != 0 {
+		t.Fatalf("expected a match, got code %d", code)
+	}
+	res := cResource().(*testResource)
+	if res.label != "param" {
+		t.Fatalf("expected the single-segment param template to win over the wildcard, got label %q", res.label)
+	}
+	if params["nodeKey"] != "abc123" {
+		t.Fatalf("expected nodeKey=abc123, got %#v", params)
+	}
+}
+
+func TestRouter_Template_MethodNotRegistered_MethodNotAllowed(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/game/deps/{nodeKey}", "POST", labeledResource("deps"))
+
+	if _, _, code := router.defineResource("/game/deps/abc123", "GET"); code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405, got code %d", code)
+	}
+}
+
+func TestRouter_RegisterResource_SameTemplateTwice_MergesMethods(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	router.RegisterResource("/game/deps/{nodeKey}", "GET", labeledResource("get"))
+	router.RegisterResource("/game/deps/{nodeKey}", "POST", labeledResource("post"))
+
+	if len(router.templates) != 1 {
+		t.Fatalf("expected the second registration to merge into the same template, got %d templates", len(router.templates))
+	}
+
+	cResource, _, code := router.defineResource("/game/deps/abc123", "POST")
+	if code != 0 {
+		t.Fatalf("expected a match, got code %d", code)
+	}
+	if res := cResource().(*testResource); res.label != "post" {
+		t.Fatalf("expected the POST handler, got label %q", res.label)
+	}
+}
+
+func TestRouter_WildcardNotLastSegment_Panics(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	defer func() {
+		if recover() == nil {
+			t.Fatal("expected a panic for a wildcard segment that isn't last")
+		}
+	}()
+	router.RegisterResource("/game/*{rest}/deps", "", labeledResource("bad"))
+}
+
+func TestRouter_UnnamedParamSegment_Panics(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	defer func() {
+		if recover() == nil {
+			t.Fatal("expected a panic for an unnamed \"{}\" segment")
+		}
+	}()
+	router.RegisterResource("/game/{}", "", labeledResource("bad"))
+}
+
+func TestRouter_UnnamedWildcardSegment_Panics(t *testing.T) {
+	router := NewRouter(nil).(*Router)
+	defer func() {
+		if recover() == nil {
+			t.Fatal("expected a panic for an unnamed \"*{}\" segment")
+		}
+	}()
+	router.RegisterResource("/game/*{}", "", labeledResource("bad"))
 }

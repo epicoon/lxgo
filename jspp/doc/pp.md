@@ -216,6 +216,10 @@ that file going through the JS-module compilation pipeline at all:
 @lx:js vendor/chart.min.js;
 @lx:css vendor/chart.min.css;
 ```
+`path` here accepts the same forms as `require` paths — including
+`{@param(...)}`, substituting a config value (see
+[Plugins](https://github.com/epicoon/lxgo/tree/master/jspp/doc/plugins.md)'s
+path syntax).
 
 
 ## <a name="data">Embedding data</a>

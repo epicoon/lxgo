@@ -130,6 +130,11 @@ func (r *Resource) App() kernel.IApp {
 	return self
 }
 
+// PathSegments returns the matched route's path-parameter values, by name.
+func (r *Resource) PathSegments() map[string]string {
+	return r.context.PathSegments()
+}
+
 // Route returns the matched route.
 func (r *Resource) Route() string {
 	return r.context.Route()

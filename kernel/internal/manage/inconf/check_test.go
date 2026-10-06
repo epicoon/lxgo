@@ -21,6 +21,9 @@ var _ kernel.IApp = (*fakeApp)(nil)
 func (a *fakeApp) BaseApp() kernel.IApp                       { return a }
 func (a *fakeApp) SelfApp() kernel.IApp                       { return a }
 func (a *fakeApp) SetPort(int)                                {}
+func (a *fakeApp) Port() int                                  { return 0 }
+func (a *fakeApp) SetHost(string)                             {}
+func (a *fakeApp) Host() string                               { return "" }
 func (a *fakeApp) ConfigPath() string                         { return "" }
 func (a *fakeApp) SetConfig(c kernel.IDict)                   { a.config = c }
 func (a *fakeApp) SetConfigParam(string, any)                 {}

@@ -192,6 +192,22 @@ Two more path forms are specific to cross-plugin references (used by
 another plugin's own root directory, and `{snippet:PluginName.Key}` refers to
 a snippet that plugin registered under `Key` in its own `snippetsMap`.
 
+`{@param(Dotted.Config.Path)}/rest/of/path` substitutes the app's own
+config value at that dotted path (`kernel.IApp.ConfigParam`) and appends
+the rest of the path to it as-is — e.g. with `Params.Value: path/part`
+configured, `{@param(Params.Value)}/rest/of/path` resolves to
+`path/part/rest/of/path`. The config value must be a string; a missing
+or non-string value logs an error and the path resolves to nothing.
+
+When this resolves to an asset's own source path (`images`, `@lx:js`/
+`@lx:css`, `require`), a substituted value that happens to be this same
+app's own address (`kernel.IApp.Host`/`Port`, e.g. a `Params.Value`
+set to the app's own URL by default) is still symlinked locally like any
+other local file — only a genuinely different host/port is treated as
+actually external (see [Extra
+assets](https://github.com/epicoon/lxgo/tree/master/jspp/doc/pp.md#assets)
+and `AssetLinksPath.Outer`'s own doc comment).
+
 
 ## <a name="backend">Backend implementation</a>
 

@@ -70,6 +70,24 @@ func findImportCalls(code string) []importCall {
 			continue
 		}
 
+		// lx.import(...) is always written as its own statement, terminated
+		// by a ';' the call itself doesn't own syntactically - once the call
+		// is spliced out (replaced by the imported code, which already ends
+		// in its own valid statements, or by nothing at all when the import
+		// is a no-op, e.g. a path already compiled elsewhere without -F),
+		// that ';' would otherwise survive verbatim: redundant in the first
+		// case, a dangling empty statement in the second. Swallowing it
+		// (skipping past any whitespace in between) here keeps both cases
+		// clean.
+		end := closeParen + 1
+		j := end
+		for j < n && isLxmlSpaceByte(clean[j]) {
+			j++
+		}
+		if j < n && clean[j] == ';' {
+			end = j + 1
+		}
+
 		argsText := clean[openParen+1 : closeParen]
 		rawArgs := splitImportArgs(argsText)
 
@@ -93,12 +111,12 @@ func findImportCalls(code string) []importCall {
 
 		calls = append(calls, importCall{
 			start:   idx,
-			end:     closeParen + 1,
+			end:     end,
 			paths:   paths,
 			modules: modules,
 		})
 
-		i = closeParen + 1
+		i = end
 	}
 
 	return calls

@@ -37,7 +37,9 @@
       AssetLinksPath:
         # Path to directory on the server
         Inner: frontend/web/assets
-        # URL path to request asset by client
+        # URL path to request asset by client - either a path served by
+        #  this same app (as below), or an absolute http(s):// URL, when
+        #  assets are published elsewhere (a CDN, or any other host)
         Outer: /web
       # Set of automatically rebuilt JS-bundles
       Targets:

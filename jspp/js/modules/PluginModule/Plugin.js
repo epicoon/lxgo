@@ -230,6 +230,7 @@ class Plugin extends lx.Element {
 
         lx.app.dependencies.promiseModules({
             modules: newForPlugin,
+			url: this.dependenciesUrl,
             callback: ()=>{
                 newForPlugin.forEach(a=>this.dependencies.modules.push(a));
                 if (callback) callback();
@@ -403,6 +404,7 @@ function _init(self, config) {
 
     // Dependencies info
     if (config.dep) self.dependencies = config.dep;
+    if (config.modDepUrl) self.dependenciesUrl = config.modDepUrl;
 
     self.focusable = false;
     self.setFocusable();

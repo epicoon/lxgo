@@ -1,4 +1,30 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.10.06
+Version: v0.1.0-alpha.32
+Changes:
+- add: `IApp` gains `Host()`/`SetHost()`, mirroring `Port()`/`SetPort()` - `Host` is now a required `config.yaml` key
+  (`InitApp` fails if absent, same strictness as `Port`), purely a declared value for self-reference comparisons, not
+  the actual bind address (still `:Port` on every interface)
+- add: `IApp` gains a plain `Port()` getter, alongside the pre-existing `SetPort()`
+- add: `IRouter.RegisterResource` accepts path-template routes - a `{name}` segment matches exactly one path segment,
+  a trailing `*{name}` matches zero or more remaining segments; an exact route always wins over any template, and
+  among templates the fewest wildcard tokens wins. `IHandleContext`/`IHttpResource` gain `PathSegments()` to read the
+  matched values
+- refactor: `RegisterFileAssets` now routes through the router's own middleware pipeline (as a `*{path}` template
+  route) instead of registering directly on `http.DefaultServeMux`, bypassing it entirely - middleware (auth, CORS,
+  logging, etc.) now runs for static asset requests too
+- add: `AppComponent` gains `ConfigKey()`, returning the dotted config path `InitComponent` bound the component with
+- refactor: `config.Load`'s single-file `Local` key is replaced by `Import` - a list of paths, each relative to the file
+  that names it (not necessarily the top-level config's own directory), merged in array order on top of the current
+  config; each imported file is itself fully resolved the same cascading way first, so import chains nest to any
+  depth. `Local` is removed
+- fix: `${VAR}`/`${VAR:-default}` substitution now works when the placeholder is embedded in a larger string value
+  (e.g. `"${HOST}:${PORT}"`)
+- fix: `cast.To` resolves its generic type via `reflect.TypeFor[T]()` instead of `reflect.TypeOf(&zero).Elem()`
+- chore: `apptest.New` now defaults `"Host": "localhost"` alongside the pre-existing `"Port": 0`, matching `Host`'s
+  new required status
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.02
 Version: v0.1.0-alpha.31
 Changes:

@@ -1,4 +1,13 @@
 ------------------------------------------------------------------------------------------------------------------------
+Date: 2026.10.06
+Version: v0.1.0-alpha.10
+Changes:
+- add: `WSServer.Start`, with no port configured for it, mounts the WS endpoint on the application's own HTTP server
+  (fixed path `/ws`) instead of opening its own TCP listener - lets an app serve WS and HTTP on the same port.
+  `IConnection` gains `HandleHijacked`, driving a connection whose handshake was already completed by the HTTP
+  handler doing the hijacking; everything after the handshake (origin check, message loop) is unchanged
+
+------------------------------------------------------------------------------------------------------------------------
 Date: 2026.09.02
 Version: v0.1.0-alpha.9
 Changes:

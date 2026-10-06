@@ -1,6 +1,6 @@
 # The package helps to work with the Web Socket protocol
 
-> Actual version: `v0.1.0-alpha.9`. [Details](https://github.com/epicoon/lxgo/tree/master/ws/CHANGE_LOG.md)
+> Actual version: `v0.1.0-alpha.10`. [Details](https://github.com/epicoon/lxgo/tree/master/ws/CHANGE_LOG.md)
 
 > You can use it if your application is based on [lxgo/kernel](https://github.com/epicoon/lxgo/tree/master/kernel)
 
@@ -69,6 +69,13 @@ before, so it isn't released just because the creator temporarily disconnects (o
 disconnect/reconnect together with the rest of that connection's state).
 
 `EmptyChannelTTL` is optional (seconds) - 0/unset disables it entirely. See "Channel closing" below.
+
+`Port` is optional. Left out of the config entirely, `Start` mounts the WS endpoint on the
+application's own HTTP server instead of opening a separate listener - at a fixed path, `/ws`,
+on whichever port the application itself listens on (`kernel.IApp.Port()`). `Host` is unused in
+this mode. Setting `Port` - including explicitly to `0`, which asks the OS for an ephemeral port -
+keeps the original behavior: `Start` opens its own listener on `Host:Port` and blocks until `Stop`
+is called.
 
 
 2. Using the existing API

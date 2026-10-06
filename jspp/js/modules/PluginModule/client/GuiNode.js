@@ -80,7 +80,7 @@ class GuiNode extends lx.Object {
         return this._box.find(key, all);
     }
 
-    triggerPluginEvent(eventName, data) {
+    triggerPluginEvent(eventName, data = {}) {
         this.getPlugin().trigger(eventName, data);
     }
 }

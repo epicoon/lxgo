@@ -44,10 +44,11 @@ class Dependencies extends lx.AppComponent {
      *     modules {Array<String>},
      *     [depend: false] {Boolean},
      *     [immediately: true] {Boolean},
-     *     [host] {String}
-     *     [callback] {Function},
+     *     [host] {String},
+     *     [url] {String},
+     *     [callback] {Function}
      * }}
-     * @returns {lx.ServiceRequest|null}
+     * @returns {lx.HttpRequest|null}
      */
     promiseModules(config) {
         if (lx.isArray(config)) config = {modules: config};
@@ -57,11 +58,20 @@ class Dependencies extends lx.AppComponent {
             need = _checkNeed(this, config.modules, 'modules', depend, callback);
         if (!need.length) return null;
 
-        let modulesRequest = new lx.ServiceRequest('get-modules', {
-            have: lx.app.dependencies.getCurrentModules(),
-            need
-        });
-        if (config.host) modulesRequest.host = config.host;
+        let modulesRequest;
+        if (config.url) {
+            modulesRequest = new lx.HttpRequest(config.url, {
+                have: lx.app.dependencies.getCurrentModules(),
+                need
+            });
+        } else {
+            modulesRequest = new lx.ServiceRequest('get-modules', {
+                have: lx.app.dependencies.getCurrentModules(),
+                need
+            });
+            if (config.host) modulesRequest.host = config.host;
+        }
+
         const self = this;
         let onLoad = function (res) {
             if (!res.success) {
@@ -87,7 +97,7 @@ class Dependencies extends lx.AppComponent {
      * @param config {Array<string>|Object: {
      *     scripts {Array<String>},
      *     [depend: false] {Boolean},
-     *     [immediately: true] {Boolean},
+     *     [immediately: true] {Boolean}
      * }}
      * @returns {lx.AssetRequest[]}
      */
@@ -99,7 +109,7 @@ class Dependencies extends lx.AppComponent {
      * @param config {Array<string>|Object: {
      *     css {Array<String>},
      *     [depend: false] {Boolean},
-     *     [immediately: true] {Boolean},
+     *     [immediately: true] {Boolean}
      * }}
      * @returns {lx.AssetRequest[]}
      */
@@ -285,7 +295,7 @@ function _checkNeed(self, list, key, depend, callback = null) {
  *     [scripts] {Array<String>},
  *     [css] {Array<String>},
  *     [depend: false] {Boolean},
- *     [immediately: true] {Boolean},
+ *     [immediately: true] {Boolean}
  * }}
  * @param key {String}
  * @returns {lx.AssetRequest[]}

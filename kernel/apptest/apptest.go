@@ -16,11 +16,12 @@ import (
 
 // New builds and initializes a minimal app.App for integration tests - no
 // config.yaml file is read, cfg (if given) is used as-is. "Port" defaults
-// to 0 unless cfg sets it; a "Database" section (if any) wires up a
-// connection, but Connect() still needs to be called explicitly. Only the
-// first cfg is used - it's variadic so New() with no config is the common case.
+// to 0 and "Host" to "localhost" unless cfg sets them; a "Database"
+// section (if any) wires up a connection, but Connect() still needs to be
+// called explicitly. Only the first cfg is used - it's variadic so New()
+// with no config is the common case.
 func New(cfg ...kernel.Dict) (kernel.IApp, error) {
-	merged := kernel.Dict{"Port": 0}
+	merged := kernel.Dict{"Port": 0, "Host": "localhost"}
 	if len(cfg) > 0 {
 		for k, v := range cfg[0] {
 			merged[k] = v

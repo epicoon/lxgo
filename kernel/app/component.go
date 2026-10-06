@@ -85,6 +85,10 @@ type AppComponent struct {
 	// self is the component's own outward-facing instance, bound by
 	// InitComponent - see selfBinder and logCategory.
 	self kernel.IAppComponent
+
+	// configKey is the dotted path into app's config InitComponent bound
+	// this component's config from - see ConfigKey.
+	configKey string
 }
 
 type compSelfBinder interface {
@@ -93,6 +97,14 @@ type compSelfBinder interface {
 
 func (c *AppComponent) setSelf(self kernel.IAppComponent) {
 	c.self = self
+}
+
+type configKeySetter interface {
+	setConfigKey(key string)
+}
+
+func (c *AppComponent) setConfigKey(key string) {
+	c.configKey = key
 }
 
 // logCategory returns the category to log under: self.LogCategory() if
@@ -143,6 +155,9 @@ func InitComponent(c kernel.IAppComponent, app kernel.IApp, configKey string) er
 	// struct's override actually takes effect. See selfBinder.
 	if binder, ok := c.(compSelfBinder); ok {
 		binder.setSelf(c)
+	}
+	if binder, ok := c.(configKeySetter); ok {
+		binder.setConfigKey(configKey)
 	}
 
 	path := strings.Split(configKey, ".")
@@ -241,6 +256,14 @@ func (c *AppComponent) Name() string {
 // App returns the owning app.
 func (c *AppComponent) App() kernel.IApp {
 	return c.app
+}
+
+// ConfigKey returns the dotted path into the app's config this component
+// was initialized with (the configKey passed to InitComponent/
+// RegisterComponent/the package-level SetAppComponent most components
+// expose) - lets a component look up a key under its own config section.
+func (c *AppComponent) ConfigKey() string {
+	return c.configKey
 }
 
 /** @abstract */
